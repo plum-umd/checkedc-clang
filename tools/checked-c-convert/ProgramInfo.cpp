@@ -546,6 +546,24 @@ bool FunctionVariableConstraint::anyChanges(Constraints::EnvironmentMap &E) {
   return f;
 }
 
+bool FunctionVariableConstraint::hasWild(Constraints::EnvironmentMap &E)
+{
+    for (const auto& C: returnVars)
+        if (C->hasWild(E))
+            return true;
+
+    return false;
+}
+
+bool FunctionVariableConstraint::hasArr(Constraints::EnvironmentMap &E)
+{
+    for (const auto& C: returnVars)
+        if (C->hasArr(E))
+            return true;
+
+    return false;
+}
+
 void PointerVariableConstraint::constrainTo(Constraints &CS, ConstAtom *A, bool checkSkip) {
   for (const auto &V : vars) {
     // Check and see if we've already constrained this variable. This is currently 
@@ -579,6 +597,38 @@ bool PointerVariableConstraint::anyChanges(Constraints::EnvironmentMap &E) {
     f |= FV->anyChanges(E);
 
   return f;
+}
+
+bool PointerVariableConstraint::hasWild(Constraints::EnvironmentMap &E)
+{
+    for (const auto& C: vars) {
+        VarAtom V(C);
+        ConstAtom *CS = E[&V];
+        assert(CS != nullptr);
+        if (isa<WildAtom>(CS))
+            return true;
+    }
+
+    if (FV)
+        return FV->anyChanges(E);
+
+    return false;
+}
+
+bool PointerVariableConstraint::hasArr(Constraints::EnvironmentMap &E)
+{
+    for (const auto& C: vars) {
+        VarAtom V(C);
+        ConstAtom *CS = E[&V];
+        assert(CS != nullptr);
+        if (isa<ArrAtom>(CS))
+            return true;
+    }
+
+    if (FV)
+        return FV->anyChanges(E);
+
+    return false;
 }
 
 void FunctionVariableConstraint::print(raw_ostream &O) const {

@@ -829,6 +829,62 @@ bool CastPlacementVisitor::VisitCallExpr(CallExpr *E) {
   return true;
 }
 
+class DeclVisitor : public clang::RecursiveASTVisitor<DeclVisitor>
+{
+public:
+    explicit DeclVisitor(ASTContext *_C, Rewriter& _R, ProgramInfo& _I)
+        : Context(_C), Writer(_R), Info(_I)
+    {
+    }
+
+    bool VisitDecl(Decl* D)
+    {
+        VarDecl* VD = dyn_cast_or_null<clang::VarDecl>(D);
+        if (!VD)
+            return true;
+
+        // ProgramInfo.getVariable() can find variables in a function
+        // context or not.  I'm not clear of the difference yet, so we
+        // just run our analysis on both.
+        std::set<ConstraintVariable*> a = Info.getVariable(D, Context, true);
+        std::set<ConstraintVariable*> b = Info.getVariable(D, Context, false);
+        std::set<ConstraintVariable*> CV;
+        std::set_union(a.begin(), a.end(),
+                       b.begin(), b.end(),
+                       std::inserter(CV, CV.begin()));
+
+        bool foundArr = false;
+        for (const auto& C: CV) {
+            foundArr |= C->hasArr(Info.getConstraints().getVariables());
+        }
+
+        if (foundArr) {
+            // Find the end of the line that contains this statement.
+            FullSourceLoc sl(D->getEndLoc(), Context->getSourceManager());
+            const char* buf = sl.getCharacterData();
+            const char* ptr = strchr(buf, '\n');
+
+            // Deal with Windows/DOS "\r\n" line endings.
+            if (ptr && ptr > buf && ptr[-1] == '\r')
+                --ptr;
+
+            if (ptr) {
+                SourceLocation eol = D->getEndLoc().getLocWithOffset(ptr-buf);
+                sl = FullSourceLoc(eol, Context->getSourceManager());
+                Writer.InsertTextBefore(eol, "*/");
+                Writer.InsertTextBefore(eol, VD->getName());
+                Writer.InsertTextBefore(eol, "/*ARR:");
+            }
+        }
+        return true;
+    }
+
+private:
+    ASTContext*  Context;
+    Rewriter&    Writer;
+    ProgramInfo& Info;
+};
+
 class RewriteConsumer : public ASTConsumer {
 public:
   explicit RewriteConsumer(ProgramInfo &I, 
@@ -923,6 +979,11 @@ public:
     }
 
     rewrite(R, rewriteThese, skip, Context.getSourceManager(), Context, Files);
+
+    // Add ARR marker to array pointer declarations.
+    // XXX - Must happen after the rewrite to add Checked C types (for now).
+    DeclVisitor declVisitor(&Context, R, Info);
+    declVisitor.TraverseAST(Context);
 
     // Output files.
     emit(R, Context, Files, InOutFiles);

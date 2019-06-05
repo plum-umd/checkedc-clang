@@ -88,6 +88,8 @@ public:
   // results from running unification on the set of constraints and the 
   // environment.
   virtual bool anyChanges(Constraints::EnvironmentMap &E) = 0;
+  virtual bool hasWild(Constraints::EnvironmentMap &E) = 0;
+  virtual bool hasArr(Constraints::EnvironmentMap &E) = 0;
 
   std::string getTy() { return BaseType; }
   std::string getName() { return Name; }
@@ -184,6 +186,8 @@ public:
   void dump() const { print(llvm::errs()); }
   void constrainTo(Constraints &CS, ConstAtom *C, bool checkSkip=false);
   bool anyChanges(Constraints::EnvironmentMap &E);
+  bool hasWild(Constraints::EnvironmentMap &E);
+  bool hasArr(Constraints::EnvironmentMap &E);
 
   bool isLt(const ConstraintVariable &other, ProgramInfo &P) const;
   bool isEq(const ConstraintVariable &other, ProgramInfo &P) const;
@@ -244,6 +248,8 @@ public:
   void dump() const { print(llvm::errs()); }
   void constrainTo(Constraints &CS, ConstAtom *C, bool checkSkip=false);
   bool anyChanges(Constraints::EnvironmentMap &E);
+  bool hasWild(Constraints::EnvironmentMap &E);
+  bool hasArr(Constraints::EnvironmentMap &E);
 
   bool isLt(const ConstraintVariable &other, ProgramInfo &P) const;
   bool isEq(const ConstraintVariable &other, ProgramInfo &P) const;
