@@ -68,17 +68,6 @@ BaseDir("base-dir",
   cl::init(""),
   cl::cat(ConvertCategory));
 
-const clang::Type *getNextTy(const clang::Type *Ty) {
-  if(Ty->isPointerType()) {
-    // TODO: how to keep the qualifiers around, and what qualifiers do
-    //       we want to keep?
-    QualType qtmp = Ty->getLocallyUnqualifiedSingleStepDesugaredType();
-    return qtmp.getTypePtr()->getPointeeType().getTypePtr();
-  }
-  else
-    return Ty;
-}
-
 // Test to see if we can rewrite a given SourceRange. 
 // Note that R.getRangeSize will return -1 if SR is within
 // a macro as well. This means that we can't re-write any 
@@ -87,52 +76,13 @@ bool canRewrite(Rewriter &R, SourceRange &SR) {
   return SR.isValid() && (R.getRangeSize(SR) != -1);
 }
 
-ConstraintVariable *getHighest(std::set<ConstraintVariable*> Vs, ProgramInfo &Info) {
-  if (Vs.size() == 0)
-    return nullptr;
-
-  ConstraintVariable *V = nullptr;
-
-  for (auto &P : Vs) {
-    if (V) {
-      if (V->isLt(*P, Info))
-        V = P;
-    } else {
-      V = P;
-    }
-  }
-
-  return V;
-}
-
-// Walk the list of declarations and find a declaration accompanied by 
-// a definition and a function body. 
-FunctionDecl *getDefinition(FunctionDecl *FD) {
-  for (const auto &D : FD->redecls())
-    if (FunctionDecl *tFD = dyn_cast<FunctionDecl>(D))
-      if (tFD->isThisDeclarationADefinition() && tFD->hasBody())
-        return tFD;
-
-  return nullptr;
-}
-
-// Walk the list of declarations and find a declaration that is NOT 
-// a definition and does NOT have a body. 
-FunctionDecl *getDeclaration(FunctionDecl *FD) {
-  for (const auto &D : FD->redecls())
-    if (FunctionDecl *tFD = dyn_cast<FunctionDecl>(D))
-      if (!tFD->isThisDeclarationADefinition())
-        return tFD;
-
-  return FD;
-}
 
 // A Declaration, optional DeclStmt, and a replacement string
 // for that Declaration. 
 struct DAndReplace
 {
   Decl        *Declaration; // The declaration to replace.
-  DeclStmt    *Statement;   // The DeclStmt, if it exists.
+  Stmt        *Statement;   // The Stmt, if it exists.
   std::string Replacement;  // The string to replace the declaration with.
   bool        fullDecl;     // If the declaration is a function, true if 
                             // replace the entire declaration or just the 
@@ -153,10 +103,10 @@ struct DAndReplace
                                                 fullDecl(F) {} 
 
 
-  DAndReplace(Decl *D, DeclStmt *S, std::string R) :  Declaration(D),
-                                                      Statement(S),
-                                                      Replacement(R),
-                                                      fullDecl(false) { }
+  DAndReplace(Decl *D, Stmt *S, std::string R) :  Declaration(D),
+                                                  Statement(S),
+                                                  Replacement(R),
+                                                  fullDecl(false) { }
 };
 
 SourceLocation 
@@ -233,11 +183,12 @@ struct DComp
 
     // Also take into account whether or not there is a multi-statement
     // decl, because the generated ranges will overlap. 
- 
-    if (lhs.Statement && !lhs.Statement->isSingleDecl()) {
-      SourceLocation  newBegin = (*lhs.Statement->decls().begin())->getSourceRange().getBegin();
+    DeclStmt *lhStmt = dyn_cast_or_null<DeclStmt>(lhs.Statement);
+
+    if (lhStmt && !lhStmt->isSingleDecl()) {
+      SourceLocation  newBegin = (*lhStmt->decls().begin())->getSourceRange().getBegin();
       bool            found; 
-      for (const auto &DT : lhs.Statement->decls()) {
+      for (const auto &DT : lhStmt->decls()) {
         if (DT == lhs.Declaration) {
           found = true;
           break;
@@ -250,10 +201,11 @@ struct DComp
       srLHS.setEnd(srLHS.getEnd().getLocWithOffset(-1));
     }
 
-    if (rhs.Statement && !rhs.Statement->isSingleDecl()) {
-      SourceLocation  newBegin = (*rhs.Statement->decls().begin())->getSourceRange().getBegin();
+    DeclStmt *rhStmt = dyn_cast_or_null<DeclStmt>(rhs.Statement);
+    if (rhStmt && !rhStmt->isSingleDecl()) {
+      SourceLocation  newBegin = (*rhStmt->decls().begin())->getSourceRange().getBegin();
       bool            found; 
-      for (const auto &DT : rhs.Statement->decls()) {
+      for (const auto &DT : rhStmt->decls()) {
         if (DT == rhs.Declaration) {
           found = true;
           break;
@@ -325,12 +277,14 @@ void rewrite(ParmVarDecl *PV, Rewriter &R, std::string sRewrite) {
 void rewrite( VarDecl               *VD, 
               Rewriter              &R, 
               std::string           sRewrite, 
-              DeclStmt              *Where,
+              Stmt                  *WhereStmt,
               RSet                  &skip,
               const DAndReplace     &N,
               RSet                  &toRewrite,
               ASTContext            &A) 
 {
+  DeclStmt *Where = dyn_cast_or_null<DeclStmt>(WhereStmt);
+
   if (Where != NULL) {
     if (Verbose) {
       errs() << "VarDecl at:\n";
@@ -387,7 +341,7 @@ void rewrite( VarDecl               *VD,
       auto I = toRewrite.find(N);
       while (I != toRewrite.end()) {
         DAndReplace tmp = *I;
-        if (tmp.Statement == Where)
+        if (tmp.Statement == WhereStmt)
           rewritesForThisDecl.insert(tmp);
         ++I;
       }
@@ -472,7 +426,7 @@ void rewrite( Rewriter              &R,
 {
   for (const auto &N : toRewrite) {
     Decl *D = N.Declaration;
-    DeclStmt *Where = N.Statement;
+    DeclStmt *Where = dyn_cast_or_null<DeclStmt>(N.Statement);
     assert(D != nullptr);
 
     if (Verbose) {
@@ -825,6 +779,62 @@ bool CastPlacementVisitor::VisitCallExpr(CallExpr *E) {
   return true;
 }
 
+class DeclVisitor : public clang::RecursiveASTVisitor<DeclVisitor>
+{
+public:
+    explicit DeclVisitor(ASTContext *_C, Rewriter& _R, ProgramInfo& _I)
+        : Context(_C), Writer(_R), Info(_I)
+    {
+    }
+
+    bool VisitDecl(Decl* D)
+    {
+        VarDecl* VD = dyn_cast_or_null<clang::VarDecl>(D);
+        if (!VD)
+            return true;
+
+        // ProgramInfo.getVariable() can find variables in a function
+        // context or not.  I'm not clear of the difference yet, so we
+        // just run our analysis on both.
+        std::set<ConstraintVariable*> a = Info.getVariable(D, Context, true);
+        std::set<ConstraintVariable*> b = Info.getVariable(D, Context, false);
+        std::set<ConstraintVariable*> CV;
+        std::set_union(a.begin(), a.end(),
+                       b.begin(), b.end(),
+                       std::inserter(CV, CV.begin()));
+
+        bool foundArr = false;
+        for (const auto& C: CV) {
+            foundArr |= C->hasArr(Info.getConstraints().getVariables());
+        }
+
+        if (foundArr) {
+            // Find the end of the line that contains this statement.
+            FullSourceLoc sl(D->getEndLoc(), Context->getSourceManager());
+            const char* buf = sl.getCharacterData();
+            const char* ptr = strchr(buf, '\n');
+
+            // Deal with Windows/DOS "\r\n" line endings.
+            if (ptr && ptr > buf && ptr[-1] == '\r')
+                --ptr;
+
+            if (ptr) {
+                SourceLocation eol = D->getEndLoc().getLocWithOffset(ptr-buf);
+                sl = FullSourceLoc(eol, Context->getSourceManager());
+                Writer.InsertTextBefore(eol, "*/");
+                Writer.InsertTextBefore(eol, VD->getName());
+                Writer.InsertTextBefore(eol, "/*ARR:");
+            }
+        }
+        return true;
+    }
+
+private:
+    ASTContext*  Context;
+    Rewriter&    Writer;
+    ProgramInfo& Info;
+};
+
 class RewriteConsumer : public ASTConsumer {
 public:
   explicit RewriteConsumer(ProgramInfo &I, 
@@ -919,6 +929,11 @@ public:
     }
 
     rewrite(R, rewriteThese, skip, Context.getSourceManager(), Context, Files);
+
+    // Add ARR marker to array pointer declarations.
+    // XXX - Must happen after the rewrite to add Checked C types (for now).
+    DeclVisitor declVisitor(&Context, R, Info);
+    declVisitor.TraverseAST(Context);
 
     // Output files.
     emit(R, Context, Files, InOutFiles);
