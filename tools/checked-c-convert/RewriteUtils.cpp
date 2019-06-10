@@ -619,10 +619,12 @@ static void emit(Rewriter &R, ASTContext &C, std::set<FileID> &Files,
         }
 }
 
-class DeclVisitor : public clang::RecursiveASTVisitor<DeclVisitor>
+// This is a visitor that tries to find all the variables
+// inferred as arrayed by the checked-c-convert
+class DeclArrayVisitor : public clang::RecursiveASTVisitor<DeclArrayVisitor>
 {
 public:
-  explicit DeclVisitor(ASTContext *_C, Rewriter& _R, ProgramInfo& _I)
+  explicit DeclArrayVisitor(ASTContext *_C, Rewriter& _R, ProgramInfo& _I)
           : Context(_C), Writer(_R), Info(_I)
   {
   }
@@ -649,6 +651,8 @@ public:
     }
 
     if (foundArr) {
+      // Add the identified array declarations here.
+      Info.insertPotentialArrayVar(D);
       // Find the end of the line that contains this statement.
       FullSourceLoc sl(D->getEndLoc(), Context->getSourceManager());
       const char* buf = sl.getCharacterData();
@@ -696,7 +700,7 @@ void RewriteConsumer::HandleTranslationUnit(ASTContext &Context) {
 
   for (const auto &I : VarMap)
     keys.insert(I.first);
-  std::map<PersistentSourceLoc, MappingVisitor::StmtDeclOrType> PSLMap;
+  SourceToDeclMapType PSLMap;
   VariableDecltoStmtMap VDLToStmtMap;
 
   RSet skip(DComp(Context.getSourceManager()));
@@ -767,7 +771,7 @@ void RewriteConsumer::HandleTranslationUnit(ASTContext &Context) {
 
   // Add ARR marker to array pointer declarations.
   // XXX - Must happen after the rewrite to add Checked C types (for now).
-  DeclVisitor declVisitor(&Context, R, Info);
+  DeclArrayVisitor declVisitor(&Context, R, Info);
   declVisitor.TraverseAST(Context);
 
   // Output files.
