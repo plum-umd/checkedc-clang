@@ -16,6 +16,7 @@
 #include "RewriteUtils.h"
 #include "MappingVisitor.h"
 #include "Utils.h"
+#include "ArrayBoundsInferenceConsumer.h"
 
 using namespace llvm;
 using namespace clang;
@@ -776,6 +777,9 @@ void RewriteConsumer::HandleTranslationUnit(ASTContext &Context) {
 
   // Output files.
   emit(R, Context, Files, InOutFiles, BaseDir, OutputPostfix);
+
+  HandleArrayVariablesBoundsDetection(&Context, Info);
+  Info.printArrayVarsAndSizes(errs());
 
   Info.exitCompilationUnit();
   return;
