@@ -647,8 +647,10 @@ public:
                    std::inserter(CV, CV.begin()));
 
     bool foundArr = false;
+    // it is an array but not an NT array
     for (const auto& C: CV) {
-      foundArr |= C->hasArr(Info.getConstraints().getVariables());
+      foundArr |= (C->hasArr(Info.getConstraints().getVariables()) &&
+                   !C->hasNTArr(Info.getConstraints().getVariables()));
     }
 
     if (foundArr) {
