@@ -679,6 +679,7 @@ public:
 
   bool VisitDecl(Decl* D)
   {
+    // check if this is a variable declaration.
     VarDecl* VD = dyn_cast_or_null<clang::VarDecl>(D);
     if (!VD)
       return true;
@@ -686,7 +687,14 @@ public:
     // ProgramInfo.getVariable() can find variables in a function
     // context or not.  I'm not clear of the difference yet, so we
     // just run our analysis on both.
-    std::set<ConstraintVariable*> a = Info.getVariable(D, Context, true);
+
+    std::set<ConstraintVariable*> a;
+    // check if the function body exists before
+    // fetching inbody variable.
+    if(hasFunctionBody(D)) {
+      a = Info.getVariable(D, Context, true);
+    }
+
     std::set<ConstraintVariable*> b = Info.getVariable(D, Context, false);
     std::set<ConstraintVariable*> CV;
     std::set_union(a.begin(), a.end(),
