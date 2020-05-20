@@ -305,6 +305,10 @@ public:
                      llvm::function_ref<bool (ConstAtom *, ConstAtom *)>) const;
 
   virtual ~PointerVariableConstraint() {};
+  std::string mkString2(EnvironmentMap &E, PointerVariableConstraint *PV,
+                        std::map<std::string, std::set<ConstraintVariable*>> TypedefVariables,
+                        bool EmitName, bool ForItype);
+
 };
 
 typedef PointerVariableConstraint PVConstraint;

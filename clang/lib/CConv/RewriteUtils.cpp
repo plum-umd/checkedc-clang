@@ -1423,6 +1423,55 @@ std::string ArrayBoundsRewriter::getBoundsString(Decl *D, bool Isitype) {
   return BString;
 }
 
+class TypedefRewriter : public clang::RecursiveASTVisitor<TypedefRewriter>
+{
+public:
+  explicit TypedefRewriter(ASTContext *C, ProgramInfo &I,
+                           Rewriter& R, RSet &R2)
+      : Context(C), Info(I), Writer(R), RewriteThese(R2) {}
+  bool VisitTypedefDecl(TypedefDecl *D) {
+    bool foundWild = false;
+    for (auto pair : Info.TypedefVariables) {
+      std::set<ConstraintVariable*> cvs2 = Info.TypedefVariables[pair.first];
+      if (pair.first == D->getNameAsString()) {
+        for (auto cv : cvs2) {
+          if (cv->hasWild(Info.getConstraints().getVariables())) {
+            foundWild = true;
+          }
+        }
+      }
+    }
+    SourceRange sourceRange1 = D->getSourceRange();
+    sourceRange1.setBegin(sourceRange1.getBegin().getLocWithOffset(8));
+    sourceRange1.setEnd(sourceRange1.getBegin().getLocWithOffset(6));
+    std::string text = "";
+
+    if (sourceRange1.getBegin().isValid() && sourceRange1.getEnd().isValid()) {
+      text = Writer.getRewrittenText(sourceRange1);
+    }
+
+    if (!foundWild and !(text == "struct")) {
+      auto first_token = text.substr(0, text.find(" "));
+      auto rest = text.substr(text.find(" ") + 1);
+
+      if (D->getUnderlyingType()->isPointerType()) {
+        //if (first_token.find("*") != std::string::npos) {
+        std::string finalDeclaration = "";
+        finalDeclaration.append("_Ptr<");
+        finalDeclaration.append(first_token);
+        finalDeclaration.append("> ");
+        finalDeclaration.append(rest);
+        Writer.ReplaceText(sourceRange1, finalDeclaration);
+      }
+    }
+  }
+private:
+  ASTContext *Context;
+  ProgramInfo &Info;
+  Rewriter& Writer;
+  RSet &RewriteThese;
+};
+
 void RewriteConsumer::HandleTranslationUnit(ASTContext &Context) {
   Info.enterCompilationUnit(Context);
 
@@ -1459,6 +1508,7 @@ void RewriteConsumer::HandleTranslationUnit(ASTContext &Context) {
   TranslationUnitDecl *TUD = Context.getTranslationUnitDecl();
   StructVariableInitializer FV =
       StructVariableInitializer(&Context, Info, RewriteThese);
+  TypedefRewriter T = TypedefRewriter(&Context, Info, R, RewriteThese);
   GlobalVariableGroups GVG(R.getSourceMgr());
   std::set<llvm::FoldingSetNodeID> seen;
   CheckedRegionAdder CRA(&Context, R, Info, seen);
@@ -1467,6 +1517,7 @@ void RewriteConsumer::HandleTranslationUnit(ASTContext &Context) {
     V.TraverseDecl(D);
     FV.TraverseDecl(D);
     ECPV.TraverseDecl(D);
+    T.TraverseDecl(D);
     if (AddCheckedRegions)
       // Adding checked regions enabled!?
       CRA.TraverseDecl(D);
@@ -1522,7 +1573,26 @@ void RewriteConsumer::HandleTranslationUnit(ASTContext &Context) {
         std::string newTy = getStorageQualifierString(D) +
                             PV->mkString(Info.getConstraints().getVariables()) +
                             ABRewriter.getBoundsString(D);
-        RewriteThese.insert(DAndReplace(D, DS, newTy));
+
+        VarDecl *VD = dyn_cast<VarDecl>(D);
+        if (VD != nullptr) {
+          if (VD->getType().getTypePtr()->getAs<TypedefType>() == nullptr) {
+            RewriteThese.insert(DAndReplace(D, DS, newTy));
+          } else {
+            bool isTypedefStruct = false;
+            for (const auto name : Info.TypedefStructNames) {
+              if (name == PV->getOriginalTy()) {
+                isTypedefStruct = true;
+              }
+            }
+            if (isTypedefStruct) {
+              RewriteThese.insert(DAndReplace(D, DS, newTy));
+            }
+          }
+        } else {
+          RewriteThese.insert(DAndReplace(D, DS, newTy));
+        }
+
       } else if (FV && RewriteConsumer::hasModifiedSignature(FV->getName()) &&
                  !TRV.isFunctionVisited(FV->getName())) {
         // If this function already has a modified signature? and it is not

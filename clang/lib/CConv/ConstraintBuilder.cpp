@@ -346,6 +346,26 @@ public:
     return true;
   }
 
+  bool VisitTypedefDecl(TypedefDecl *D) {
+    //Info.addVariable((VarDecl *) D, nullptr, Context); // Causes crash
+    if (D->getKind() == clang::Decl::Typedef) {
+      SourceRange sourceRange1 = D->getSourceRange();
+      sourceRange1.setBegin(sourceRange1.getBegin().getLocWithOffset(8));
+      sourceRange1.setEnd(sourceRange1.getBegin().getLocWithOffset(6));
+      std::string text = "";
+
+      if (sourceRange1.getBegin().isValid() && sourceRange1.getEnd().isValid()) {
+        text = Context->getSourceManager().getCharacterData(sourceRange1.getBegin());
+      }
+
+      if (text.find("struct") != 0) {
+        Info.addTypedef(D, nullptr, Context);
+      } else {
+        Info.addTypedefStruct(D, nullptr, Context);
+      }
+    }
+  }
+
   bool VisitFunctionDecl(FunctionDecl *D) {
     FullSourceLoc FL = Context->getFullLoc(D->getBeginLoc());
 

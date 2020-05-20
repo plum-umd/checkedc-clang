@@ -678,6 +678,34 @@ ProgramInfo::insertNewFVConstraints(FunctionDecl *FD,
   }
 }
 
+bool ProgramInfo::addTypedef(TypedefDecl *D, DeclStmt *St, ASTContext *C) {
+  assert(persisted == false);
+  PersistentSourceLoc PLoc = PersistentSourceLoc::mkPSL(D, *C);
+  assert(PLoc.valid());
+
+  const Type *Ty = D->getMostRecentDecl()->getTypeSourceInfo()->getTypeLoc().getTypePtr();
+
+  if (Ty == nullptr) {
+    llvm_unreachable("unknown decl type");
+  }
+  std::set<ConstraintVariable*> vars;
+  TypedefVariables.insert({D->getNameAsString(), vars});
+}
+
+bool ProgramInfo::addTypedefStruct(TypedefDecl *D, DeclStmt *St, ASTContext *C) {
+  assert(persisted == false);
+  PersistentSourceLoc PLoc = PersistentSourceLoc::mkPSL(D, *C);
+  assert(PLoc.valid());
+
+  const Type *Ty = D->getMostRecentDecl()->getTypeSourceInfo()->getTypeLoc().getTypePtr();
+
+  if (Ty == nullptr) {
+    llvm_unreachable("unknown decl type");
+  }
+
+  TypedefStructNames.insert(D->getNameAsString());
+}
+
 // For each pointer type in the declaration of D, add a variable to the
 // constraint system for that pointer type.
 bool ProgramInfo::addVariable(clang::DeclaratorDecl *D,

@@ -164,6 +164,13 @@ public:
     return StaticFunctionDefnFVCons;
   }
 
+  bool addTypedef(TypedefDecl *D, DeclStmt *St, ASTContext *C);
+  bool addTypedefStruct(TypedefDecl *D, DeclStmt *St, ASTContext *C);
+
+  std::map<std::string, std::set<ConstraintVariable*>> TypedefVariables;
+  std::set<std::string> TypedefStructNames;
+
+
 private:
 
   bool
