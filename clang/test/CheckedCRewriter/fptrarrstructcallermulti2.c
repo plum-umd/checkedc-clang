@@ -1,6 +1,21 @@
-// RUN: cconv-standalone -base-dir=%S -alltypes -output-postfix=checked2 %s %S/fptrarrstructcallermulti1.c
+// RUN: cconv-standalone -base-dir=%S -output-postfix=checked2 %s %S/fptrarrstructcallermulti1.c
 //RUN: FileCheck -match-full-lines --input-file %S/fptrarrstructcallermulti2.checked2.c %s
 //RUN: rm %S/fptrarrstructcallermulti1.checked2.c %S/fptrarrstructcallermulti2.checked2.c
+
+
+/*********************************************************************************/
+
+/*This file tests three functions: two callers bar and foo, and a callee sus*/
+/*In particular, this file tests: using a function pointer and an array as fields
+of a struct that interact with each other*//*For robustness, this test is identical to fptrarrstructprotocaller.c and fptrarrstructcaller.c except in that
+the callee and callers are split amongst two files to see how
+the tool performs conversions*/
+/*In this test, foo and sus will treat their return values safely, but bar will
+not, through invalid pointer arithmetic, an unsafe cast, etc.*/
+
+/*********************************************************************************/
+
+
 #define size_t int
 #define NULL 0
 extern _Itype_for_any(T) void *calloc(size_t nmemb, size_t size) : itype(_Array_ptr<T>) byte_count(nmemb * size);
@@ -21,7 +36,7 @@ struct warr {
     int data1[5];
     char name[];
 };
-//CHECK:     int data1 _Checked[5];
+//CHECK:     _Ptr<int> data1;
 //CHECK-NEXT:     _Ptr<char> name;
 
 
@@ -30,7 +45,7 @@ struct fptrarr {
     char *name;
     int (*mapper)(int);
 };
-//CHECK:     _Array_ptr<int> values; 
+//CHECK:     int *values; 
 //CHECK-NEXT:     char *name;
 //CHECK-NEXT:     _Ptr<int (int )> mapper;
 
@@ -47,8 +62,8 @@ struct arrfptr {
     int args[5]; 
     int (*funcs[5]) (int);
 };
-//CHECK:     int args _Checked[5]; 
-//CHECK-NEXT:     _Ptr<int (int )> funcs _Checked[5];
+//CHECK:     _Ptr<int> args; 
+//CHECK-NEXT:     _Ptr<_Ptr<int (int )>> funcs;
 
 
 int add1(int x) { 
@@ -98,4 +113,3 @@ struct fptrarr * sus(struct fptrarr *x, struct fptrarr *y) {
 return z; }
 //CHECK: struct fptrarr * sus(struct fptrarr *x, struct fptrarr *y : itype(_Ptr<struct fptrarr>)) {
 //CHECK:         struct fptrarr *z = malloc(sizeof(struct fptrarr)); 
-//CHECK:         z->name = strcpy(((char *)name), "Hello World");

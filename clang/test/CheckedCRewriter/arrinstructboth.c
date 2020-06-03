@@ -1,4 +1,17 @@
-// RUN: cconv-standalone -alltypes %s -- | FileCheck -match-full-lines %s
+// RUN: cconv-standalone %s -- | FileCheck -match-full-lines %s
+
+
+/*********************************************************************************/
+
+/*This file tests three functions: two callers bar and foo, and a callee sus*/
+/*In particular, this file tests: how the tool behaves when there is an array
+field within a struct*/
+/*In this test, foo will treat its return value safely, but sus and bar will not,
+through invalid pointer arithmetic, an unsafe cast, etc.*/
+
+/*********************************************************************************/
+
+
 #define size_t int
 #define NULL 0
 extern _Itype_for_any(T) void *calloc(size_t nmemb, size_t size) : itype(_Array_ptr<T>) byte_count(nmemb * size);
@@ -19,7 +32,7 @@ struct warr {
     int data1[5];
     char name[];
 };
-//CHECK:     int data1 _Checked[5];
+//CHECK:     int data1[5];
 //CHECK-NEXT:     char name[];
 
 
@@ -45,8 +58,8 @@ struct arrfptr {
     int args[5]; 
     int (*funcs[5]) (int);
 };
-//CHECK:     int args _Checked[5]; 
-//CHECK-NEXT:     _Ptr<int (int )> funcs _Checked[5];
+//CHECK:     _Ptr<int> args; 
+//CHECK-NEXT:     _Ptr<_Ptr<int (int )>> funcs;
 
 
 int add1(int x) { 
@@ -93,16 +106,19 @@ x = (struct warr *) 5;
         
 z += 2;
 return z; }
-//CHECK: _Array_ptr<struct warr> sus(struct warr *x, struct warr *y : itype(_Array_ptr<struct warr>)) {
+//CHECK: struct warr * sus(struct warr *x, struct warr *y) {
+//CHECK:         struct warr *z = y;
+//CHECK:         struct warr *p = z;
 
 struct warr * foo() {
         struct warr * x = malloc(sizeof(struct warr));
         struct warr * y = malloc(sizeof(struct warr));
         struct warr * z = sus(x, y);
 return z; }
-//CHECK: _Array_ptr<struct warr> foo(void) {
+//CHECK: struct warr * foo() {
 //CHECK:         struct warr * x = malloc(sizeof(struct warr));
 //CHECK:         struct warr * y = malloc(sizeof(struct warr));
+//CHECK:         struct warr * z = sus(x, y);
 
 struct warr * bar() {
         struct warr * x = malloc(sizeof(struct warr));
@@ -110,6 +126,7 @@ struct warr * bar() {
         struct warr * z = sus(x, y);
 z += 2;
 return z; }
-//CHECK: _Array_ptr<struct warr> bar(void) {
+//CHECK: struct warr * bar() {
 //CHECK:         struct warr * x = malloc(sizeof(struct warr));
 //CHECK:         struct warr * y = malloc(sizeof(struct warr));
+//CHECK:         struct warr * z = sus(x, y);

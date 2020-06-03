@@ -1,6 +1,21 @@
-// RUN: cconv-standalone -base-dir=%S -alltypes -output-postfix=checked2 %s %S/arrinstructbothmulti1.c
+// RUN: cconv-standalone -base-dir=%S -output-postfix=checked2 %s %S/arrinstructbothmulti1.c
 //RUN: FileCheck -match-full-lines --input-file %S/arrinstructbothmulti2.checked2.c %s
 //RUN: rm %S/arrinstructbothmulti1.checked2.c %S/arrinstructbothmulti2.checked2.c
+
+
+/*********************************************************************************/
+
+/*This file tests three functions: two callers bar and foo, and a callee sus*/
+/*In particular, this file tests: how the tool behaves when there is an array
+field within a struct*//*For robustness, this test is identical to arrinstructprotoboth.c and arrinstructboth.c except in that
+the callee and callers are split amongst two files to see how
+the tool performs conversions*/
+/*In this test, foo will treat its return value safely, but sus and bar will not,
+through invalid pointer arithmetic, an unsafe cast, etc.*/
+
+/*********************************************************************************/
+
+
 #define size_t int
 #define NULL 0
 extern _Itype_for_any(T) void *calloc(size_t nmemb, size_t size) : itype(_Array_ptr<T>) byte_count(nmemb * size);
@@ -21,7 +36,7 @@ struct warr {
     int data1[5];
     char name[];
 };
-//CHECK:     int data1 _Checked[5];
+//CHECK:     int data1[5];
 //CHECK-NEXT:     char name[];
 
 
@@ -47,8 +62,8 @@ struct arrfptr {
     int args[5]; 
     int (*funcs[5]) (int);
 };
-//CHECK:     int args _Checked[5]; 
-//CHECK-NEXT:     _Ptr<int (int )> funcs _Checked[5];
+//CHECK:     _Ptr<int> args; 
+//CHECK-NEXT:     _Ptr<_Ptr<int (int )>> funcs;
 
 
 int add1(int x) { 
@@ -95,4 +110,6 @@ x = (struct warr *) 5;
         
 z += 2;
 return z; }
-//CHECK: _Array_ptr<struct warr> sus(struct warr *x, struct warr *y : itype(_Array_ptr<struct warr>)) {
+//CHECK: struct warr * sus(struct warr *x, struct warr *y) {
+//CHECK:         struct warr *z = y;
+//CHECK:         struct warr *p = z;

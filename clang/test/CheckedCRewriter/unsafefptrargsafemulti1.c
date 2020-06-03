@@ -1,6 +1,20 @@
-// RUN: cconv-standalone -base-dir=%S -alltypes -output-postfix=checked %s %S/unsafefptrargsafemulti2.c
+// RUN: cconv-standalone -base-dir=%S -output-postfix=checked %s %S/unsafefptrargsafemulti2.c
 //RUN: FileCheck -match-full-lines --input-file %S/unsafefptrargsafemulti1.checked.c %s
 //RUN: rm %S/unsafefptrargsafemulti1.checked.c %S/unsafefptrargsafemulti2.checked.c
+
+
+/*********************************************************************************/
+
+/*This file tests three functions: two callers bar and foo, and a callee sus*/
+/*In particular, this file tests: passing a function pointer as an argument to a
+function unsafely (by casting it unsafely)*//*For robustness, this test is identical to unsafefptrargprotosafe.c and unsafefptrargsafe.c except in that
+the callee and callers are split amongst two files to see how
+the tool performs conversions*/
+/*In this test, foo, bar, and sus will all treat their return values safely*/
+
+/*********************************************************************************/
+
+
 #define size_t int
 #define NULL 0
 extern _Itype_for_any(T) void *calloc(size_t nmemb, size_t size) : itype(_Array_ptr<T>) byte_count(nmemb * size);
@@ -21,7 +35,7 @@ struct warr {
     int data1[5];
     char name[];
 };
-//CHECK:     int data1 _Checked[5];
+//CHECK:     _Ptr<int> data1;
 //CHECK-NEXT:     _Ptr<char> name;
 
 
@@ -47,8 +61,8 @@ struct arrfptr {
     int args[5]; 
     int (*funcs[5]) (int);
 };
-//CHECK:     int args _Checked[5]; 
-//CHECK-NEXT:     _Ptr<int (int )> funcs _Checked[5];
+//CHECK:     _Ptr<int> args; 
+//CHECK-NEXT:     _Ptr<_Ptr<int (int )>> funcs;
 
 
 int add1(int x) { 

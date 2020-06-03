@@ -1,4 +1,16 @@
-// RUN: cconv-standalone -alltypes %s -- | FileCheck -match-full-lines %s
+// RUN: cconv-standalone %s -- | FileCheck -match-full-lines %s
+
+
+/*********************************************************************************/
+
+/*This file tests three functions: two callers bar and foo, and a callee sus*/
+/*In particular, this file tests: converting the callee into a function pointer
+and then using that pointer for computations*/
+/*In this test, foo, bar, and sus will all treat their return values safely*/
+
+/*********************************************************************************/
+
+
 #define size_t int
 #define NULL 0
 extern _Itype_for_any(T) void *calloc(size_t nmemb, size_t size) : itype(_Array_ptr<T>) byte_count(nmemb * size);
@@ -19,7 +31,7 @@ struct warr {
     int data1[5];
     char name[];
 };
-//CHECK:     int data1 _Checked[5];
+//CHECK:     _Ptr<int> data1;
 //CHECK-NEXT:     _Ptr<char> name;
 
 
@@ -45,8 +57,8 @@ struct arrfptr {
     int args[5]; 
     int (*funcs[5]) (int);
 };
-//CHECK:     int args _Checked[5]; 
-//CHECK-NEXT:     _Ptr<int (int )> funcs _Checked[5];
+//CHECK:     _Ptr<int> args; 
+//CHECK-NEXT:     _Ptr<_Ptr<int (int )>> funcs;
 
 
 int add1(int x) { 

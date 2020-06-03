@@ -1,4 +1,17 @@
-// RUN: cconv-standalone -alltypes %s -- | FileCheck -match-full-lines %s
+// RUN: cconv-standalone %s -- | FileCheck -match-full-lines %s
+
+
+/*********************************************************************************/
+
+/*This file tests three functions: two callers bar and foo, and a callee sus*/
+/*In particular, this file tests: arrays and structs, specifically by using an array to
+traverse through the values of a struct*/
+/*In this test, foo will treat its return value safely, but sus and bar will not,
+through invalid pointer arithmetic, an unsafe cast, etc.*/
+
+/*********************************************************************************/
+
+
 #define size_t int
 #define NULL 0
 extern _Itype_for_any(T) void *calloc(size_t nmemb, size_t size) : itype(_Array_ptr<T>) byte_count(nmemb * size);
@@ -19,7 +32,7 @@ struct warr {
     int data1[5];
     char name[];
 };
-//CHECK:     int data1 _Checked[5];
+//CHECK:     _Ptr<int> data1;
 //CHECK-NEXT:     _Ptr<char> name;
 
 
@@ -45,8 +58,8 @@ struct arrfptr {
     int args[5]; 
     int (*funcs[5]) (int);
 };
-//CHECK:     int args _Checked[5]; 
-//CHECK-NEXT:     _Ptr<int (int )> funcs _Checked[5];
+//CHECK:     _Ptr<int> args; 
+//CHECK-NEXT:     _Ptr<_Ptr<int (int )>> funcs;
 
 
 int add1(int x) { 
