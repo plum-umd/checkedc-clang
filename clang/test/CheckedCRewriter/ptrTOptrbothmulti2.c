@@ -6,7 +6,8 @@
 /*********************************************************************************/
 
 /*This file tests three functions: two callers bar and foo, and a callee sus*/
-/*In particular, this file tests: having a pointer to a pointer*//*For robustness, this test is identical to ptrTOptrprotoboth.c and ptrTOptrboth.c except in that
+/*In particular, this file tests: having a pointer to a pointer*/
+/*For robustness, this test is identical to ptrTOptrprotoboth.c and ptrTOptrboth.c except in that
 the callee and callers are split amongst two files to see how
 the tool performs conversions*/
 /*In this test, foo will treat its return value safely, but sus and bar will not,
@@ -33,9 +34,9 @@ struct general {
 
 struct warr { 
     int data1[5];
-    char name[];
+    char *name;
 };
-//CHECK:     _Ptr<int> data1;
+//CHECK:     int data1[5];
 //CHECK-NEXT:     _Ptr<char> name;
 
 
@@ -51,18 +52,18 @@ struct fptrarr {
 
 struct fptr { 
     int *value; 
-    int (*func)(int*);
+    int (*func)(int);
 };  
 //CHECK:     _Ptr<int> value; 
-//CHECK-NEXT:     _Ptr<int (_Ptr<int> )> func;
+//CHECK-NEXT:     _Ptr<int (int )> func;
 
 
 struct arrfptr { 
     int args[5]; 
     int (*funcs[5]) (int);
 };
-//CHECK:     _Ptr<int> args; 
-//CHECK-NEXT:     _Ptr<_Ptr<int (int )>> funcs;
+//CHECK:     int args[5]; 
+//CHECK-NEXT:     int (*funcs[5]) (int);
 
 
 int add1(int x) { 

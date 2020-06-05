@@ -31,7 +31,7 @@ struct general {
 
 struct warr { 
     int data1[5];
-    char name[];
+    char *name;
 };
 //CHECK:     int data1 _Checked[5];
 //CHECK-NEXT:     _Ptr<char> name;
@@ -49,10 +49,10 @@ struct fptrarr {
 
 struct fptr { 
     int *value; 
-    int (*func)(int*);
+    int (*func)(int);
 };  
 //CHECK:     _Ptr<int> value; 
-//CHECK-NEXT:     _Ptr<int (_Ptr<int> )> func;
+//CHECK-NEXT:     _Ptr<int (int )> func;
 
 
 struct arrfptr { 
@@ -110,7 +110,6 @@ struct fptrarr * sus(struct fptrarr *x, struct fptrarr *y) {
 return z; }
 //CHECK: struct fptrarr * sus(struct fptrarr *x, struct fptrarr *y : itype(_Ptr<struct fptrarr>)) {
 //CHECK:         struct fptrarr *z = malloc(sizeof(struct fptrarr)); 
-//CHECK:         z->name = strcpy(((char *)name), "Hello World");
 
 struct fptrarr * foo() {
  

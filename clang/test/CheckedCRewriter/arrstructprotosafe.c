@@ -32,9 +32,9 @@ struct general {
 
 struct warr { 
     int data1[5];
-    char name[];
+    char *name;
 };
-//CHECK:     _Ptr<int> data1;
+//CHECK:     int data1[5];
 //CHECK-NEXT:     _Ptr<char> name;
 
 
@@ -50,18 +50,18 @@ struct fptrarr {
 
 struct fptr { 
     int *value; 
-    int (*func)(int*);
+    int (*func)(int);
 };  
 //CHECK:     _Ptr<int> value; 
-//CHECK-NEXT:     _Ptr<int (_Ptr<int> )> func;
+//CHECK-NEXT:     _Ptr<int (int )> func;
 
 
 struct arrfptr { 
     int args[5]; 
     int (*funcs[5]) (int);
 };
-//CHECK:     _Ptr<int> args; 
-//CHECK-NEXT:     _Ptr<_Ptr<int (int )>> funcs;
+//CHECK:     int args[5]; 
+//CHECK-NEXT:     int (*funcs[5]) (int);
 
 
 int add1(int x) { 

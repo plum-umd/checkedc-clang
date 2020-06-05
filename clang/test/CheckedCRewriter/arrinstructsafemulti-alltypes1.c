@@ -7,7 +7,8 @@
 
 /*This file tests three functions: two callers bar and foo, and a callee sus*/
 /*In particular, this file tests: how the tool behaves when there is an array
-field within a struct*//*For robustness, this test is identical to arrinstructprotosafe-alltypes.c and arrinstructsafe-alltypes.c except in that
+field within a struct*/
+/*For robustness, this test is identical to arrinstructprotosafe-alltypes.c and arrinstructsafe-alltypes.c except in that
 the callee and callers are split amongst two files to see how
 the tool performs conversions*/
 /*In this test, foo, bar, and sus will all treat their return values safely*/
@@ -35,7 +36,7 @@ struct general {
 
 struct warr { 
     int data1[5];
-    char name[];
+    char *name;
 };
 //CHECK:     int data1 _Checked[5];
 //CHECK-NEXT:     _Ptr<char> name;
@@ -53,10 +54,10 @@ struct fptrarr {
 
 struct fptr { 
     int *value; 
-    int (*func)(int*);
+    int (*func)(int);
 };  
 //CHECK:     _Ptr<int> value; 
-//CHECK-NEXT:     _Ptr<int (_Ptr<int> )> func;
+//CHECK-NEXT:     _Ptr<int (int )> func;
 
 
 struct arrfptr { 

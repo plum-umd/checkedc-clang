@@ -7,7 +7,8 @@
 
 /*This file tests three functions: two callers bar and foo, and a callee sus*/
 /*In particular, this file tests: how the tool behaves when there is an array
-field within a struct*//*For robustness, this test is identical to arrinstructprotocallee.c and arrinstructcallee.c except in that
+field within a struct*/
+/*For robustness, this test is identical to arrinstructprotocallee.c and arrinstructcallee.c except in that
 the callee and callers are split amongst two files to see how
 the tool performs conversions*/
 /*In this test, foo and bar will treat their return values safely, but sus will
@@ -34,10 +35,10 @@ struct general {
 
 struct warr { 
     int data1[5];
-    char name[];
+    char *name;
 };
 //CHECK:     int data1[5];
-//CHECK-NEXT:     char name[];
+//CHECK-NEXT:     _Ptr<char> name;
 
 
 struct fptrarr { 
@@ -52,18 +53,18 @@ struct fptrarr {
 
 struct fptr { 
     int *value; 
-    int (*func)(int*);
+    int (*func)(int);
 };  
 //CHECK:     _Ptr<int> value; 
-//CHECK-NEXT:     _Ptr<int (_Ptr<int> )> func;
+//CHECK-NEXT:     _Ptr<int (int )> func;
 
 
 struct arrfptr { 
     int args[5]; 
     int (*funcs[5]) (int);
 };
-//CHECK:     _Ptr<int> args; 
-//CHECK-NEXT:     _Ptr<_Ptr<int (int )>> funcs;
+//CHECK:     int args[5]; 
+//CHECK-NEXT:     int (*funcs[5]) (int);
 
 
 int add1(int x) { 
@@ -102,8 +103,6 @@ struct warr * sus(struct warr * x, struct warr * y) {
 x = (struct warr *) 5;
         char name[20]; 
         struct warr *z = y;
-        z->name[1] = 'H';
-        struct warr *p = z;
         for(int i = 0; i < 5; i++) { 
             z->data1[i] = i; 
         }
@@ -112,4 +111,3 @@ z += 2;
 return z; }
 //CHECK: struct warr * sus(struct warr *x, struct warr *y) {
 //CHECK:         struct warr *z = y;
-//CHECK:         struct warr *p = z;

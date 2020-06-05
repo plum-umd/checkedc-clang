@@ -7,7 +7,8 @@
 
 /*This file tests three functions: two callers bar and foo, and a callee sus*/
 /*In particular, this file tests: passing a function pointer as an argument to a
-function safely (without unsafe casting)*//*For robustness, this test is identical to safefptrargprotocaller-alltypes.c and safefptrargcaller-alltypes.c except in that
+function safely (without unsafe casting)*/
+/*For robustness, this test is identical to safefptrargprotocaller-alltypes.c and safefptrargcaller-alltypes.c except in that
 the callee and callers are split amongst two files to see how
 the tool performs conversions*/
 /*In this test, foo and sus will treat their return values safely, but bar will
@@ -36,7 +37,7 @@ struct general {
 
 struct warr { 
     int data1[5];
-    char name[];
+    char *name;
 };
 //CHECK:     int data1 _Checked[5];
 //CHECK-NEXT:     _Ptr<char> name;
@@ -54,10 +55,10 @@ struct fptrarr {
 
 struct fptr { 
     int *value; 
-    int (*func)(int*);
+    int (*func)(int);
 };  
 //CHECK:     _Ptr<int> value; 
-//CHECK-NEXT:     _Ptr<int (_Ptr<int> )> func;
+//CHECK-NEXT:     _Ptr<int (int )> func;
 
 
 struct arrfptr { 

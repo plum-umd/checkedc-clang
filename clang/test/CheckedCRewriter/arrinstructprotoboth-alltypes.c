@@ -35,10 +35,10 @@ struct general {
 
 struct warr { 
     int data1[5];
-    char name[];
+    char *name;
 };
 //CHECK:     int data1 _Checked[5];
-//CHECK-NEXT:     char name[];
+//CHECK-NEXT:     _Ptr<char> name;
 
 
 struct fptrarr { 
@@ -53,10 +53,10 @@ struct fptrarr {
 
 struct fptr { 
     int *value; 
-    int (*func)(int*);
+    int (*func)(int);
 };  
 //CHECK:     _Ptr<int> value; 
-//CHECK-NEXT:     _Ptr<int (_Ptr<int> )> func;
+//CHECK-NEXT:     _Ptr<int (int )> func;
 
 
 struct arrfptr { 
@@ -125,8 +125,6 @@ struct warr * sus(struct warr * x, struct warr * y) {
 x = (struct warr *) 5;
         char name[20]; 
         struct warr *z = y;
-        z->name[1] = 'H';
-        struct warr *p = z;
         for(int i = 0; i < 5; i++) { 
             z->data1[i] = i; 
         }
