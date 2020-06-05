@@ -115,20 +115,21 @@ PointerVariableConstraint::PointerVariableConstraint(const QualType &QT,
   }
 
   bool IsTypedef = false;
-
   if (Ty->getAs<TypedefType>())
     IsTypedef = true;
 
   ArrPresent = false;
 
+  bool isDeclTy = false;
   if (D != nullptr) {
+    isDeclTy = D->getType() == QT; // If false, then QT may be D's return type
     if (InteropTypeExpr *ITE = D->getInteropTypeExpr()) {
       // External variables can also have itype.
       // Check if the provided declaration is an external
       // variable.
       // For functions, check to see that if we are analyzing
       // function return types.
-      bool AnalyzeITypeExpr = (D->getType() == QT);
+      bool AnalyzeITypeExpr = isDeclTy;
       if (!AnalyzeITypeExpr) {
         const Type *OrigType = Ty;
         if (isa<FunctionDecl>(D)) {
@@ -159,17 +160,16 @@ PointerVariableConstraint::PointerVariableConstraint(const QualType &QT,
   }
 
   bool VarCreated = false;
+  bool isArr = false;
   uint32_t TypeIdx = 0;
   std::string Npre = inFunc ? ((*inFunc)+":") : "";
   VarAtom::VarKind VK =
       inFunc ? (N == RETVAR ? VarAtom::V_Return : VarAtom::V_Param)
              : VarAtom::V_Other;
+
   while (Ty->isPointerType() || Ty->isArrayType()) {
-    VarCreated = false;
     // Is this a VarArg type?
     std::string TyName = tyToStr(Ty);
-    // TODO: Github issue #61: improve handling of types for
-    // // Variable arguments.
     if (isVarArgType(TyName)) {
       // Variable number of arguments. Make it WILD.
       vars.push_back(CS.getWild());
@@ -196,20 +196,12 @@ PointerVariableConstraint::PointerVariableConstraint(const QualType &QT,
     }
 
     if (Ty->isArrayType() || Ty->isIncompleteArrayType()) {
-      ArrPresent = true;
-      // If it's an array, then we need both a constraint variable
-      // for each level of the array, and a constraint variable for
-      // values stored in the array.
+      ArrPresent = isArr = true;
 
       // See if there is a constant size to this array type at this position.
       if (const ConstantArrayType *CAT = dyn_cast<ConstantArrayType>(Ty)) {
         arrSizes[TypeIdx] = std::pair<OriginalArrType,uint64_t>(
                 O_SizedArray,CAT->getSize().getZExtValue());
-        if (AllTypes && !VarCreated) {
-          // This is a statically declared array. Make it a Checked Array.
-          vars.push_back(CS.getArr());
-          VarCreated = true;
-        }
       } else {
         arrSizes[TypeIdx] = std::pair<OriginalArrType,uint64_t>(
                 O_UnSizedArray,0);
@@ -247,11 +239,18 @@ PointerVariableConstraint::PointerVariableConstraint(const QualType &QT,
 
     // This type is not a constant atom. We need to create a VarAtom for this.
     if (!VarCreated) {
-      vars.push_back(CS.getFreshVar(Npre + N, VK));
+      VarAtom *VA = CS.getFreshVar(Npre + N, VK);
+      vars.push_back(VA);
+      if (isArr)
+        CS.addConstraint(CS.createGeq(CS.getArr(), VA, false));
     }
+
+    // Prepare for next level of pointer
+    VarCreated = false;
+    isArr = false;
     TypeIdx++;
     Npre = Npre + "*";
-    VK = VarAtom::V_Other; // only the outermost pointer considered a param
+    VK = VarAtom::V_Other; // only the outermost pointer considered a param/return
   }
 
   // If, after boiling off the pointer-ness from this type, we hit a
@@ -266,14 +265,15 @@ PointerVariableConstraint::PointerVariableConstraint(const QualType &QT,
     //    tn fname = ...,
     // where tn is the typedef'ed type name.
     // There is possibly something more elegant to do in the code here.
-    FV = new FVConstraint(Ty, D, (IsTypedef ? "" : N), CS, C);
+    FV = new FVConstraint(Ty, isDeclTy ? D : nullptr,
+                          (IsTypedef ? "" : N), CS, C);
 
   BaseType = tyToStr(Ty);
 
   bool IsWild = isVarArgType(BaseType) || isTypeHasVoid(QT);
   if (IsWild) {
     std::string Rsn = "Default Var arg list type.";
-    if (hasVoidType(D))
+    if (D && hasVoidType(D))
       Rsn = "Default void* type";
     // TODO: Github issue #61: improve handling of types for
     // Variable arguments.
@@ -586,8 +586,9 @@ FunctionVariableConstraint::
 }
 
 // This describes a function, either a function pointer or a function
-// declaration itself. Either require constraint variables for any pointer
-// types that are either return values or paraemeters for the function.
+// declaration itself. Require constraint variables for each argument and
+// return, even those that aren't pointer types, since we may need to
+// re-emit the function signature as a type.
 FunctionVariableConstraint::FunctionVariableConstraint(DeclaratorDecl *D,
                                                        Constraints &CS,
                                                        const ASTContext &C) :
@@ -611,7 +612,10 @@ FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
   HasDefDeclEquated = false;
   IsFunctionPtr = true;
 
-  if (FunctionDecl *FD = dyn_cast<FunctionDecl>(D)) {
+  // Metadata about function
+  FunctionDecl *FD = nullptr;
+  if (D) FD = dyn_cast<FunctionDecl>(D);
+  if (FD) {
     // FunctionDecl::hasBody will return true if *any* declaration in the
     // declaration chain has a body, which is not what we want to record.
     // We want to record if *this* declaration has a body. To do that,
@@ -621,19 +625,19 @@ FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
     if (FD->hasBody(OFd) && OFd == FD)
       Hasbody = true;
     IsStatic = !(FD->isGlobal());
-    ASTContext *TmpCtx = const_cast<ASTContext*>(&Ctx);
+    ASTContext *TmpCtx = const_cast<ASTContext *>(&Ctx);
     auto PSL = PersistentSourceLoc::mkPSL(D, *TmpCtx);
     FileName = PSL.getFileName();
     IsFunctionPtr = false;
   }
 
+  // ConstraintVariables for the parameters
   if (Ty->isFunctionPointerType()) {
     // Is this a function pointer definition?
     llvm_unreachable("should not hit this case");
   } else if (Ty->isFunctionProtoType()) {
     // Is this a function?
     const FunctionProtoType *FT = Ty->getAs<FunctionProtoType>();
-    FunctionDecl *FD = dyn_cast<FunctionDecl>(D);
     assert(FT != nullptr);
     RT = FT->getReturnType();
 
@@ -651,17 +655,17 @@ FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
       }
 
       std::string PName = "";
-      DeclaratorDecl *TmpD = D;
+      DeclaratorDecl *ParmVD = nullptr;
       if (FD && i < FD->getNumParams()) {
         ParmVarDecl *PVD = FD->getParamDecl(i);
         if (PVD) {
-          TmpD = PVD;
+          ParmVD = PVD;
           PName = PVD->getName();
         }
       }
 
       std::set<ConstraintVariable *> C;
-      C.insert(new PVConstraint(QT, TmpD, PName, CS, Ctx, &N));
+      C.insert(new PVConstraint(QT, ParmVD, PName, CS, Ctx, &N));
       paramVars.push_back(C);
     }
 
@@ -679,21 +683,9 @@ FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
   } else {
     llvm_unreachable("don't know what to do");
   }
-  // This has to be a mapping for all parameter/return types, even those that
-  // aren't pointer types. If we need to re-emit the function signature
-  // as a type, then we will need the types for all the parameters and the
-  // return values.
 
+  // ConstraintVariable for the return
   returnVars.insert(new PVConstraint(RT, D, RETVAR, CS, Ctx, &N));
-  std::string Rsn = "Function pointer return value.";
-  for ( const auto &V : returnVars) {
-    if (PVConstraint *PVC = dyn_cast<PVConstraint>(V)) {
-      if (PVC->getFV())
-        PVC->constrainToWild(CS, Rsn);
-    } else if (FVConstraint *FVC = dyn_cast<FVConstraint>(V)) {
-      FVC->constrainToWild(CS, Rsn);
-    }
-  }
 }
 
 void FunctionVariableConstraint::constrainToWild(Constraints &CS) {
