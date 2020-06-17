@@ -134,6 +134,10 @@ static Atom *analyzeAllocExpr(Expr *E, Constraints &CS, QualType &ArgTy) {
 
   // Look for sizeof(X); return Arr or Ptr if found
   for (Expr *Ex: Exprs) {
+    //normalize the expression if part of an implicit cast
+    if(ImplicitCastExpr *imp = dyn_cast<ImplicitCastExpr>(Ex)) {
+      Ex = imp->getSubExprAsWritten();
+    }
     UnaryExprOrTypeTraitExpr *arg = dyn_cast<UnaryExprOrTypeTraitExpr>(Ex);
     if (arg && arg->getKind() == UETT_SizeOf) {
       ArgTy = arg->getTypeOfArgument();
