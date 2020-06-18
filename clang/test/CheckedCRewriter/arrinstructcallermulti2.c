@@ -108,4 +108,4 @@ x = (struct warr *) 5;
         }
         
 return z; }
-//CHECK: struct warr *sus(struct warr *x, struct warr *y : itype(_Ptr<struct warr>)) : itype(_Ptr<struct warr>) {
+//CHECK: struct warr *sus(struct warr *x, _Ptr<struct warr> y) : itype(_Ptr<struct warr>) {

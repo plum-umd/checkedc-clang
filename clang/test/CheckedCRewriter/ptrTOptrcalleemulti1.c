@@ -100,7 +100,7 @@ int *mul2(int *x) {
 //CHECK: _Ptr<int> mul2(_Ptr<int> x) { 
 
 char *** sus(char * * *, char * * *);
-//CHECK: char *** sus(char ***, char ***y : itype(_Ptr<char**>));
+//CHECK: char *** sus(char ***, _Ptr<_Ptr<_Ptr<char>>> y);
 
 char *** foo() {
         char * * * x = malloc(sizeof(char * *));
@@ -109,7 +109,7 @@ char *** foo() {
 return z; }
 //CHECK: char *** foo() {
 //CHECK:         char * * * x = malloc(sizeof(char * *));
-//CHECK:         char * * * y = malloc(sizeof(char * *));
+//CHECK:         _Ptr<_Ptr<_Ptr<char>>> y =  malloc(sizeof(char * *));
 //CHECK:         char *** z = sus(x, y);
 
 char *** bar() {
@@ -119,5 +119,5 @@ char *** bar() {
 return z; }
 //CHECK: char *** bar() {
 //CHECK:         char * * * x = malloc(sizeof(char * *));
-//CHECK:         char * * * y = malloc(sizeof(char * *));
+//CHECK:         _Ptr<_Ptr<_Ptr<char>>> y =  malloc(sizeof(char * *));
 //CHECK:         char *** z = sus(x, y);

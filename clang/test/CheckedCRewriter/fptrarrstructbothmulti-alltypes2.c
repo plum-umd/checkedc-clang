@@ -115,5 +115,5 @@ struct fptrarr * sus(struct fptrarr *x, struct fptrarr *y) {
         
 z += 2;
 return z; }
-//CHECK: struct fptrarr * sus(struct fptrarr *x, struct fptrarr *y : itype(_Ptr<struct fptrarr>)) {
+//CHECK: struct fptrarr * sus(struct fptrarr *x, _Ptr<struct fptrarr> y) {
 //CHECK:         struct fptrarr *z = malloc(sizeof(struct fptrarr)); 

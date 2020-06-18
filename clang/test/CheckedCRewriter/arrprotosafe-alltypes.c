@@ -99,7 +99,7 @@ int *mul2(int *x) {
 //CHECK: _Ptr<int> mul2(_Ptr<int> x) { 
 
 int * sus(int *, int *);
-//CHECK: int * sus(int *x, int *y : itype(_Ptr<int>));
+//CHECK: int * sus(int *x, _Ptr<int> y);
 
 int * foo() {
         int * x = malloc(sizeof(int));
@@ -108,7 +108,6 @@ int * foo() {
 return z; }
 //CHECK: int * foo() {
 //CHECK:         int * x = malloc(sizeof(int));
-//CHECK:         int * y = malloc(sizeof(int));
 //CHECK:         int * z = sus(x, y);
 
 int * bar() {
@@ -118,7 +117,6 @@ int * bar() {
 return z; }
 //CHECK: int * bar() {
 //CHECK:         int * x = malloc(sizeof(int));
-//CHECK:         int * y = malloc(sizeof(int));
 //CHECK:         int * z = sus(x, y);
 
 int * sus(int * x, int * y) {
@@ -127,5 +125,5 @@ x = (int *) 5;
         for(int i = 0, *p = z, fac = 1; i < 5; ++i, p++, fac *= i) 
         { *p = fac; }
 return z; }
-//CHECK: int * sus(int *x, int *y : itype(_Ptr<int>)) {
+//CHECK: int * sus(int *x, _Ptr<int> y) {
 //CHECK:         int *z = calloc(5, sizeof(int)); 

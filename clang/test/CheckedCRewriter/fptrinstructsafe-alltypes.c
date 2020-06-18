@@ -103,8 +103,7 @@ struct fptr * sus(struct fptr *x, struct fptr *y) {
         z->func = fact;
         
 return z; }
-//CHECK: struct fptr * sus(struct fptr *x, struct fptr *y : itype(_Ptr<struct fptr>)) {
-//CHECK:         struct fptr *z = malloc(sizeof(struct fptr)); 
+//CHECK: _Ptr<struct fptr> sus(struct fptr *x, _Ptr<struct fptr> y) {
 
 struct fptr * foo() {
  
@@ -113,10 +112,8 @@ struct fptr * foo() {
         struct fptr *z = sus(x, y);
         
 return z; }
-//CHECK: struct fptr * foo() {
+//CHECK: _Ptr<struct fptr> foo(void) {
 //CHECK:         struct fptr * x = malloc(sizeof(struct fptr)); 
-//CHECK:         struct fptr *y =  malloc(sizeof(struct fptr));
-//CHECK:         struct fptr *z = sus(x, y);
 
 struct fptr * bar() {
  
@@ -125,7 +122,5 @@ struct fptr * bar() {
         struct fptr *z = sus(x, y);
         
 return z; }
-//CHECK: struct fptr * bar() {
+//CHECK: _Ptr<struct fptr> bar(void) {
 //CHECK:         struct fptr * x = malloc(sizeof(struct fptr)); 
-//CHECK:         struct fptr *y =  malloc(sizeof(struct fptr));
-//CHECK:         struct fptr *z = sus(x, y);

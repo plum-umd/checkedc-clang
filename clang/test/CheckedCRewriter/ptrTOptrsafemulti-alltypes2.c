@@ -114,8 +114,8 @@ x = (char * * *) 5;
         }
         
 return z; }
-//CHECK: char *** sus(char ***x, char ***y : itype(_Ptr<char**>)) {
+//CHECK: _Ptr<_Array_ptr<char*>> sus(char ***x, _Ptr<_Ptr<_Ptr<char>>> y) {
 //CHECK:         char *ch = malloc(sizeof(char)); 
-//CHECK:         char *** z = malloc(5*sizeof(char**)); 
+//CHECK:         _Array_ptr<_Array_ptr<char*>> z: count((5 * sizeof(char **))) =  malloc(5*sizeof(char**)); 
 //CHECK:             z[i] = malloc(5*sizeof(char *)); 
 //CHECK:                 z[i][j] = malloc(2*sizeof(char)); 

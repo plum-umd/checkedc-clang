@@ -101,7 +101,7 @@ int *mul2(int *x) {
 //CHECK: _Ptr<int> mul2(_Ptr<int> x) { 
 
 struct fptr * sus(struct fptr *, struct fptr *);
-//CHECK: struct fptr * sus(struct fptr *, struct fptr *y : itype(_Ptr<struct fptr>));
+//CHECK: _Ptr<struct fptr> sus(struct fptr *, _Ptr<struct fptr> y);
 
 struct fptr * foo() {
  
@@ -110,10 +110,8 @@ struct fptr * foo() {
         struct fptr *z = sus(x, y);
         
 return z; }
-//CHECK: struct fptr * foo() {
+//CHECK: _Ptr<struct fptr> foo(void) {
 //CHECK:         struct fptr * x = malloc(sizeof(struct fptr)); 
-//CHECK:         struct fptr *y =  malloc(sizeof(struct fptr));
-//CHECK:         struct fptr *z = sus(x, y);
 
 struct fptr * bar() {
  
@@ -122,7 +120,5 @@ struct fptr * bar() {
         struct fptr *z = sus(x, y);
         
 return z; }
-//CHECK: struct fptr * bar() {
+//CHECK: _Ptr<struct fptr> bar(void) {
 //CHECK:         struct fptr * x = malloc(sizeof(struct fptr)); 
-//CHECK:         struct fptr *y =  malloc(sizeof(struct fptr));
-//CHECK:         struct fptr *z = sus(x, y);

@@ -110,8 +110,7 @@ struct arrfptr * sus(struct arrfptr *x, struct arrfptr *y) {
         z->funcs[4] = fact;
         
 return z; }
-//CHECK: struct arrfptr * sus(struct arrfptr *x, struct arrfptr *y : itype(_Ptr<struct arrfptr>)) {
-//CHECK:         struct arrfptr *z = malloc(sizeof(struct arrfptr)); 
+//CHECK: _Ptr<struct arrfptr> sus(struct arrfptr *x, _Ptr<struct arrfptr> y) {
 
 struct arrfptr * foo() {
  
@@ -124,10 +123,8 @@ struct arrfptr * foo() {
         }
         
 return z; }
-//CHECK: struct arrfptr * foo() {
+//CHECK: _Ptr<struct arrfptr> foo(void) {
 //CHECK:         struct arrfptr * x = malloc(sizeof(struct arrfptr));
-//CHECK:         struct arrfptr * y =  malloc(sizeof(struct arrfptr));
-//CHECK:         struct arrfptr *z = sus(x, y); 
 
 struct arrfptr * bar() {
  
@@ -140,7 +137,5 @@ struct arrfptr * bar() {
         }
         
 return z; }
-//CHECK: struct arrfptr * bar() {
+//CHECK: _Ptr<struct arrfptr> bar(void) {
 //CHECK:         struct arrfptr * x = malloc(sizeof(struct arrfptr));
-//CHECK:         struct arrfptr * y =  malloc(sizeof(struct arrfptr));
-//CHECK:         struct arrfptr *z = sus(x, y); 

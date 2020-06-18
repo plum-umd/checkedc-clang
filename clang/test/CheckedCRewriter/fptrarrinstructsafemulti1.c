@@ -100,7 +100,7 @@ int *mul2(int *x) {
 //CHECK: _Ptr<int> mul2(_Ptr<int> x) { 
 
 struct arrfptr * sus(struct arrfptr *, struct arrfptr *);
-//CHECK: struct arrfptr * sus(struct arrfptr *, struct arrfptr *y : itype(_Ptr<struct arrfptr>));
+//CHECK: _Ptr<struct arrfptr> sus(struct arrfptr *, _Ptr<struct arrfptr> y);
 
 struct arrfptr * foo() {
  
@@ -113,10 +113,8 @@ struct arrfptr * foo() {
         }
         
 return z; }
-//CHECK: struct arrfptr * foo() {
+//CHECK: _Ptr<struct arrfptr> foo(void) {
 //CHECK:         struct arrfptr * x = malloc(sizeof(struct arrfptr));
-//CHECK:         struct arrfptr * y =  malloc(sizeof(struct arrfptr));
-//CHECK:         struct arrfptr *z = sus(x, y); 
 
 struct arrfptr * bar() {
  
@@ -129,7 +127,5 @@ struct arrfptr * bar() {
         }
         
 return z; }
-//CHECK: struct arrfptr * bar() {
+//CHECK: _Ptr<struct arrfptr> bar(void) {
 //CHECK:         struct arrfptr * x = malloc(sizeof(struct arrfptr));
-//CHECK:         struct arrfptr * y =  malloc(sizeof(struct arrfptr));
-//CHECK:         struct arrfptr *z = sus(x, y); 

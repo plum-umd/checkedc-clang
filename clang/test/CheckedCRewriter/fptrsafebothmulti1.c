@@ -31,7 +31,7 @@ struct general {
     int data; 
     struct general *next;
 };
-//CHECK:     struct general *next;
+//CHECK:     _Ptr<struct general> next;
 
 
 struct warr { 
@@ -101,7 +101,7 @@ int *mul2(int *x) {
 //CHECK: _Ptr<int> mul2(_Ptr<int> x) { 
 
 int * sus(struct general *, struct general *);
-//CHECK: int * sus(struct general *, struct general *);
+//CHECK: int * sus(struct general *, _Ptr<struct general> y);
 
 int * foo() {
 
@@ -119,9 +119,7 @@ int * foo() {
 return z; }
 //CHECK: int * foo() {
 //CHECK:         struct general *x = malloc(sizeof(struct general)); 
-//CHECK:         struct general *y = malloc(sizeof(struct general));
-//CHECK:         struct general *curr = y;
-//CHECK:         _Ptr<int* (struct general *, struct general *)> sus_ptr =  sus;   
+//CHECK:         _Ptr<int* (struct general *, _Ptr<struct general> )> sus_ptr =  sus;   
 //CHECK:         int *z = sus_ptr(x, y);
 
 int * bar() {
@@ -141,7 +139,5 @@ z += 2;
 return z; }
 //CHECK: int * bar() {
 //CHECK:         struct general *x = malloc(sizeof(struct general)); 
-//CHECK:         struct general *y = malloc(sizeof(struct general));
-//CHECK:         struct general *curr = y;
-//CHECK:         _Ptr<int* (struct general *, struct general *)> sus_ptr =  sus;   
+//CHECK:         _Ptr<int* (struct general *, _Ptr<struct general> )> sus_ptr =  sus;   
 //CHECK:         int *z = sus_ptr(x, y);

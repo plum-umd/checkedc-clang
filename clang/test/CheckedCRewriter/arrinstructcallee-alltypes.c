@@ -106,14 +106,14 @@ x = (struct warr *) 5;
         
 z += 2;
 return z; }
-//CHECK: _Array_ptr<struct warr> sus(struct warr *x, struct warr *y : itype(_Array_ptr<struct warr>)) {
+//CHECK: _Ptr<struct warr> sus(struct warr *x, struct warr *y : itype(_Array_ptr<struct warr>)) {
 
 struct warr * foo() {
         struct warr * x = malloc(sizeof(struct warr));
         struct warr * y = malloc(sizeof(struct warr));
         struct warr * z = sus(x, y);
 return z; }
-//CHECK: _Array_ptr<struct warr> foo(void) {
+//CHECK: _Ptr<struct warr> foo(void) {
 //CHECK:         struct warr * x = malloc(sizeof(struct warr));
 //CHECK:         struct warr * y = malloc(sizeof(struct warr));
 
@@ -122,6 +122,6 @@ struct warr * bar() {
         struct warr * y = malloc(sizeof(struct warr));
         struct warr * z = sus(x, y);
 return z; }
-//CHECK: _Array_ptr<struct warr> bar(void) {
+//CHECK: _Ptr<struct warr> bar(void) {
 //CHECK:         struct warr * x = malloc(sizeof(struct warr));
 //CHECK:         struct warr * y = malloc(sizeof(struct warr));

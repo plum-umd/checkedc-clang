@@ -99,7 +99,7 @@ int *mul2(int *x) {
 //CHECK: _Ptr<int> mul2(_Ptr<int> x) { 
 
 char *** sus(char * * *, char * * *);
-//CHECK: char *** sus(char ***x, char ***y : itype(_Ptr<char**>));
+//CHECK: char *** sus(char ***x, _Ptr<_Ptr<_Ptr<char>>> y);
 
 char *** foo() {
         char * * * x = malloc(sizeof(char * *));
@@ -108,7 +108,7 @@ char *** foo() {
 return z; }
 //CHECK: char *** foo() {
 //CHECK:         char * * * x = malloc(sizeof(char * *));
-//CHECK:         char * * * y = malloc(sizeof(char * *));
+//CHECK:         _Ptr<_Ptr<_Ptr<char>>> y =  malloc(sizeof(char * *));
 //CHECK:         char *** z = sus(x, y);
 
 char *** bar() {
@@ -118,7 +118,7 @@ char *** bar() {
 return z; }
 //CHECK: char *** bar() {
 //CHECK:         char * * * x = malloc(sizeof(char * *));
-//CHECK:         char * * * y = malloc(sizeof(char * *));
+//CHECK:         _Ptr<_Ptr<_Ptr<char>>> y =  malloc(sizeof(char * *));
 //CHECK:         char *** z = sus(x, y);
 
 char *** sus(char * * * x, char * * * y) {
@@ -136,7 +136,7 @@ x = (char * * *) 5;
         }
         
 return z; }
-//CHECK: char *** sus(char ***x, char ***y : itype(_Ptr<char**>)) {
+//CHECK: char *** sus(char ***x, _Ptr<_Ptr<_Ptr<char>>> y) {
 //CHECK:         char *ch = malloc(sizeof(char)); 
 //CHECK:         char *** z = malloc(5*sizeof(char**)); 
 //CHECK:             z[i] = malloc(5*sizeof(char *)); 

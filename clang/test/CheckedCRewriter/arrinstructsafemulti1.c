@@ -100,7 +100,7 @@ int *mul2(int *x) {
 //CHECK: _Ptr<int> mul2(_Ptr<int> x) { 
 
 struct warr * sus(struct warr *, struct warr *);
-//CHECK: _Ptr<struct warr> sus(struct warr *, struct warr *y : itype(_Ptr<struct warr>));
+//CHECK: _Ptr<struct warr> sus(struct warr *, _Ptr<struct warr> y);
 
 struct warr * foo() {
         struct warr * x = malloc(sizeof(struct warr));
@@ -109,7 +109,6 @@ struct warr * foo() {
 return z; }
 //CHECK: _Ptr<struct warr> foo(void) {
 //CHECK:         struct warr * x = malloc(sizeof(struct warr));
-//CHECK:         struct warr * y = malloc(sizeof(struct warr));
 
 struct warr * bar() {
         struct warr * x = malloc(sizeof(struct warr));
@@ -118,4 +117,3 @@ struct warr * bar() {
 return z; }
 //CHECK: _Ptr<struct warr> bar(void) {
 //CHECK:         struct warr * x = malloc(sizeof(struct warr));
-//CHECK:         struct warr * y = malloc(sizeof(struct warr));

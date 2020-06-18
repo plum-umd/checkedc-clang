@@ -109,5 +109,5 @@ struct fptr * sus(struct fptr *x, struct fptr *y) {
         z->func = fact;
         
 return z; }
-//CHECK: struct fptr * sus(struct fptr *x, struct fptr *y : itype(_Ptr<struct fptr>)) {
+//CHECK: struct fptr * sus(struct fptr *x, _Ptr<struct fptr> y) {
 //CHECK:         struct fptr *z = malloc(sizeof(struct fptr)); 

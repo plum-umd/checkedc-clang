@@ -111,4 +111,4 @@ x = (struct warr *) 5;
         
 z += 2;
 return z; }
-//CHECK: _Array_ptr<struct warr> sus(struct warr *x, struct warr *y : itype(_Array_ptr<struct warr>)) {
+//CHECK: _Ptr<struct warr> sus(struct warr *x, struct warr *y : itype(_Array_ptr<struct warr>)) {

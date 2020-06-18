@@ -104,7 +104,7 @@ x = (struct warr *) 5;
         }
         
 return z; }
-//CHECK: _Ptr<struct warr> sus(struct warr *x, struct warr *y : itype(_Ptr<struct warr>)) {
+//CHECK: _Ptr<struct warr> sus(struct warr *x, _Ptr<struct warr> y) {
 
 struct warr * foo() {
         struct warr * x = malloc(sizeof(struct warr));
@@ -113,7 +113,6 @@ struct warr * foo() {
 return z; }
 //CHECK: _Ptr<struct warr> foo(void) {
 //CHECK:         struct warr * x = malloc(sizeof(struct warr));
-//CHECK:         struct warr * y = malloc(sizeof(struct warr));
 
 struct warr * bar() {
         struct warr * x = malloc(sizeof(struct warr));
@@ -122,4 +121,3 @@ struct warr * bar() {
 return z; }
 //CHECK: _Ptr<struct warr> bar(void) {
 //CHECK:         struct warr * x = malloc(sizeof(struct warr));
-//CHECK:         struct warr * y = malloc(sizeof(struct warr));

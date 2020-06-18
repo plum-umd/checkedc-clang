@@ -30,7 +30,7 @@ struct general {
     int data; 
     struct general *next;
 };
-//CHECK:     struct general *next;
+//CHECK:     _Ptr<struct general> next;
 
 
 struct warr { 
@@ -109,6 +109,5 @@ int * sus(struct general *x, struct general *y) {
         } 
         
 return z; }
-//CHECK: int * sus(struct general *x, struct general *y) {
+//CHECK: int * sus(struct general *x, _Ptr<struct general> y) {
 //CHECK:         int *z = calloc(5, sizeof(int)); 
-//CHECK:         struct general *p = y;

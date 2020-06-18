@@ -111,7 +111,7 @@ struct fptrarr * sus(struct fptrarr *x, struct fptrarr *y) {
         
 z += 2;
 return z; }
-//CHECK: struct fptrarr * sus(struct fptrarr *x, struct fptrarr *y : itype(_Ptr<struct fptrarr>)) {
+//CHECK: struct fptrarr * sus(struct fptrarr *x, _Ptr<struct fptrarr> y) {
 //CHECK:         struct fptrarr *z = malloc(sizeof(struct fptrarr)); 
 
 struct fptrarr * foo() {
@@ -132,7 +132,6 @@ struct fptrarr * foo() {
 return z; }
 //CHECK: struct fptrarr * foo() {
 //CHECK:         struct fptrarr * x = malloc(sizeof(struct fptrarr));
-//CHECK:         struct fptrarr *y =  malloc(sizeof(struct fptrarr));
 //CHECK:         int *yvals = calloc(5, sizeof(int)); 
 //CHECK:         struct fptrarr *z = sus(x, y);
 
@@ -155,6 +154,5 @@ z += 2;
 return z; }
 //CHECK: struct fptrarr * bar() {
 //CHECK:         struct fptrarr * x = malloc(sizeof(struct fptrarr));
-//CHECK:         struct fptrarr *y =  malloc(sizeof(struct fptrarr));
 //CHECK:         int *yvals = calloc(5, sizeof(int)); 
 //CHECK:         struct fptrarr *z = sus(x, y);

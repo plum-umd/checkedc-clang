@@ -114,5 +114,5 @@ struct arrfptr * sus(struct arrfptr *x, struct arrfptr *y) {
         
 z += 2;
 return z; }
-//CHECK: struct arrfptr * sus(struct arrfptr *x, struct arrfptr *y : itype(_Ptr<struct arrfptr>)) {
+//CHECK: struct arrfptr * sus(struct arrfptr *x, _Ptr<struct arrfptr> y) {
 //CHECK:         struct arrfptr *z = malloc(sizeof(struct arrfptr)); 
