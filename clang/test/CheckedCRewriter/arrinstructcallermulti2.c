@@ -129,5 +129,5 @@ x = (struct warr *) 5;
         }
         
 return z; }
-//CHECK_NOALL: struct warr *sus(struct warr *x, struct warr *y : itype(_Ptr<struct warr>)) : itype(_Ptr<struct warr>) {
+//CHECK_NOALL: struct warr *sus(struct warr *x, _Ptr<struct warr> y) : itype(_Ptr<struct warr>) {
 //CHECK_ALL: _Array_ptr<struct warr> sus(struct warr *x, struct warr *y : itype(_Array_ptr<struct warr>)) {
