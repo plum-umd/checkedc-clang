@@ -118,7 +118,12 @@ PVConstraint *ConstraintResolver::addAtom(PVConstraint *PVC, ConstAtom *PtrTyp, 
 }
 
 // Processes E from malloc(E) to discern the pointer type this will be
-static ConstAtom *analyzeAllocExpr(Expr *E, Constraints &CS, QualType &ArgTy) {
+static ConstAtom *analyzeAllocExpr(CallExpr *CE, Constraints &CS, QualType &ArgTy, std::string FuncName) {
+  Expr *E;
+  if (!FuncName.compare("malloc"))
+    E = CE->getArg(0);
+  else
+    E = CE->getArg(1);
   ConstAtom *ret = CS.getPtr();
   E = E->IgnoreParenImpCasts();
   BinaryOperator *B = dyn_cast<BinaryOperator>(E);
@@ -132,6 +137,9 @@ static ConstAtom *analyzeAllocExpr(Expr *E, Constraints &CS, QualType &ArgTy) {
   }
   else
     Exprs.insert(E);
+
+  if (!FuncName.compare("calloc"))
+    ret = CS.getNTArr();
 
   // Look for sizeof(X); return Arr or Ptr if found
   for (Expr *Ex: Exprs) {
@@ -375,10 +383,9 @@ std::set<ConstraintVariable *>
         /* Allocator call */
         if (isFunctionAllocator(FD->getName())) {
           bool didInsert = false;
-          // FIXME: Should be treating malloc, realloc, calloc differently
           if (CE->getNumArgs() > 0) {
             QualType ArgTy;
-            ConstAtom *A = analyzeAllocExpr(CE->getArg(0), CS, ArgTy);
+            ConstAtom *A = analyzeAllocExpr(CE, CS, ArgTy, FD->getNameAsString());
             if (A) {
               std::string N = FD->getName(); N = "&"+N;
               ExprType = Context->getPointerType(ArgTy);
