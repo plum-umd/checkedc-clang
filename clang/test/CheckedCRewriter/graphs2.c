@@ -2,15 +2,10 @@
 // RUN: cconv-standalone %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" %s
 // RUN: cconv-standalone %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -
 
-#include<stdio.h>
-
-#include<stdlib.h>
 
 #include<limits.h>
 
-#include<string.h>
-
-typedef unsigned long size_t;
+typedef unsigned int size_t;
 extern _Itype_for_any(T) void *malloc(size_t size) : itype(_Array_ptr<T>) byte_count(size);
 
 //Structure for storing a graph

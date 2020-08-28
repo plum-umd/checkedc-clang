@@ -8,7 +8,7 @@
 // RUN: cconv-standalone %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -
 
 #define NULL ((void *)0)
-typedef unsigned long size_t;
+typedef unsigned int size_t;
 
 int * func(int *a, int *b) {
     // This is a checked pointer

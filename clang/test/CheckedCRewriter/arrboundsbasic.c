@@ -6,7 +6,7 @@ Basic array bounds tests (without any data-flow analysis).
 */
 
 
-typedef unsigned long size_t;
+typedef unsigned int size_t;
 
 #define NULL 0
 extern _Itype_for_any(T) void *calloc(size_t nmemb, size_t size) : itype(_Array_ptr<T>) byte_count(nmemb * size);

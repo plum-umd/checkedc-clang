@@ -2,12 +2,8 @@
 // RUN: cconv-standalone %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" %s
 // RUN: cconv-standalone %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -
 
-#include <stdio.h>
-
-#include <stdlib.h>
-
 #define NULL 0
-typedef unsigned long size_t;
+typedef unsigned int size_t;
 _Itype_for_any(T) void *calloc(size_t nmemb, size_t size) : itype(_Array_ptr<T>) byte_count(nmemb * size);
 _Itype_for_any(T) void free(void *pointer : itype(_Array_ptr<T>) byte_count(0));
 _Itype_for_any(T) void *malloc(size_t size) : itype(_Array_ptr<T>) byte_count(size);
@@ -16,7 +12,7 @@ _Itype_for_any(T) void *realloc(void *pointer : itype(_Array_ptr<T>) byte_count(
 #define MAX_SIZE 40//Assume 40 nodes at max in graph
 #define INT_MIN 0 
 
-typedef unsigned long size_t;
+typedef unsigned int size_t;
 extern _Itype_for_any(T) void *malloc(size_t size) : itype(_Array_ptr<T>) byte_count(size);
 
 //A vertex of the graph

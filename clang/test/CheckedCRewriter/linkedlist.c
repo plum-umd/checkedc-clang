@@ -2,11 +2,8 @@
 // RUN: cconv-standalone %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" %s
 // RUN: cconv-standalone %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -
 
-#include <stdio.h>
-
-#include <stdlib.h> 
-
-typedef unsigned long size_t;
+#define NULL 0
+typedef unsigned int size_t;
 extern _Itype_for_any(T) void *malloc(size_t size) : itype(_Array_ptr<T>) byte_count(size);
 
 typedef struct node Node;
@@ -22,7 +19,7 @@ void destroy(List * list);
 //CHECK-NEXT: void delete(int data, _Ptr<List> list);
 //CHECK-NEXT: void display(_Ptr<List> list);
 //CHECK-NEXT: void reverse(_Ptr<List> list);
-//CHECK-NEXT: void destroy(List *list);
+//CHECK-NEXT: void destroy(_Ptr<List> list);
 
 
 struct node {
@@ -32,7 +29,7 @@ struct node {
   struct node * next;
 
 };
-//CHECK: struct node * next;
+//CHECK: _Ptr<struct node> next;
 
 
 struct list {
@@ -44,7 +41,7 @@ struct list {
 
 
 Node * createnode(int data);
-//CHECK: Node *createnode(int data) : itype(_Ptr<Node>);
+//CHECK: _Ptr<Node> createnode(int data);
 
 
 
@@ -65,7 +62,7 @@ Node * createnode(int data){
   return newNode;
 
 }
-//CHECK: Node *createnode(int data) : itype(_Ptr<Node>){
+//CHECK: _Ptr<Node> createnode(int data){
 //CHECK: _Ptr<Node> newNode =  malloc<Node>(sizeof(Node));
 
 
@@ -108,7 +105,7 @@ void display(List * list) {
 
 }
 //CHECK: void display(_Ptr<List> list) {
-//CHECK: Node * current = list->head;
+//CHECK: _Ptr<Node> current = list->head;
 
 
 void add(int data, List * list){
@@ -137,7 +134,7 @@ void add(int data, List * list){
 
 }
 //CHECK: void add(int data, _Ptr<List> list){
-//CHECK: Node * current = NULL;
+//CHECK: _Ptr<Node> current =  NULL;
 
 
 void delete(int data, List * list){
@@ -214,6 +211,6 @@ void destroy(List * list){
 
   free(list);
 }
-//CHECK: void destroy(List *list){
-//CHECK: Node * current = list->head;
-//CHECK: Node * next = current;
+//CHECK: void destroy(_Ptr<List> list){
+//CHECK: _Ptr<Node> current = list->head;
+//CHECK: _Ptr<Node> next = current;
