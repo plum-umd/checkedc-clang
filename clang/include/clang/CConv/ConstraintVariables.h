@@ -141,7 +141,8 @@ public:
 
   // Update this CV with information from duplicate declaration CVs
   virtual void brainTransplant(ConstraintVariable *, ProgramInfo &) = 0;
-  virtual void mergeDeclaration(ConstraintVariable *, ProgramInfo &) = 0;
+  virtual void mergeDeclaration(ConstraintVariable *, ProgramInfo &,
+                                std::string &ReasonFailed) = 0;
 
   std::string getOriginalTy() const { return OriginalType; }
   // Get the original type string that can be directly
@@ -347,7 +348,8 @@ public:
   const CAtoms &getCvars() const { return vars; }
 
   void brainTransplant(ConstraintVariable *From, ProgramInfo &I) override;
-  void mergeDeclaration(ConstraintVariable *From, ProgramInfo &I) override;
+  void mergeDeclaration(ConstraintVariable *From, ProgramInfo &I,
+                        std::string &ReasonFailed) override;
 
   static bool classof(const ConstraintVariable *S) {
     return S->getKind() == PointerVariable;
@@ -460,7 +462,8 @@ public:
   }
 
   void brainTransplant(ConstraintVariable *From, ProgramInfo &I) override;
-  void mergeDeclaration(ConstraintVariable *FromCV, ProgramInfo &I) override;
+  void mergeDeclaration(ConstraintVariable *FromCV, ProgramInfo &I,
+                        std::string &ReasonFailed) override;
 
   ConstraintVariable *getParamVar(unsigned i) const {
     assert(i < ParamVars.size());

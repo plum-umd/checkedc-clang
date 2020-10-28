@@ -1581,7 +1581,12 @@ void PointerVariableConstraint::brainTransplant(ConstraintVariable *FromCV,
 }
 
 void PointerVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
-                                                 ProgramInfo &Info) {
+                                                 ProgramInfo &Info,
+                                                 std::string &ReasonFailed) {
+  if (FromCV->getOriginalTy() != this->getOriginalTy()) {
+    ReasonFailed = "conflicting types " + ReasonFailed;
+    return;
+  }
   PVConstraint *From = dyn_cast<PVConstraint>(FromCV);
   std::vector<Atom *> NewVatoms;
   CAtoms CFrom = From->getCvars();
@@ -1618,7 +1623,7 @@ void PointerVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
     ItypeStr = From->ItypeStr;
   if (FV) {
     assert(From->FV);
-    FV->mergeDeclaration(From->FV, Info);
+    FV->mergeDeclaration(From->FV, Info, ReasonFailed);
   }
 }
 
@@ -1670,15 +1675,19 @@ void FunctionVariableConstraint::brainTransplant(ConstraintVariable *FromCV,
 }
 
 void FunctionVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
-                                                  ProgramInfo &I) {
+                                                  ProgramInfo &I,
+                                                  std::string &ReasonFailed) {
   // `this`: is the declaration the tool saw first
   // `FromCV`: is the declaration seen second, it cannot have defered constraints
   FVConstraint *From = dyn_cast<FVConstraint>(FromCV);
   assert(From != nullptr);
   assert(From->getDeferredParams().size() == 0);
   // Transplant returns.
-  ReturnVar->mergeDeclaration(From->ReturnVar, I);
-
+  // Our first sanity check is to ensure the function's returns type-check
+  std::string Base = ReasonFailed = "for return value";
+  ReturnVar->mergeDeclaration(From->ReturnVar, I, ReasonFailed);
+  if (ReasonFailed != Base) return;
+  ReasonFailed = "";
   if (From->numParams() == 0) {
     // From is an untyped declaration, and adds no information
     return;
@@ -1691,7 +1700,10 @@ void FunctionVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
     for (unsigned i = 0; i < From->numParams(); i++) {
       auto *FromVar = From->getParamVar(i);
       auto *Var = getParamVar(i);
-      Var->mergeDeclaration(FromVar, I);
+      Base = ReasonFailed = "for parameter " + std::to_string(i);
+      Var->mergeDeclaration(FromVar, I, ReasonFailed);
+      if (Base != ReasonFailed) return;
+      ReasonFailed = "";
     }
   }
 }
