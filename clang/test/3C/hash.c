@@ -1,7 +1,5 @@
 // RUN: 3c -alltypes %s | FileCheck -match-full-lines -check-prefixes="CHECK_ALL","CHECK" %s
-
-// Currently not possible to run clang on the output,
-// there is an error reported at https://github.com/correctcomputation/checkedc-clang/issues/349
+// RUN: 3c -alltypes %s | %clang -f3c-tool -c -fcheckedc-extension -x c -o %t1.unused -
 
 /*
  * Based on hash.c in Very Secure FTPd
