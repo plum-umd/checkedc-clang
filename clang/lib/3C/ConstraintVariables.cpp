@@ -177,7 +177,6 @@ PointerVariableConstraint::PointerVariableConstraint(
   QualType QTy = QT;
   const Type *Ty = QTy.getTypePtr();
   auto &CS = I.getConstraints();
-  typedeflevelinfo = TypedefLevelFinder::find(QT);
   // If the type is a decayed type, then maybe this is the result of
   // decaying an array to a pointer. If the original type is some
   // kind of array type, we want to use that instead.
@@ -252,6 +251,8 @@ PointerVariableConstraint::PointerVariableConstraint(
       }
     }
   }
+
+  typedeflevelinfo = TypedefLevelFinder::find(QTy);
 
   bool VarCreated = false;
   bool IsArr = false;
