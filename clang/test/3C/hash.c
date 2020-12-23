@@ -23,6 +23,7 @@ extern int memcmp(const void *src1 : byte_count(n), const void *src2 : byte_coun
 
 _Itype_for_any(T) void
 vsf_sysutil_memclr(void* p_dest : itype(_Array_ptr<T>) byte_count(size), unsigned int size)
+// CHECK_ALL: vsf_sysutil_memclr(_Array_ptr<T> p_dest : itype(_Array_ptr<T>) byte_count(size), unsigned int size)
 {
   /* Safety */
   if (size == 0)
