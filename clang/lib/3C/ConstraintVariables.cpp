@@ -252,6 +252,9 @@ PointerVariableConstraint::PointerVariableConstraint(
     }
   }
 
+  // At this point `QTy` holds the computed type (and `QT` still holds the
+  // input type). It will be consumed to create atoms, so any code that needs
+  // to be coordinated with the atoms should access it here first.
   typedeflevelinfo = TypedefLevelFinder::find(QTy);
 
   bool VarCreated = false;
