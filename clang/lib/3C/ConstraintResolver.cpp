@@ -448,7 +448,7 @@ CVarSet ConstraintResolver::getExprConstraintVars(Expr *E) {
               N = "&" + N;
               ExprType = Context->getPointerType(ArgTy);
               PVConstraint *PVC = new PVConstraint(ExprType, nullptr, N, Info,
-                                                   *Context, nullptr, true);
+                                                   *Context, nullptr);
               PVC->constrainOuterTo(CS, A, true);
               ReturnCVs.insert(PVC);
               DidInsert = true;
@@ -506,7 +506,7 @@ CVarSet ConstraintResolver::getExprConstraintVars(Expr *E) {
             // constructor.
             NewCV =
                 new PVConstraint(CE->getType(), nullptr, PCV->getName(), Info,
-                                 *Context, nullptr, PCV->getIsGeneric());
+                                 *Context, nullptr);
             if (PCV->hasBoundsKey())
               NewCV->setBoundsKey(PCV->getBoundsKey());
           } else {

@@ -35,12 +35,12 @@ bool CastPlacementVisitor::VisitCallExpr(CallExpr *CE) {
         TypeVars = Info.getTypeParamBindings(CE, Context);
       unsigned PIdx = 0;
       for (const auto &A : CE->arguments()) {
-        if (PIdx < FD->getNumParams()) {
+        if (PIdx < FV->numParams()) {
           // Avoid adding incorrect casts to generic function arguments by
           // removing implicit casts when on arguments with a consistently
           // used generic type.
           Expr *ArgExpr = A;
-          const int TyVarIdx = getTypeVariableIndex(FD->getParamDecl(PIdx));
+          const int TyVarIdx = FV->getParamVar(PIdx)->getGenericIndex();
           if (TypeVars.find(TyVarIdx) != TypeVars.end() &&
               TypeVars[TyVarIdx] != nullptr)
             ArgExpr = ArgExpr->IgnoreImpCasts();

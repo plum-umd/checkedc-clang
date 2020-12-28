@@ -169,11 +169,10 @@ class TypedefLevelFinder : public RecursiveASTVisitor<TypedefLevelFinder> {
 
 PointerVariableConstraint::PointerVariableConstraint(
     const QualType &QT, DeclaratorDecl *D, std::string N, ProgramInfo &I,
-    const ASTContext &C, std::string *InFunc, int Generic)
+    const ASTContext &C, std::string *InFunc)
     : ConstraintVariable(ConstraintVariable::PointerVariable,
                          tyToStr(QT.getTypePtr()), N),
-      FV(nullptr), PartOfFuncPrototype(InFunc != nullptr), Parent(nullptr),
-      GenericIndex(Generic) {
+      FV(nullptr), PartOfFuncPrototype(InFunc != nullptr), Parent(nullptr) {
   QualType QTy = QT;
   const Type *Ty = QTy.getTypePtr();
   auto &CS = I.getConstraints();
@@ -252,10 +251,23 @@ PointerVariableConstraint::PointerVariableConstraint(
     }
   }
 
-  // At this point `QTy` holds the computed type (and `QT` still holds the
+  // At this point `QTy`/`Ty` hold the computed type (and `QT` still holds the
   // input type). It will be consumed to create atoms, so any code that needs
   // to be coordinated with the atoms should access it here first.
+
   typedeflevelinfo = TypedefLevelFinder::find(QTy);
+
+  GenericIndex = -1;
+  // This makes a lot of assumptions about how the AST will look, and limits
+  // it to one level.
+  // TODO: Enhance TypedefLevelFinder to get this info
+  if (Ty->isPointerType()) {
+    auto *PtrTy = Ty->getPointeeType().getTypePtr();
+    if (auto *TypdefTy = dyn_cast_or_null<TypedefType>(PtrTy)) {
+      const auto *Tv = dyn_cast<TypeVariableType>(TypdefTy->desugar());
+      if (Tv) GenericIndex = Tv->GetIndex();
+    }
+  }
 
   bool VarCreated = false;
   bool IsArr = false;
@@ -921,9 +933,7 @@ FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
           PName = PVD->getName();
         }
       }
-      int GenericIndex = getTypeVariableIndex(ParmVD);
-      ParamVars.push_back(
-          new PVConstraint(QT, ParmVD, PName, I, Ctx, &N, GenericIndex));
+      ParamVars.push_back(new PVConstraint(QT, ParmVD, PName, I, Ctx, &N));
     }
 
     Hasproto = true;
@@ -936,8 +946,7 @@ FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
   }
 
   // ConstraintVariable for the return
-  int GenericIndex = getTypeVariableIndex(FD);
-  ReturnVar = new PVConstraint(RT, D, RETVAR, I, Ctx, &N, GenericIndex);
+  ReturnVar = new PVConstraint(RT, D, RETVAR, I, Ctx, &N);
 }
 
 void FunctionVariableConstraint::constrainToWild(Constraints &CS,

@@ -322,6 +322,7 @@ public:
   std::string getBoundsStr() const { return BoundsAnnotationStr; }
 
   bool getIsGeneric() const { return GenericIndex >= 0; }
+  int getGenericIndex() const { return GenericIndex; }
 
   bool getIsOriginallyChecked() const override {
     return llvm::any_of(Vars, [](Atom *A) { return isa<ConstAtom>(A); });
@@ -354,8 +355,7 @@ public:
   PointerVariableConstraint(const clang::QualType &QT, clang::DeclaratorDecl *D,
                             std::string N, ProgramInfo &I,
                             const clang::ASTContext &C,
-                            std::string *InFunc = nullptr,
-                            int Generic = -1);
+                            std::string *InFunc = nullptr);
 
   const CAtoms &getCvars() const { return Vars; }
 
@@ -482,6 +482,9 @@ public:
   }
 
   bool hasItype() const override;
+
+  int getGenericIndex() const { return ReturnVar->getGenericIndex(); }
+
   bool solutionEqualTo(Constraints &CS,
                        const ConstraintVariable *CV) const override;
 
