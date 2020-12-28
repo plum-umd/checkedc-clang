@@ -368,8 +368,11 @@ const int getTypeVariableIndex(DeclaratorDecl *Decl) {
     const auto *Ty = ITy->getType().getTypePtr();
     if (Ty && Ty->isPointerType()) {
       auto *PtrTy = Ty->getPointeeType().getTypePtr();
-      if (auto *TypdefTy = dyn_cast_or_null<TypedefType>(PtrTy))
-        return dyn_cast<TypeVariableType>(TypdefTy->desugar())->GetIndex();
+      if (auto *TypdefTy = dyn_cast_or_null<TypedefType>(PtrTy)) {
+        const TypeVariableType *Tv =
+            dyn_cast<TypeVariableType>(TypdefTy->desugar());
+        return Tv ? Tv->GetIndex() : -1;
+      }
     }
   }
   return -1;
