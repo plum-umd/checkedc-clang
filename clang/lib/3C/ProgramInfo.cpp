@@ -497,7 +497,7 @@ void ProgramInfo::specialCaseVarIntros(ValueDecl *D, ASTContext *Context) {
   // Special-case for va_list, constrain to wild.
   bool IsGeneric = false;
   if (auto *PVD = dyn_cast<ParmVarDecl>(D))
-    IsGeneric = getTypeVariableType(PVD) != nullptr;
+    IsGeneric = getTypeVariableIndex(PVD) >= 0;
   if (isVarArgType(D->getType().getAsString()) ||
       (hasVoidType(D) && !IsGeneric)) {
     // set the reason for making this variable WILD.

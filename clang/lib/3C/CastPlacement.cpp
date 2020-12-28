@@ -40,10 +40,9 @@ bool CastPlacementVisitor::VisitCallExpr(CallExpr *CE) {
           // removing implicit casts when on arguments with a consistently
           // used generic type.
           Expr *ArgExpr = A;
-          const TypeVariableType *TyVar =
-              getTypeVariableType(FD->getParamDecl(PIdx));
-          if (TyVar && TypeVars.find(TyVar->GetIndex()) != TypeVars.end() &&
-              TypeVars[TyVar->GetIndex()] != nullptr)
+          const int TyVarIdx = getTypeVariableIndex(FD->getParamDecl(PIdx));
+          if (TypeVars.find(TyVarIdx) != TypeVars.end() &&
+              TypeVars[TyVarIdx] != nullptr)
             ArgExpr = ArgExpr->IgnoreImpCasts();
 
           CVarSet ArgumentConstraints = CR.getExprConstraintVars(ArgExpr);

@@ -216,9 +216,8 @@ public:
             if (TFD != nullptr && I < TFD->getNumParams()) {
               // Remove casts to void* on polymorphic types that are used
               // consistently.
-              const auto *Ty = getTypeVariableType(TFD->getParamDecl(I));
-              if (Ty != nullptr && ConsistentTypeParams.find(Ty->GetIndex()) !=
-                                       ConsistentTypeParams.end())
+              const int TyIdx = getTypeVariableIndex(TFD->getParamDecl(I));
+              if (ConsistentTypeParams.find(TyIdx) != ConsistentTypeParams.end())
                 ArgumentConstraints =
                     CB.getExprConstraintVars(A->IgnoreImpCasts());
               else

@@ -73,12 +73,14 @@ bool TypeVarVisitor::VisitCastExpr(CastExpr *CE) {
     SubExpr = TempE->getSubExpr();
 
   if (auto *Call = dyn_cast<CallExpr>(SubExpr))
-    if (auto *FD = dyn_cast_or_null<FunctionDecl>(Call->getCalleeDecl()))
-      if (const auto *TyVar = getTypeVariableType(FD)) {
+    if (auto *FD = dyn_cast_or_null<FunctionDecl>(Call->getCalleeDecl())) {
+      const int TyIdx = getTypeVariableIndex(FD);
+      if (TyIdx >= 0) {
         clang::QualType Ty = CE->getType();
         std::set<ConstraintVariable *> CVs = CR.getExprConstraintVars(SubExpr);
-        insertBinding(Call, TyVar, Ty, CVs);
+        insertBinding(Call, TyIdx, Ty, CVs);
       }
+    }
   return true;
 }
 
@@ -91,10 +93,11 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
       // This can happen with varargs
       if (I >= FD->getNumParams())
         break;
-      if (const auto *TyVar = getTypeVariableType(FD->getParamDecl(I))) {
+      const int TyIdx = getTypeVariableIndex(FD->getParamDecl(I));
+      if (TyIdx >= 0) {
         Expr *Uncast = A->IgnoreImpCasts();
         std::set<ConstraintVariable *> CVs = CR.getExprConstraintVars(Uncast);
-        insertBinding(CE, TyVar, Uncast->getType(), CVs);
+        insertBinding(CE, TyIdx, Uncast->getType(), CVs);
       }
       ++I;
     }
@@ -128,16 +131,18 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
 // Update the type variable map for a new use of a type variable. For each use
 // the exact type variable is identified by the call expression where it is
 // used and the index of the type variable type in the function declaration.
-void TypeVarVisitor::insertBinding(CallExpr *CE, const TypeVariableType *TyV,
+void TypeVarVisitor::insertBinding(CallExpr *CE, const int TyIdx,
                                    clang::QualType Ty, CVarSet &CVs) {
+  assert(TyIdx >= 0 &&
+         "Creating a type variable binding without a type variable.");
   auto &CallTypeVarMap = TVMap[CE];
-  if (CallTypeVarMap.find(TyV->GetIndex()) == CallTypeVarMap.end()) {
+  if (CallTypeVarMap.find(TyIdx) == CallTypeVarMap.end()) {
     // If the type variable hasn't been seen before, add it to the map.
     TypeVariableEntry TVEntry = TypeVariableEntry(Ty, CVs);
-    CallTypeVarMap[TyV->GetIndex()] = TVEntry;
+    CallTypeVarMap[TyIdx] = TVEntry;
   } else {
     // Otherwise, update entry with new type and constraints
-    CallTypeVarMap[TyV->GetIndex()].updateEntry(Ty, CVs);
+    CallTypeVarMap[TyIdx].updateEntry(Ty, CVs);
   }
 }
 

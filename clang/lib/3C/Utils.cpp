@@ -359,19 +359,20 @@ unsigned longestCommonSubsequence(const char *Str1, const char *Str2,
                   longestCommonSubsequence(Str1, Str2, Str1Len - 1, Str2Len));
 }
 
-// Get the type variable used in a parameter declaration, or return null if no
-// type variable is used.
-const TypeVariableType *getTypeVariableType(DeclaratorDecl *Decl) {
+// Get the type variable index used in a parameter declaration, or return -1
+// if no type variable is used or the declaration is null.
+const int getTypeVariableIndex(DeclaratorDecl *Decl) {
+  if (Decl == nullptr) return -1;
   // This makes a lot of assumptions about how the AST will look.
   if (auto *ITy = Decl->getInteropTypeExpr()) {
     const auto *Ty = ITy->getType().getTypePtr();
     if (Ty && Ty->isPointerType()) {
       auto *PtrTy = Ty->getPointeeType().getTypePtr();
       if (auto *TypdefTy = dyn_cast_or_null<TypedefType>(PtrTy))
-        return dyn_cast<TypeVariableType>(TypdefTy->desugar());
+        return dyn_cast<TypeVariableType>(TypdefTy->desugar())->GetIndex();
     }
   }
-  return nullptr;
+  return -1;
 }
 
 bool isTypeAnonymous(const clang::Type *T) {
