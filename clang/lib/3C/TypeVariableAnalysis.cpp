@@ -73,40 +73,45 @@ bool TypeVarVisitor::VisitCastExpr(CastExpr *CE) {
     SubExpr = TempE->getSubExpr();
 
   if (auto *Call = dyn_cast<CallExpr>(SubExpr))
-    if (auto *FD = dyn_cast_or_null<FunctionDecl>(Call->getCalleeDecl()))
-      if (auto FDDef = getDefinition(FD))
-        if (auto *FVCon = Info.getFuncConstraint(FDDef, Context)) {
-          const int TyIdx = FVCon->getGenericIndex();
-          if (TyIdx >= 0) {
-            clang::QualType Ty = CE->getType();
-            std::set<ConstraintVariable *> CVs =
-                CR.getExprConstraintVars(SubExpr);
-            insertBinding(Call, TyIdx, Ty, CVs);
-          }
+    if (auto *FD = dyn_cast_or_null<FunctionDecl>(Call->getCalleeDecl())) {
+      FunctionDecl *FDef = getDefinition(FD);
+      if (FDef == nullptr)
+        FDef = FD;
+      if (auto *FVCon = Info.getFuncConstraint(FDef, Context)) {
+        const int TyIdx = FVCon->getGenericIndex();
+        if (TyIdx >= 0) {
+          clang::QualType Ty = CE->getType();
+          std::set<ConstraintVariable *> CVs =
+              CR.getExprConstraintVars(SubExpr);
+          insertBinding(Call, TyIdx, Ty, CVs);
         }
+      }
+    }
   return true;
 }
 
 bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
-  if (FunctionDecl *FD = dyn_cast_or_null<FunctionDecl>(CE->getCalleeDecl())) {
-    if (auto FDDef = getDefinition(FD))
-      if (auto *FVCon = Info.getFuncConstraint(FDDef, Context)) {
-        // Visit each function argument, and if it use a type variable, insert it
-        // into the type variable binding map.
-        unsigned int I = 0;
-        for (auto *const A : CE->arguments()) {
-          // This can happen with varargs
-          if (I >= FVCon->numParams())
-            break;
-          const int TyIdx = FVCon->getParamVar(I)->getGenericIndex();
-          if (TyIdx >= 0) {
-            Expr *Uncast = A->IgnoreImpCasts();
-            std::set<ConstraintVariable *> CVs = CR.getExprConstraintVars(Uncast);
-            insertBinding(CE, TyIdx, Uncast->getType(), CVs);
-          }
-          ++I;
+  if (auto *FD = dyn_cast_or_null<FunctionDecl>(CE->getCalleeDecl())) {
+    FunctionDecl *FDef = getDefinition(FD);
+    if (FDef == nullptr)
+      FDef = FD;
+    if (auto *FVCon = Info.getFuncConstraint(FDef, Context)) {
+      // Visit each function argument, and if it use a type variable, insert it
+      // into the type variable binding map.
+      unsigned int I = 0;
+      for (auto *const A : CE->arguments()) {
+        // This can happen with varargs
+        if (I >= FVCon->numParams())
+          break;
+        const int TyIdx = FVCon->getParamVar(I)->getGenericIndex();
+        if (TyIdx >= 0) {
+          Expr *Uncast = A->IgnoreImpCasts();
+          std::set<ConstraintVariable *> CVs = CR.getExprConstraintVars(Uncast);
+          insertBinding(CE, TyIdx, Uncast->getType(), CVs);
         }
+        ++I;
       }
+    }
 
     // For each type variable added above, make a new constraint variable to
     // remember the solved pointer type.
