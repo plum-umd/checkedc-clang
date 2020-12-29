@@ -121,6 +121,7 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
             FD->getNameAsString() + "_tyarg_" + std::to_string(TVEntry.first);
         PVConstraint *P = new PVConstraint(TVEntry.second.getType(), nullptr,
                                            Name, Info, *Context, nullptr);
+        P->setGenericIndex(TVEntry.first);
 
         // Constrain this variable GEQ the function arguments using the type
         // variable so if any of them are wild, the type argument will also be

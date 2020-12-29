@@ -323,6 +323,7 @@ public:
 
   bool getIsGeneric() const { return GenericIndex >= 0; }
   int getGenericIndex() const { return GenericIndex; }
+  void setGenericIndex(int Idx) { GenericIndex = Idx; }
 
   bool getIsOriginallyChecked() const override {
     return llvm::any_of(Vars, [](Atom *A) { return isa<ConstAtom>(A); });
