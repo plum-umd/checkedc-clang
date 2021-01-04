@@ -323,7 +323,6 @@ public:
 
   bool getIsGeneric() const { return GenericIndex >= 0; }
   int getGenericIndex() const { return GenericIndex; }
-  void setGenericIndex(int Idx) { GenericIndex = Idx; }
 
   bool getIsOriginallyChecked() const override {
     return llvm::any_of(Vars, [](Atom *A) { return isa<ConstAtom>(A); });
@@ -350,13 +349,14 @@ public:
   //          that all constructor calls will take the same global objects here.
   // inFunc: If this variable is part of a function prototype, this string is
   //         the name of the function. nullptr otherwise.
-  // GenericIndex: CheckedC supports generic types (_Itype_for_any) which need
-  //            less restrictive constraints. Set >= 0 to indicate that this
-  //            variable is generic.
+  // ForceGenericIndex: CheckedC supports generic types (_Itype_for_any) which
+  //                    need less restrictive constraints. Set >= 0 to indicate
+  //                    that this variable should be considered generic.
   PointerVariableConstraint(const clang::QualType &QT, clang::DeclaratorDecl *D,
                             std::string N, ProgramInfo &I,
                             const clang::ASTContext &C,
-                            std::string *InFunc = nullptr);
+                            std::string *InFunc = nullptr,
+                            int ForceGenericIndex = -1);
 
   const CAtoms &getCvars() const { return Vars; }
 

@@ -169,7 +169,7 @@ class TypedefLevelFinder : public RecursiveASTVisitor<TypedefLevelFinder> {
 
 PointerVariableConstraint::PointerVariableConstraint(
     const QualType &QT, DeclaratorDecl *D, std::string N, ProgramInfo &I,
-    const ASTContext &C, std::string *InFunc)
+    const ASTContext &C, std::string *InFunc, int ForceGenericIndex)
     : ConstraintVariable(ConstraintVariable::PointerVariable,
                          tyToStr(QT.getTypePtr()), N),
       FV(nullptr), PartOfFuncPrototype(InFunc != nullptr), Parent(nullptr) {
@@ -257,15 +257,19 @@ PointerVariableConstraint::PointerVariableConstraint(
 
   typedeflevelinfo = TypedefLevelFinder::find(QTy);
 
-  GenericIndex = -1;
-  // This makes a lot of assumptions about how the AST will look, and limits
-  // it to one level.
-  // TODO: Enhance TypedefLevelFinder to get this info
-  if (Ty->isPointerType()) {
-    auto *PtrTy = Ty->getPointeeType().getTypePtr();
-    if (auto *TypdefTy = dyn_cast_or_null<TypedefType>(PtrTy)) {
-      const auto *Tv = dyn_cast<TypeVariableType>(TypdefTy->desugar());
-      if (Tv) GenericIndex = Tv->GetIndex();
+  if (ForceGenericIndex >= 0) {
+    GenericIndex = ForceGenericIndex;
+  } else {
+    GenericIndex = -1;
+    // This makes a lot of assumptions about how the AST will look, and limits
+    // it to one level.
+    // TODO: Enhance TypedefLevelFinder to get this info
+    if (Ty->isPointerType()) {
+      auto *PtrTy = Ty->getPointeeType().getTypePtr();
+      if (auto *TypdefTy = dyn_cast_or_null<TypedefType>(PtrTy)) {
+        const auto *Tv = dyn_cast<TypeVariableType>(TypdefTy->desugar());
+        if (Tv) GenericIndex = Tv->GetIndex();
+      }
     }
   }
 
