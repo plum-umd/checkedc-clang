@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "clang/3C/DeclRewriter.h"
+#include "clang/3C/ConstraintBuilder.h"
 #include "clang/3C/3CGlobalOptions.h"
 #include "clang/3C/MappingVisitor.h"
 #include "clang/3C/RewriteUtils.h"
@@ -25,6 +26,10 @@
 
 using namespace llvm;
 using namespace clang;
+
+RecordDecl *lastRecord;
+static std::map<Decl *, Decl *> VDToRDMap;
+static std::set<Decl *> inlines;
 
 // This function is the public entry point for declaration rewriting.
 void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
@@ -77,8 +82,47 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
   for (const auto &I : Info.getVarMap())
     Keys.insert(I.first);
   MappingVisitor MV(Keys, Context);
-  for (const auto &D : TUD->decls())
+  for (const auto &D : TUD->decls()) {
     MV.TraverseDecl(D);
+    if (RecordDecl *RD = dyn_cast<RecordDecl>(D)) {
+      if (RD->getNameAsString() != "")
+        lastRecord = RD;
+    }
+    if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
+      if(lastRecord == nullptr) continue;
+      uint lastRecordLocation = lastRecord->getBeginLoc().getRawEncoding();
+      auto VarTy = VD->getType();
+      uint BeginLoc = VD->getBeginLoc().getRawEncoding();
+      uint EndLoc = VD->getEndLoc().getRawEncoding();
+      bool IsInLineStruct = lastRecordLocation >= BeginLoc && lastRecordLocation <= EndLoc;
+      if (IsInLineStruct) {
+        VDToRDMap[VD] = lastRecord;
+        inlines.insert(VD);
+      }
+    }
+    if(FunctionDecl *FD = dyn_cast<FunctionDecl>(D)) {
+      if (FD->hasBody() && FD->isThisDeclarationADefinition()) {
+        for (auto &D : FD->decls()) {
+          if (RecordDecl *RD = dyn_cast<RecordDecl>(D)) {
+            if (RD->getNameAsString() != "")
+              lastRecord = RD;
+          }
+          if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
+            if (lastRecord == nullptr) continue;
+            uint lastRecordLocation = lastRecord->getBeginLoc().getRawEncoding();
+            auto VarTy = VD->getType();
+            uint BeginLoc = VD->getBeginLoc().getRawEncoding();
+            uint EndLoc = VD->getEndLoc().getRawEncoding();
+            bool IsInLineStruct = lastRecordLocation >= BeginLoc && lastRecordLocation <= EndLoc;
+            if (IsInLineStruct) {
+              VDToRDMap[VD] = lastRecord;
+              inlines.insert(VD);
+            }
+          }
+        }
+      }
+    }
+  }
   SourceToDeclMapType PSLMap;
   VariableDecltoStmtMap VDLToStmtMap;
   std::tie(PSLMap, VDLToStmtMap) = MV.getResults();
@@ -208,6 +252,13 @@ void DeclRewriter::rewriteFieldOrVarDecl(DRType *N, RSet &ToRewrite) {
                     std::is_same<DRType, VarDeclReplacement>::value,
                 "Method expects variable or field declaration replacement.");
 
+  if (inlines.find(N->getDecl()) != inlines.end() && VisitedMultiDeclMembers.find(N) == VisitedMultiDeclMembers.end()) {
+    std::vector<Decl *> combo;
+    getDeclsOnSameLine(N, combo);
+    if (std::find(combo.begin(), combo.end(), VDToRDMap[N->getDecl()]) == combo.end())
+      combo.insert(combo.begin(), VDToRDMap[N->getDecl()]);
+    rewriteNamedInlineStruct(N, ToRewrite, combo);
+  }
   if (isSingleDeclaration(N)) {
     rewriteSingleDecl(N, ToRewrite);
   } else if (VisitedMultiDeclMembers.find(N) == VisitedMultiDeclMembers.end()) {
@@ -327,6 +378,122 @@ void DeclRewriter::rewriteMultiDecl(DeclReplacement *N, RSet &ToRewrite) {
     // are separate statements separated by a semicolon and a newline.
     SourceRange End = getNextCommaOrSemicolon(DL->getEndLoc());
     R.ReplaceText(End, ";\n");
+    // Offset by one to skip past what we've just added so it isn't overwritten.
+    PrevEnd = End.getEnd().getLocWithOffset(1);
+  }
+
+  // Step 3: Be sure and skip all of the declarations that we just dealt with by
+  //         adding them to the skip set.
+  for (const auto &TN : RewritesForThisDecl)
+    VisitedMultiDeclMembers.insert(TN);
+}
+
+void DeclRewriter::rewriteNamedInlineStruct(DeclReplacement *N, RSet &ToRewrite, std::vector<Decl *> SameLineDecls) {
+  //assert("Declaration is not a multi declaration." && !isSingleDeclaration(N));
+  // Rewriting is more difficult when there are multiple variables declared in a
+  // single statement. When this happens, we need to find all the declaration
+  // replacement for this statement and apply them at the same time. We also
+  // need to avoid rewriting any of these declarations twice by updating the
+  // Skip set to include the processed declarations.
+
+  // Step 1: get declaration replacement in the same statement
+//  bool IsSingleDecl = false;
+//  if (isSingleDeclaration(N))
+//     IsSingleDecl = true;
+  RSet RewritesForThisDecl(DComp(R.getSourceMgr()));
+  auto I = ToRewrite.find(N);
+  while (I != ToRewrite.end()) {
+    if (areDeclarationsOnSameLine(N, *I)) {
+      assert("Unexpected DeclReplacement kind." &&
+             (*I)->getKind() == N->getKind());
+      RewritesForThisDecl.insert(*I);
+    }
+    ++I;
+  }
+
+  // Step 2: For each decl in the original, build up a new string. If the
+  //         original decl was re-written, write that out instead. Existing
+  //         initializers are preserved, any declarations that an initializer to
+  //         be valid checked-c are given one.
+//  std::vector<Decl *> SameLineDecls;
+//  getDeclsOnSameLine(N, SameLineDecls);
+
+  bool IsFirst = true;
+  SourceLocation PrevEnd;
+  for (const auto &DL : SameLineDecls) {
+    std::string ReplaceText = ";\n";
+    // Find the declaration replacement object for the current declaration
+    DeclReplacement *SameLineReplacement;
+    bool Found = false;
+    for (const auto &NLT : RewritesForThisDecl)
+      if (NLT->getDecl() == DL) {
+        SameLineReplacement = NLT;
+        Found = true;
+        break;
+      }
+
+    if (IsFirst) {
+      // Rewriting the first declaration is easy. Nothing should change if its
+      // type does not to be rewritten. When rewriting is required, it is
+      // essentially the same as the single declaration case.
+      ReplaceText = "};\n";
+    } else {
+      // The subsequent decls are more complicated because we need to insert a
+      // type string even if the variables type hasn't changed.
+      if (Found) {
+        // If the type has changed, the DeclReplacement object has a replacement
+        // string stored in it that should be used.
+        SourceRange SR(PrevEnd, DL->getEndLoc());
+        doDeclRewrite(SR, SameLineReplacement);
+      } else {
+        // When the type hasn't changed, we still need to insert the original
+        // type for the variable.
+
+        // This is a bit of trickery needed to get a string representation of
+        // the declaration without the initializer. We don't want to rewrite to
+        // initializer because this causes problems when rewriting casts and
+        // generic function calls later on. (issue 267)
+        auto *VD = dyn_cast<VarDecl>(DL);
+        Expr *Init = nullptr;
+        if (VD && VD->hasInit()) {
+          Init = VD->getInit();
+          VD->setInit(nullptr);
+        }
+
+        // Dump the declaration (without the initializer) to a string. Printing
+        // the AST node gives the full declaration including the base type which
+        // is not present in the multi-decl source code.
+        std::string DeclStr = "";
+        raw_string_ostream DeclStream(DeclStr);
+        DL->print(DeclStream);
+        assert("Original decl string empty." && !DeclStream.str().empty());
+
+        // Do the replacement. PrevEnd is setup to be the source location of the
+        // comma after the previous declaration in the multi-decl. getEndLoc is
+        // either the end of the declaration or just before the initializer if
+        // one is present.
+        SourceRange SR(PrevEnd, DL->getEndLoc());
+        R.ReplaceText(SR, DeclStream.str());
+
+        // Undo prior trickery. This need to happen so that the PSL for the decl
+        // is not changed since the PSL is used as a map key in a few places.
+        if (VD && Init)
+          VD->setInit(Init);
+      }
+    }
+
+    // Variables in a mutli-decl are delimited by commas. The rewritten decls
+    // are separate statements separated by a semicolon and a newline.
+    SourceRange End;
+    if (IsFirst) {
+      IsFirst = false;
+      End = DL->getEndLoc();
+    }
+    else
+      End = getNextCommaOrSemicolon(DL->getEndLoc());
+    R.ReplaceText(End, ReplaceText);
+//    if (!IsSingleDecl)
+//      break;
     // Offset by one to skip past what we've just added so it isn't overwritten.
     PrevEnd = End.getEnd().getLocWithOffset(1);
   }

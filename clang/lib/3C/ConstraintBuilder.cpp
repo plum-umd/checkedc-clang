@@ -21,31 +21,20 @@ using namespace llvm;
 using namespace clang;
 
 // Used to keep track of in-line struct defs
-unsigned int LastRecordLocation = -1;
+RecordDecl *lastRecord2 = nullptr;
+static std::map<Decl *, Decl *> VDToRDMap2;
+static std::set<Decl *> inlines2;
 
 void processRecordDecl(RecordDecl *Declaration, ProgramInfo &Info,
-                       ASTContext *Context, ConstraintResolver CB,
-                       bool IsInFunction) {
+                       ASTContext *Context, ConstraintResolver CB) {
+  lastRecord2 = Declaration;
   if (RecordDecl *Definition = Declaration->getDefinition()) {
-    // store current record's location to cross-ref later in a VarDecl
-    LastRecordLocation = Definition->getBeginLoc().getRawEncoding();
     FullSourceLoc FL = Context->getFullLoc(Definition->getBeginLoc());
     if (FL.isValid()) {
       SourceManager &SM = Context->getSourceManager();
       FileID FID = FL.getFileID();
       const FileEntry *FE = SM.getFileEntryForID(FID);
 
-      //detect whether this RecordDecl is part of an inline struct
-      bool IsInLineStruct = false;
-      Decl *D = Declaration->getNextDeclInContext();
-      if (VarDecl *VD = dyn_cast_or_null<VarDecl>(D)) {
-        auto VarTy = VD->getType();
-        unsigned int BeginLoc = VD->getBeginLoc().getRawEncoding();
-        unsigned int EndLoc = VD->getEndLoc().getRawEncoding();
-        IsInLineStruct = !isPtrOrArrayType(VarTy) && !VD->hasInit() &&
-                         LastRecordLocation >= BeginLoc &&
-                         LastRecordLocation <= EndLoc;
-      }
       if (FE && FE->isValid()) {
         // We only want to re-write a record if it contains
         // any pointer types, to include array types.
@@ -57,13 +46,54 @@ void processRecordDecl(RecordDecl *Declaration, ProgramInfo &Info,
               (FL.isInSystemHeader() || Definition->isUnion());
           // mark field wild if the above is true and the field is a pointer
           if (isPtrOrArrayType(FieldTy) &&
-              (FieldInUnionOrSysHeader || IsInLineStruct)) {
+              (FieldInUnionOrSysHeader /*|| IsInLineStruct*/)) {
             std::string Rsn = "Union or external struct field encountered";
             CVarOption CV = Info.getVariable(F, Context);
             CB.constraintCVarToWild(CV, Rsn);
           }
         }
       }
+    }
+  }
+}
+
+void processVarDecl(VarDecl *VD, ProgramInfo &Info,
+                    ASTContext *Context, ConstraintResolver CB) {
+  if(lastRecord2 != nullptr) {
+    uint lastRecordLocation = lastRecord2->getBeginLoc().getRawEncoding();
+    uint BeginLoc = VD->getBeginLoc().getRawEncoding();
+    uint EndLoc = VD->getEndLoc().getRawEncoding();
+    auto VarTy = VD->getType();
+    bool IsInLineStruct =
+        lastRecordLocation >= BeginLoc && lastRecordLocation <= EndLoc
+        && isPtrOrArrayType(VarTy);
+    bool IsNamedInLineStruct = IsInLineStruct
+                               && lastRecord2->getNameAsString() != "";
+    if (IsNamedInLineStruct) {
+      VDToRDMap2[VD] = lastRecord2;
+      inlines2.insert(VD);
+    }
+    else if (IsInLineStruct && !AllTypes) {
+      CVarOption CV = Info.getVariable(VD, Context);
+      CB.constraintCVarToWild(CV, "Inline struct encountered.");
+    }
+    else if (IsInLineStruct && AllTypes) {
+      clang::DiagnosticsEngine &DE = Context->getDiagnostics();
+      unsigned InlineStructWarning = DE.getCustomDiagID(
+          DiagnosticsEngine::Warning, "\n Rewriting failed"
+                                      "for %q0 because an inline "
+                                      "or anonymous struct instance "
+                                      "was detected.\n Consider manually "
+                                      "rewriting by inserting the struct "
+                                      "definition inside the _Ptr "
+                                      "annotation.\n "
+                                      "EX. struct {int *a; int *b;} x; "
+                                      "_Ptr<struct {int *a; _Ptr<int> b;}>;");
+      const auto Pointer = reinterpret_cast<intptr_t>(VD);
+      const auto Kind =
+          clang::DiagnosticsEngine::ArgumentKind::ak_nameddecl;
+      auto DiagBuilder = DE.Report(VD->getLocation(), InlineStructWarning);
+      DiagBuilder.AddTaggedVal(Pointer, Kind);
     }
   }
 }
@@ -83,17 +113,14 @@ public:
     // Introduce variables as needed.
     for (const auto &D : S->decls()) {
       if (RecordDecl *RD = dyn_cast<RecordDecl>(D)) {
-        processRecordDecl(RD, Info, Context, CB, true);
+        processRecordDecl(RD, Info, Context, CB);
       }
       if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
         if (VD->isLocalVarDecl()) {
           FullSourceLoc FL = Context->getFullLoc(VD->getBeginLoc());
           SourceRange SR = VD->getSourceRange();
           if (SR.isValid() && FL.isValid() && isPtrOrArrayType(VD->getType())) {
-            if (LastRecordLocation == VD->getBeginLoc().getRawEncoding()) {
-              CVarOption CV = Info.getVariable(VD, Context);
-              CB.constraintCVarToWild(CV, "Inline struct encountered.");
-            }
+            processVarDecl(VD, Info, Context, CB);
           }
         }
       }
@@ -473,17 +500,8 @@ public:
       if (G->hasInit()) {
         CB.constrainLocalAssign(nullptr, G, G->getInit());
       }
-      // If the location of the previous RecordDecl and the current VarDecl
-      // coincide with one another, we constrain the VarDecl to be wild
-      // in order to allow the fields of the RecordDecl to be converted
-      unsigned int BeginLoc = G->getBeginLoc().getRawEncoding();
-      unsigned int EndLoc = G->getEndLoc().getRawEncoding();
-      if (LastRecordLocation >= BeginLoc && LastRecordLocation <= EndLoc) {
-        CVarOption CV = Info.getVariable(G, Context);
-        CB.constraintCVarToWild(CV, "Inline struct encountered.");
-      }
+      processVarDecl(G, Info, Context, CB);
     }
-
     return true;
   }
 
@@ -529,7 +547,7 @@ public:
   }
 
   bool VisitRecordDecl(RecordDecl *Declaration) {
-    processRecordDecl(Declaration, Info, Context, CB, false);
+    processRecordDecl(Declaration, Info, Context, CB);
     return true;
   }
 
