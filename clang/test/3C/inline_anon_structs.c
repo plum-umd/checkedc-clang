@@ -5,7 +5,7 @@
 // RUN: 3c -alltypes %S/inline_anon_structs.checked.c -- | count 0
 // RUN: rm %S/inline_anon_structs.checked.c
 
-
+#include <stdlib.h>
 /*This code ensures conversion happens as expected when 
 an inlinestruct and its associated VarDecl have different locations*/
 int valuable;
@@ -28,7 +28,8 @@ array[] =
 
  /* one decl; x rewrites to _Ptr<int> */
 struct foo1 { int *x; } *a;
-	//CHECK: struct foo1 { _Ptr<int> x; } *a;
+	//CHECK: struct foo1 { _Ptr<int> x; }; 
+	//CHECK: _Ptr<struct foo1> a = ((void *)0);
 
 struct baz { int *z; };
 	//CHECK: struct baz { _Ptr<int> z; };
@@ -36,11 +37,15 @@ struct baz *d;
 	//CHECK: _Ptr<struct baz> d = ((void *)0);
 
 struct bad { int* y; } *b, *c; 
-	//CHECK: struct bad { int* y; } *b, *c; 
+	//CHECK: struct bad { int* y; }; 
+	//CHECK: _Ptr<struct bad> b = ((void *)0);
+	//CHECK: _Ptr<struct bad> c = ((void *)0); 
 
  /* two decls, y should be converted */
 struct bar { int* y; } *e, *f;
-	//CHECK: struct bar { _Ptr<int> y; } *e, *f; 
+	//CHECK: struct bar { _Ptr<int> y; };
+	//CHECK: _Ptr<struct bar> e = ((void *)0);
+	//CHECK: _Ptr<struct bar> f = ((void *)0);
 
 
 void foo(void) {
@@ -86,7 +91,8 @@ struct {
 void foo2(int *x) {
 	//CHECK: void foo2(_Ptr<int> x) {
   struct bar { int *x; } *y = 0;
-	//CHECK: struct bar { _Ptr<int> x; } *y = 0; 
+	//CHECK: struct bar { _Ptr<int> x; }; 
+	//CHECK: _Ptr<struct bar> y = 0; 
 
   /*A non-pointer struct without an init will be marked wild*/
   struct something { int *x; } z; 

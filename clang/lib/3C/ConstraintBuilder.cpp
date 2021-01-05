@@ -29,11 +29,24 @@ void processRecordDecl(RecordDecl *Declaration, ProgramInfo &Info,
                        ASTContext *Context, ConstraintResolver CB) {
   lastRecord2 = Declaration;
   if (RecordDecl *Definition = Declaration->getDefinition()) {
+    unsigned int LastRecordLocation = Definition->getBeginLoc().getRawEncoding();
     FullSourceLoc FL = Context->getFullLoc(Definition->getBeginLoc());
     if (FL.isValid()) {
       SourceManager &SM = Context->getSourceManager();
       FileID FID = FL.getFileID();
       const FileEntry *FE = SM.getFileEntryForID(FID);
+
+      //detect whether this RecordDecl is part of an inline struct
+      bool IsInLineStruct = false;
+      Decl *D = Declaration->getNextDeclInContext();
+      if (VarDecl *VD = dyn_cast_or_null<VarDecl>(D)) {
+        auto VarTy = VD->getType();
+        unsigned int BeginLoc = VD->getBeginLoc().getRawEncoding();
+        unsigned int EndLoc = VD->getEndLoc().getRawEncoding();
+        IsInLineStruct = !isPtrOrArrayType(VarTy) && !VD->hasInit() &&
+                         LastRecordLocation >= BeginLoc &&
+                         LastRecordLocation <= EndLoc;
+      }
 
       if (FE && FE->isValid()) {
         // We only want to re-write a record if it contains
@@ -46,7 +59,7 @@ void processRecordDecl(RecordDecl *Declaration, ProgramInfo &Info,
               (FL.isInSystemHeader() || Definition->isUnion());
           // mark field wild if the above is true and the field is a pointer
           if (isPtrOrArrayType(FieldTy) &&
-              (FieldInUnionOrSysHeader /*|| IsInLineStruct*/)) {
+              (FieldInUnionOrSysHeader || IsInLineStruct)) {
             std::string Rsn = "Union or external struct field encountered";
             CVarOption CV = Info.getVariable(F, Context);
             CB.constraintCVarToWild(CV, Rsn);

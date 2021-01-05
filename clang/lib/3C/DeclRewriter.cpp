@@ -27,10 +27,31 @@
 using namespace llvm;
 using namespace clang;
 
-RecordDecl *lastRecord;
-static std::map<Decl *, Decl *> VDToRDMap;
-static std::set<Decl *> inlines;
+RecordDecl *lastRecord = nullptr;
+std::map<Decl *, Decl *> VDToRDMap;
+std::set<Decl *> inlines;
 
+void processDecl(Decl *D) {
+  if (RecordDecl *RD = dyn_cast<RecordDecl>(D)) {
+    lastRecord = RD;
+  }
+  if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
+    if(lastRecord != nullptr) {
+      uint lastRecordLocation = lastRecord->getBeginLoc().getRawEncoding();
+      auto VarTy = VD->getType();
+      uint BeginLoc = VD->getBeginLoc().getRawEncoding();
+      uint EndLoc = VD->getEndLoc().getRawEncoding();
+      bool IsInLineStruct =
+          lastRecordLocation >= BeginLoc && lastRecordLocation <= EndLoc;
+      bool IsNamedInLineStruct = IsInLineStruct &&
+                                 lastRecord->getNameAsString() != "";
+      if (IsInLineStruct) {
+        VDToRDMap[VD] = lastRecord;
+        inlines.insert(VD);
+      }
+    }
+  }
+}
 // This function is the public entry point for declaration rewriting.
 void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
                                 Rewriter &R) {
@@ -84,41 +105,11 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
   MappingVisitor MV(Keys, Context);
   for (const auto &D : TUD->decls()) {
     MV.TraverseDecl(D);
-    if (RecordDecl *RD = dyn_cast<RecordDecl>(D)) {
-      if (RD->getNameAsString() != "")
-        lastRecord = RD;
-    }
-    if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
-      if(lastRecord == nullptr) continue;
-      uint lastRecordLocation = lastRecord->getBeginLoc().getRawEncoding();
-      auto VarTy = VD->getType();
-      uint BeginLoc = VD->getBeginLoc().getRawEncoding();
-      uint EndLoc = VD->getEndLoc().getRawEncoding();
-      bool IsInLineStruct = lastRecordLocation >= BeginLoc && lastRecordLocation <= EndLoc;
-      if (IsInLineStruct) {
-        VDToRDMap[VD] = lastRecord;
-        inlines.insert(VD);
-      }
-    }
+    processDecl(D);
     if(FunctionDecl *FD = dyn_cast<FunctionDecl>(D)) {
       if (FD->hasBody() && FD->isThisDeclarationADefinition()) {
         for (auto &D : FD->decls()) {
-          if (RecordDecl *RD = dyn_cast<RecordDecl>(D)) {
-            if (RD->getNameAsString() != "")
-              lastRecord = RD;
-          }
-          if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
-            if (lastRecord == nullptr) continue;
-            uint lastRecordLocation = lastRecord->getBeginLoc().getRawEncoding();
-            auto VarTy = VD->getType();
-            uint BeginLoc = VD->getBeginLoc().getRawEncoding();
-            uint EndLoc = VD->getEndLoc().getRawEncoding();
-            bool IsInLineStruct = lastRecordLocation >= BeginLoc && lastRecordLocation <= EndLoc;
-            if (IsInLineStruct) {
-              VDToRDMap[VD] = lastRecord;
-              inlines.insert(VD);
-            }
-          }
+          processDecl(D);
         }
       }
     }
@@ -259,7 +250,7 @@ void DeclRewriter::rewriteFieldOrVarDecl(DRType *N, RSet &ToRewrite) {
       combo.insert(combo.begin(), VDToRDMap[N->getDecl()]);
     rewriteNamedInlineStruct(N, ToRewrite, combo);
   }
-  if (isSingleDeclaration(N)) {
+  else if (isSingleDeclaration(N)) {
     rewriteSingleDecl(N, ToRewrite);
   } else if (VisitedMultiDeclMembers.find(N) == VisitedMultiDeclMembers.end()) {
     rewriteMultiDecl(N, ToRewrite);
@@ -389,17 +380,9 @@ void DeclRewriter::rewriteMultiDecl(DeclReplacement *N, RSet &ToRewrite) {
 }
 
 void DeclRewriter::rewriteNamedInlineStruct(DeclReplacement *N, RSet &ToRewrite, std::vector<Decl *> SameLineDecls) {
-  //assert("Declaration is not a multi declaration." && !isSingleDeclaration(N));
-  // Rewriting is more difficult when there are multiple variables declared in a
-  // single statement. When this happens, we need to find all the declaration
-  // replacement for this statement and apply them at the same time. We also
-  // need to avoid rewriting any of these declarations twice by updating the
-  // Skip set to include the processed declarations.
 
-  // Step 1: get declaration replacement in the same statement
-//  bool IsSingleDecl = false;
-//  if (isSingleDeclaration(N))
-//     IsSingleDecl = true;
+  // For overarching logic, refer to rewriteMultiDecl
+  // First, let's grab everything we need to rewrite for this set of Decls
   RSet RewritesForThisDecl(DComp(R.getSourceMgr()));
   auto I = ToRewrite.find(N);
   while (I != ToRewrite.end()) {
@@ -415,9 +398,6 @@ void DeclRewriter::rewriteNamedInlineStruct(DeclReplacement *N, RSet &ToRewrite,
   //         original decl was re-written, write that out instead. Existing
   //         initializers are preserved, any declarations that an initializer to
   //         be valid checked-c are given one.
-//  std::vector<Decl *> SameLineDecls;
-//  getDeclsOnSameLine(N, SameLineDecls);
-
   bool IsFirst = true;
   SourceLocation PrevEnd;
   for (const auto &DL : SameLineDecls) {
@@ -433,9 +413,8 @@ void DeclRewriter::rewriteNamedInlineStruct(DeclReplacement *N, RSet &ToRewrite,
       }
 
     if (IsFirst) {
-      // Rewriting the first declaration is easy. Nothing should change if its
-      // type does not to be rewritten. When rewriting is required, it is
-      // essentially the same as the single declaration case.
+      // The first declaration is the RecordDecl we want! We close it off with
+      // a closing brace and a semicolon
       ReplaceText = "};\n";
     } else {
       // The subsequent decls are more complicated because we need to insert a
