@@ -891,6 +891,7 @@ FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
   FileName = "";
   HasEqArgumentConstraints = false;
   IsFunctionPtr = true;
+  TypeParams = 0;
 
   // Metadata about function
   FunctionDecl *FD = nullptr;
@@ -937,7 +938,11 @@ FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
           PName = PVD->getName();
         }
       }
-      ParamVars.push_back(new PVConstraint(QT, ParmVD, PName, I, Ctx, &N));
+      auto *ParamVar = new PVConstraint(QT, ParmVD, PName, I, Ctx, &N);
+      int GenericIdx = ParamVar->getGenericIndex();
+      if (GenericIdx >= 0)
+        TypeParams = std::max(TypeParams, GenericIdx + 1);
+      ParamVars.push_back(ParamVar);
     }
 
     Hasproto = true;
@@ -950,7 +955,11 @@ FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
   }
 
   // ConstraintVariable for the return
-  ReturnVar = new PVConstraint(RT, D, RETVAR, I, Ctx, &N);
+  auto *ReturnVC = new PVConstraint(RT, D, RETVAR, I, Ctx, &N);
+  int GenericIdx = ReturnVC->getGenericIndex();
+  if (GenericIdx >= 0)
+    TypeParams = std::max(TypeParams, GenericIdx + 1);
+  ReturnVar = ReturnVC;
 }
 
 void FunctionVariableConstraint::constrainToWild(Constraints &CS,
