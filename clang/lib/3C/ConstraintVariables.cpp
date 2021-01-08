@@ -1691,6 +1691,8 @@ void PointerVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
   Vars = NewVatoms;
   if (!From->ItypeStr.empty())
     ItypeStr = From->ItypeStr;
+  if (From->GenericIndex >= 0)
+    GenericIndex = From->GenericIndex;
   if (FV) {
     assert(From->FV);
     FV->mergeDeclaration(From->FV, Info, ReasonFailed);
