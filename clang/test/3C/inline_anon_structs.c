@@ -5,7 +5,9 @@
 // RUN: 3c -alltypes %S/inline_anon_structs.checked.c -- | count 0
 // RUN: rm %S/inline_anon_structs.checked.c
 
-#include <stdlib.h>
+#include <stddef.h>
+extern _Itype_for_any(T) void *malloc(size_t size) : itype(_Array_ptr<T>) byte_count(size);
+
 /*This code ensures conversion happens as expected when 
 an inlinestruct and its associated VarDecl have different locations*/
 int valuable;

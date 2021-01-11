@@ -21,13 +21,11 @@ using namespace llvm;
 using namespace clang;
 
 // Used to keep track of in-line struct defs
-RecordDecl *lastRecord2 = nullptr;
-static std::map<Decl *, Decl *> VDToRDMap2;
-static std::set<Decl *> inlines2;
+RecordDecl *LastRecordDecl = nullptr;
 
 void processRecordDecl(RecordDecl *Declaration, ProgramInfo &Info,
                        ASTContext *Context, ConstraintResolver CB) {
-  lastRecord2 = Declaration;
+  LastRecordDecl = Declaration;
   if (RecordDecl *Definition = Declaration->getDefinition()) {
     auto LastRecordLocation = Definition->getBeginLoc();
     FullSourceLoc FL = Context->getFullLoc(Definition->getBeginLoc());
@@ -72,8 +70,16 @@ void processRecordDecl(RecordDecl *Declaration, ProgramInfo &Info,
 
 void processVarDecl(VarDecl *VD, ProgramInfo &Info,
                     ASTContext *Context, ConstraintResolver CB) {
-  if(lastRecord2 != nullptr) {
-    auto lastRecordLocation = lastRecord2->getBeginLoc();
+  // If the last seen RecordDecl is non-null and coincides with the current
+  // VarDecl (i.e. via an inline struct), we proceed as follows:
+  // if the struct is named, do nothing
+  // if the struct is anonymous:
+  //      when alltypes is on, do nothing, but signal a warning to
+  //                           the user indicating its presence
+  //      when alltypes is off, mark the VarDecl WILD in order to
+  //                           ensure the converted program compiles. 
+  if(LastRecordDecl != nullptr) {
+    auto lastRecordLocation = LastRecordDecl->getBeginLoc();
     auto BeginLoc = VD->getBeginLoc();
     auto EndLoc = VD->getEndLoc();
     auto VarTy = VD->getType();
@@ -82,32 +88,28 @@ void processVarDecl(VarDecl *VD, ProgramInfo &Info,
         SM.isPointWithin(lastRecordLocation, BeginLoc, EndLoc)
         && isPtrOrArrayType(VarTy);
     bool IsNamedInLineStruct = IsInLineStruct
-                               && lastRecord2->getNameAsString() != "";
-    if (IsNamedInLineStruct) {
-      VDToRDMap2[VD] = lastRecord2;
-      inlines2.insert(VD);
-    }
-    else if (IsInLineStruct && !AllTypes) {
-      CVarOption CV = Info.getVariable(VD, Context);
-      CB.constraintCVarToWild(CV, "Inline struct encountered.");
-    }
-    else if (IsInLineStruct && AllTypes) {
-      clang::DiagnosticsEngine &DE = Context->getDiagnostics();
-      unsigned InlineStructWarning = DE.getCustomDiagID(
-          DiagnosticsEngine::Warning, "\n Rewriting failed"
-                                      "for %q0 because an inline "
-                                      "or anonymous struct instance "
-                                      "was detected.\n Consider manually "
-                                      "rewriting by inserting the struct "
-                                      "definition inside the _Ptr "
-                                      "annotation.\n "
-                                      "EX. struct {int *a; int *b;} x; "
-                                      "_Ptr<struct {int *a; _Ptr<int> b;}>;");
-      const auto Pointer = reinterpret_cast<intptr_t>(VD);
-      const auto Kind =
-          clang::DiagnosticsEngine::ArgumentKind::ak_nameddecl;
-      auto DiagBuilder = DE.Report(VD->getLocation(), InlineStructWarning);
-      DiagBuilder.AddTaggedVal(Pointer, Kind);
+                               && LastRecordDecl->getNameAsString() != "";
+    if (IsInLineStruct && !IsNamedInLineStruct) {
+      if (!AllTypes) {
+        CVarOption CV = Info.getVariable(VD, Context);
+        CB.constraintCVarToWild(CV, "Inline struct encountered.");
+      } else {
+        clang::DiagnosticsEngine &DE = Context->getDiagnostics();
+        unsigned InlineStructWarning = DE.getCustomDiagID(
+            DiagnosticsEngine::Warning, "\n Rewriting failed"
+                                        "for %q0 because an inline "
+                                        "or anonymous struct instance "
+                                        "was detected.\n Consider manually "
+                                        "rewriting by inserting the struct "
+                                        "definition inside the _Ptr "
+                                        "annotation.\n "
+                                        "EX. struct {int *a; int *b;} x; "
+                                        "_Ptr<struct {int *a; _Ptr<int> b;}>;");
+        const auto Pointer = reinterpret_cast<intptr_t>(VD);
+        const auto Kind = clang::DiagnosticsEngine::ArgumentKind::ak_nameddecl;
+        auto DiagBuilder = DE.Report(VD->getLocation(), InlineStructWarning);
+        DiagBuilder.AddTaggedVal(Pointer, Kind);
+      }
     }
   }
 }

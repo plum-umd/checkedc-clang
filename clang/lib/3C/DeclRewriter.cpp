@@ -27,25 +27,24 @@
 using namespace llvm;
 using namespace clang;
 
-RecordDecl *lastRecord = nullptr;
-std::map<Decl *, Decl *> VDToRDMap;
-std::set<Decl *> inlines;
+static RecordDecl *LastRecordDecl = nullptr;
+static std::map<Decl *, Decl *> VDToRDMap;
+static std::set<Decl *> InlineVarDecls;
 
 void detectInlineStruct(Decl *D, SourceManager &SM) {
   if (RecordDecl *RD = dyn_cast<RecordDecl>(D)) {
-    lastRecord = RD;
+    LastRecordDecl = RD;
   }
   if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
-    if(lastRecord != nullptr) {
-      auto lastRecordLocation = lastRecord->getBeginLoc();
+    if(LastRecordDecl != nullptr) {
+      auto lastRecordLocation = LastRecordDecl->getBeginLoc();
       auto BeginLoc = VD->getBeginLoc();
       auto EndLoc = VD->getEndLoc();
       bool IsInLineStruct = SM.isPointWithin(lastRecordLocation, BeginLoc, EndLoc);
-      bool IsNamedInLineStruct = IsInLineStruct &&
-                                 lastRecord->getNameAsString() != "";
+      bool IsNamedInLineStruct = IsInLineStruct && LastRecordDecl->getNameAsString() != "";
       if (IsNamedInLineStruct) {
-        VDToRDMap[VD] = lastRecord;
-        inlines.insert(VD);
+        VDToRDMap[VD] = LastRecordDecl;
+        InlineVarDecls.insert(VD);
       }
     }
   }
@@ -242,12 +241,14 @@ void DeclRewriter::rewriteFieldOrVarDecl(DRType *N, RSet &ToRewrite) {
                     std::is_same<DRType, VarDeclReplacement>::value,
                 "Method expects variable or field declaration replacement.");
 
-  if (inlines.find(N->getDecl()) != inlines.end() && VisitedMultiDeclMembers.find(N) == VisitedMultiDeclMembers.end()) {
-    std::vector<Decl *> combo;
-    getDeclsOnSameLine(N, combo);
-    if (std::find(combo.begin(), combo.end(), VDToRDMap[N->getDecl()]) == combo.end())
-      combo.insert(combo.begin(), VDToRDMap[N->getDecl()]);
-    rewriteMultiDecl(N, ToRewrite, combo, true);
+  if (InlineVarDecls.find(N->getDecl()) != InlineVarDecls.end()
+      && VisitedMultiDeclMembers.find(N) == VisitedMultiDeclMembers.end()) {
+    std::vector<Decl *> SameLineDecls;
+    getDeclsOnSameLine(N, SameLineDecls);
+    if (std::find(SameLineDecls.begin(), SameLineDecls.end(),
+                  VDToRDMap[N->getDecl()]) == SameLineDecls.end())
+      SameLineDecls.insert(SameLineDecls.begin(), VDToRDMap[N->getDecl()]);
+    rewriteMultiDecl(N, ToRewrite, SameLineDecls, true);
   }
   else if (isSingleDeclaration(N)) {
     rewriteSingleDecl(N, ToRewrite);
