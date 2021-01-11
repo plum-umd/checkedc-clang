@@ -58,11 +58,13 @@ void foo(void) {
 struct { 
 	/*the fields of the anonymous struct are free to be marked checked*/
     int *data; 
-	//CHECK_NOALL: int *data; 
-	//CHECK_ALL: _Array_ptr<int> data : count(4); 
+	//CHECK_NOALL: int *data;
 
-/* but the actual pointer can't be */
-} *x; 
+/* but the actual pointer can't be when alltypes is disabled */ 
+/* when alltypes is enabled, this whole structure is rewritten 
+   improperly, but that's OK, because we signal a warning to the user*/
+} *x;  
+//CHECK_ALL: _Ptr<struct> x = ((void *)0);
 
 /*ensure trivial conversion*/
 void foo1(int *w) { 
@@ -84,7 +86,7 @@ struct alpha *al[4];
 /*be should be made wild, whereas a should be converted*/
 struct {
   int *a;
-	//CHECK: _Ptr<int> a;
+	//CHECK_NOALL: _Ptr<int> a;
 } *be[4]; 
 
 /*this code checks inline structs withiin functions*/

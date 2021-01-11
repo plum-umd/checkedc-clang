@@ -64,10 +64,10 @@ private:
 
   template <typename DRType>
   void rewriteFieldOrVarDecl(DRType *N, RSet &ToRewrite);
-  void rewriteMultiDecl(DeclReplacement *N, RSet &ToRewrite);
+  void rewriteMultiDecl(DeclReplacement *N, RSet &ToRewrite,
+                        std::vector<Decl *> SameLineDecls,
+                        bool ContainsInlineStruct);
   void rewriteSingleDecl(DeclReplacement *N, RSet &ToRewrite);
-  void rewriteNamedInlineStruct(DeclReplacement *N, RSet &ToRewrite,
-                                std::vector<Decl *> SameLineDecls);
   void doDeclRewrite(SourceRange &SR, DeclReplacement *N);
 
   void rewriteFunctionDecl(FunctionDeclReplacement *N);

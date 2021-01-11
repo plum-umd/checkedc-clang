@@ -29,7 +29,7 @@ void processRecordDecl(RecordDecl *Declaration, ProgramInfo &Info,
                        ASTContext *Context, ConstraintResolver CB) {
   lastRecord2 = Declaration;
   if (RecordDecl *Definition = Declaration->getDefinition()) {
-    unsigned int LastRecordLocation = Definition->getBeginLoc().getRawEncoding();
+    auto LastRecordLocation = Definition->getBeginLoc();
     FullSourceLoc FL = Context->getFullLoc(Definition->getBeginLoc());
     if (FL.isValid()) {
       SourceManager &SM = Context->getSourceManager();
@@ -41,11 +41,11 @@ void processRecordDecl(RecordDecl *Declaration, ProgramInfo &Info,
       Decl *D = Declaration->getNextDeclInContext();
       if (VarDecl *VD = dyn_cast_or_null<VarDecl>(D)) {
         auto VarTy = VD->getType();
-        unsigned int BeginLoc = VD->getBeginLoc().getRawEncoding();
-        unsigned int EndLoc = VD->getEndLoc().getRawEncoding();
+        auto BeginLoc = VD->getBeginLoc();
+        auto EndLoc = VD->getEndLoc();
+        SourceManager &SM = Context->getSourceManager();
         IsInLineStruct = !isPtrOrArrayType(VarTy) && !VD->hasInit() &&
-                         LastRecordLocation >= BeginLoc &&
-                         LastRecordLocation <= EndLoc;
+                         SM.isPointWithin(LastRecordLocation, BeginLoc, EndLoc);
       }
 
       if (FE && FE->isValid()) {
@@ -73,12 +73,13 @@ void processRecordDecl(RecordDecl *Declaration, ProgramInfo &Info,
 void processVarDecl(VarDecl *VD, ProgramInfo &Info,
                     ASTContext *Context, ConstraintResolver CB) {
   if(lastRecord2 != nullptr) {
-    uint lastRecordLocation = lastRecord2->getBeginLoc().getRawEncoding();
-    uint BeginLoc = VD->getBeginLoc().getRawEncoding();
-    uint EndLoc = VD->getEndLoc().getRawEncoding();
+    auto lastRecordLocation = lastRecord2->getBeginLoc();
+    auto BeginLoc = VD->getBeginLoc();
+    auto EndLoc = VD->getEndLoc();
     auto VarTy = VD->getType();
+    SourceManager &SM = Context->getSourceManager();
     bool IsInLineStruct =
-        lastRecordLocation >= BeginLoc && lastRecordLocation <= EndLoc
+        SM.isPointWithin(lastRecordLocation, BeginLoc, EndLoc)
         && isPtrOrArrayType(VarTy);
     bool IsNamedInLineStruct = IsInLineStruct
                                && lastRecord2->getNameAsString() != "";
