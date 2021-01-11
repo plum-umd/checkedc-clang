@@ -7,7 +7,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "clang/3C/DeclRewriter.h"
-#include "clang/3C/ConstraintBuilder.h"
 #include "clang/3C/3CGlobalOptions.h"
 #include "clang/3C/MappingVisitor.h"
 #include "clang/3C/RewriteUtils.h"
@@ -26,29 +25,6 @@
 
 using namespace llvm;
 using namespace clang;
-
-static RecordDecl *LastRecordDecl = nullptr;
-static std::map<Decl *, Decl *> VDToRDMap;
-static std::set<Decl *> InlineVarDecls;
-
-void detectInlineStruct(Decl *D, SourceManager &SM) {
-  if (RecordDecl *RD = dyn_cast<RecordDecl>(D)) {
-    LastRecordDecl = RD;
-  }
-  if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
-    if(LastRecordDecl != nullptr) {
-      auto lastRecordLocation = LastRecordDecl->getBeginLoc();
-      auto BeginLoc = VD->getBeginLoc();
-      auto EndLoc = VD->getEndLoc();
-      bool IsInLineStruct = SM.isPointWithin(lastRecordLocation, BeginLoc, EndLoc);
-      bool IsNamedInLineStruct = IsInLineStruct && LastRecordDecl->getNameAsString() != "";
-      if (IsNamedInLineStruct) {
-        VDToRDMap[VD] = LastRecordDecl;
-        InlineVarDecls.insert(VD);
-      }
-    }
-  }
-}
 
 // This function is the public entry point for declaration rewriting.
 void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
@@ -465,6 +441,32 @@ void DeclRewriter::rewriteFunctionDecl(FunctionDeclReplacement *N) {
       if (N->getStatement())
         N->getStatement()->dump();
       errs() << "with " << N->getReplacement() << "\n";
+    }
+  }
+}
+
+// A function to detect the presence of inline struct declarations
+// by tracking VarDecls and RecordDecls and populating data structures
+// later used in rewriting
+RecordDecl *DeclRewriter::LastRecordDecl = nullptr;
+std::map<Decl *, Decl *> DeclRewriter::VDToRDMap;
+std::set<Decl *> DeclRewriter::InlineVarDecls;
+void DeclRewriter::detectInlineStruct(Decl *D, SourceManager &SM) {
+  if (RecordDecl *RD = dyn_cast<RecordDecl>(D)) {
+    LastRecordDecl = RD;
+  }
+  if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
+    if(LastRecordDecl != nullptr) {
+      auto lastRecordLocation = LastRecordDecl->getBeginLoc();
+      auto Begin = VD->getBeginLoc();
+      auto End = VD->getEndLoc();
+      bool IsInLineStruct = SM.isPointWithin(lastRecordLocation, Begin, End);
+      bool IsNamedInLineStruct = IsInLineStruct &&
+                                 LastRecordDecl->getNameAsString() != "";
+      if (IsNamedInLineStruct) {
+        VDToRDMap[VD] = LastRecordDecl;
+        InlineVarDecls.insert(VD);
+      }
     }
   }
 }
