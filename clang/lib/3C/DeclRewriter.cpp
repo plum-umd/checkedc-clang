@@ -448,9 +448,12 @@ void DeclRewriter::rewriteFunctionDecl(FunctionDeclReplacement *N) {
 // A function to detect the presence of inline struct declarations
 // by tracking VarDecls and RecordDecls and populating data structures
 // later used in rewriting
-RecordDecl *DeclRewriter::LastRecordDecl = nullptr;
-std::map<Decl *, Decl *> DeclRewriter::VDToRDMap;
-std::set<Decl *> DeclRewriter::InlineVarDecls;
+
+// These variables are duplicated in the header file and here because
+// static vars need to be initialized in the cpp file where the class is defined
+/*static*/ RecordDecl *DeclRewriter::LastRecordDecl = nullptr;
+/*static*/ std::map<Decl *, Decl *> DeclRewriter::VDToRDMap;
+/*static*/ std::set<Decl *> DeclRewriter::InlineVarDecls;
 void DeclRewriter::detectInlineStruct(Decl *D, SourceManager &SM) {
   if (RecordDecl *RD = dyn_cast<RecordDecl>(D)) {
     LastRecordDecl = RD;
