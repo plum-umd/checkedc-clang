@@ -1,15 +1,4 @@
-// RUN: 3c -base-dir=%S -addcr -alltypes -output-postfix=checkedALL %s %S/fptrsafebothmulti2.c
-// RUN: 3c -base-dir=%S -addcr -output-postfix=checkedNOALL %s %S/fptrsafebothmulti2.c
-// RUN: %clang -c %S/fptrsafebothmulti1.checkedNOALL.c %S/fptrsafebothmulti2.checkedNOALL.c
-// RUN: FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" --input-file %S/fptrsafebothmulti1.checkedNOALL.c %s
-// RUN: FileCheck -match-full-lines -check-prefixes="CHECK_ALL","CHECK" --input-file %S/fptrsafebothmulti1.checkedALL.c %s
-// RUN: 3c -base-dir=%S -alltypes -output-postfix=checked %S/fptrsafebothmulti2.c %s
-// RUN: 3c -base-dir=%S -alltypes -output-postfix=convert_again %S/fptrsafebothmulti1.checked.c %S/fptrsafebothmulti2.checked.c
-// RUN: test ! -f %S/fptrsafebothmulti1.checked.convert_again.c
-// RUN: test ! -f %S/fptrsafebothmulti2.checked.convert_again.c
-// RUN: rm %S/fptrsafebothmulti1.checkedALL.c %S/fptrsafebothmulti2.checkedALL.c
-// RUN: rm %S/fptrsafebothmulti1.checkedNOALL.c %S/fptrsafebothmulti2.checkedNOALL.c
-// RUN: rm %S/fptrsafebothmulti1.checked.c %S/fptrsafebothmulti2.checked.c
+// RUN: %S/3c-regtest.py --predefined-script multi %s -t %t --clang '%clang'
 
 
 /*********************************************************************************/

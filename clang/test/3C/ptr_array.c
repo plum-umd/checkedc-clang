@@ -1,9 +1,4 @@
-// RUN: 3c -alltypes -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_ALL","CHECK" %s
-// RUN: 3c -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" %s
-// RUN: 3c -addcr %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -
-// RUN: 3c -output-postfix=checked -alltypes %s
-// RUN: 3c -alltypes %S/ptr_array.checked.c -- | count 0
-// RUN: rm %S/ptr_array.checked.c
+// RUN: %S/3c-regtest.py --predefined-script common %s -t %t --clang '%clang'
 
 /* Tests for issue 60. Array initialization had not been implemented, so wild
  pointer inside and array initializer did not cause the array to be an array
