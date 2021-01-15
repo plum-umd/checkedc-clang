@@ -1136,12 +1136,12 @@ void PointerVariableConstraint::constrainOuterTo(Constraints &CS, ConstAtom *C,
         if (*CA < *C) {
           llvm::errs() << "Warning: " << CA->getStr() << " not less than "
                        << C->getStr() << "\n";
-          assert(CA == CS.getWild()); // definitely bogus if not
+          //assert(CA == CS.getWild()); // definitely bogus if not
         }
       } else if (*C < *CA) {
         llvm::errs() << "Warning: " << C->getStr() << " not less than "
                      << CA->getStr() << "\n";
-        assert(CA == CS.getWild()); // definitely bogus if not
+        //assert(CA == CS.getWild()); // definitely bogus if not
       }
     }
   }
