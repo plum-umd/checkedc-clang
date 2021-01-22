@@ -118,11 +118,21 @@ public:
 
     // If rewriting Parameters, stop at the right parenthesis of the parameters.
     // Otherwise, stop after the return type.
-    // Note: getFunctionDeclarationEnd is used instead of getRParenLoc so that
-    // itypes are deleted correctly when --remove-itypes is used.
-    SourceLocation End = RewriteParams
-                             ? getFunctionDeclarationEnd(Decl, SM)
-                             : Decl->getReturnTypeSourceRange().getEnd();
+    SourceLocation End;
+    if (RewriteParams) {
+      if (auto *BoundsE = Decl->getBoundsExpr())
+        End = BoundsE->getEndLoc();
+      else if (auto *InteropE = Decl->getInteropTypeExpr())
+        End = InteropE->getEndLoc();
+      else
+        End = TypeLoc.getRParenLoc();
+      // SourceLocations are weird and turn up invalid for reasons I don't
+      // understand. Fallback to the original FunctionDecl end function.
+      if (!End.isValid())
+        End = getFunctionDeclarationEnd(Decl, SM);
+    } else {
+      End = Decl->getReturnTypeSourceRange().getEnd();
+    }
 
     assert("Invalid FunctionDeclReplacement SourceRange!" && Begin.isValid() &&
            End.isValid());
