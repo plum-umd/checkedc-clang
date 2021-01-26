@@ -167,20 +167,21 @@ static void emit(Rewriter &R, ASTContext &C, std::string &OutputPostfix) {
         if (getAbsoluteFilePath(FE->getName(), FeAbsS))
           FeAbsS = sys::path::remove_leading_dotslash(FeAbsS);
 
-        if (canWrite(FeAbsS)) {
-          std::error_code EC;
-          raw_fd_ostream Out(NFile, EC, sys::fs::F_None);
+        assert(canWrite(FeAbsS) &&
+               "3C generated changes for a file it was not allowed to write.");
 
-          if (!EC) {
-            if (Verbose)
-              outs() << "writing out " << NFile << "\n";
-            Buffer->second.write(Out);
-          } else
-            errs() << "could not open file " << NFile << "\n";
-          // This is awkward. What to do? Since we're iterating, we could have
-          // created other files successfully. Do we go back and erase them? Is
-          // that surprising? For now, let's just keep going.
-        }
+        std::error_code EC;
+        raw_fd_ostream Out(NFile, EC, sys::fs::F_None);
+
+        if (!EC) {
+          if (Verbose)
+            outs() << "writing out " << NFile << "\n";
+          Buffer->second.write(Out);
+        } else
+          errs() << "could not open file " << NFile << "\n";
+        // This is awkward. What to do? Since we're iterating, we could have
+        // created other files successfully. Do we go back and erase them? Is
+        // that surprising? For now, let's just keep going.
       }
     }
   }

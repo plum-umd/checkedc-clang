@@ -634,6 +634,9 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
     llvm_unreachable("unknown decl type");
 
   assert("We shouldn't be adding a null CV to Variables map." && NewCV);
+  if (!canWrite(PLoc.getFileName())) {
+    NewCV->constrainToWild(CS, "Declaration in non-writable file", &PLoc);
+  }
   constrainWildIfMacro(NewCV, D->getLocation());
   Variables[PLoc] = NewCV;
 }
