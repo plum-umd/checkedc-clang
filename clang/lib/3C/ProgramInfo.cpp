@@ -450,8 +450,12 @@ bool ProgramInfo::insertIntoExternalFunctionMap(ExternalFunctionMapType &Map,
           DiagnosticsEngine::Fatal, "duplicate definition for function %0");
       DE.Report(FD->getLocation(), DuplicateDefinitionsID).AddString(FuncName);
       exit(1);
+    } else {
+      // The old constraint has a body, but we've encountered another prototype
+      // for the function.
+      assert(OldC->hasBody() && !NewC->hasBody());
+      NewC->brainTransplant(OldC, *this);
     }
-    // else oldc->hasBody() so we can ignore the newC prototype
   }
   return RetVal;
 }
