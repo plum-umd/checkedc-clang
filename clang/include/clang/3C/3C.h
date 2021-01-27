@@ -70,6 +70,8 @@ struct _3COptions {
   // that generates diagnostics, except for the declaration merging diagnostics
   // that are currently fatal) and uses the default "expected" prefix.
   bool VerifyDiagnosticOutput;
+
+  bool DumpUnwritableChanges;
 };
 
 // The main interface exposed by the 3C to interact with the tool.
