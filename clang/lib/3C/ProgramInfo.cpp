@@ -846,8 +846,7 @@ bool ProgramInfo::computeInterimConstraintState(
       CAtoms Tmp;
       getVarsFromConstraint(C, Tmp);
       AllValidVars.insert(Tmp.begin(), Tmp.end());
-      if (FilePaths.count(FileName) ||
-          FileName.find(BaseDir) != std::string::npos)
+      if (canWrite(FileName))
         ValidVarsVec.insert(ValidVarsVec.begin(), Tmp.begin(), Tmp.end());
     }
   }
