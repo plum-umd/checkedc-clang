@@ -13,3 +13,9 @@ inline void foo(int *p) {}
 // expected-warning@+1 {{Declaration in non-writable file}}
 int *foo_var = ((void *)0);
 // CHECK_HIGHER: _Ptr<int> foo_var = ((void *)0);
+
+// Make sure we do not add checked regions in non-writable files. This happened
+// incidentally in system headers in some other regression tests, but this is a
+// dedicated test for it.
+inline void no_op() {}
+// CHECK_HIGHER: inline void no_op() _Checked {}

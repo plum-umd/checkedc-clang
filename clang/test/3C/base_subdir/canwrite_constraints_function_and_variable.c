@@ -1,6 +1,7 @@
 // Test that non-canWrite files are constrained not to change so that the final
 // annotations of other files are consistent with the original annotations of
-// the non-canWrite files.
+// the non-canWrite files. The currently supported cases are function and
+// variable declarations and checked regions.
 // (https://github.com/correctcomputation/checkedc-clang/issues/387)
 
 // TODO: When https://github.com/correctcomputation/checkedc-clang/issues/327 is
