@@ -133,3 +133,22 @@ int *test7(int *a) : count(10) {
 //CHECK_NOALL: int *test7(int *a : itype(_Ptr<int>)) : count(10) {
   return a;
 }
+
+// This test cast checks that the itype is overwritten even when it appears
+// after the count. Unfortunately, the count and itype are reversed on
+// rewriting. This isn't great since it's an unnecessary change to the code,
+// but it is still valid.
+#ifdef FOO
+int *test8(int *a, int l) : count(l) itype(_Array_ptr<int>)
+// CHECK: int *test8(_Ptr<int> a, int l) : itype(_Array_ptr<int>) count(l)
+#else
+int *test8(int *a, int l) : count(l) itype(_Array_ptr<int>)
+#endif
+// CHECK: #else
+// CHECK: int *test8(int *a, int l) : count(l) itype(_Array_ptr<int>)
+// CHECK: #endif
+{
+// CHECK: {
+  int *b = 1;
+  return b;
+}

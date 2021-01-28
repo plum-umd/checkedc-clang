@@ -120,14 +120,31 @@ public:
     // Otherwise, stop after the return type.
     SourceLocation End;
     if (RewriteParams) {
-      if (auto *BoundsE = Decl->getBoundsExpr())
-        End = BoundsE->getEndLoc();
-      else if (auto *InteropE = Decl->getInteropTypeExpr())
-        End = InteropE->getEndLoc();
-      else
-        End = TypeLoc.getRParenLoc();
+      // When there are no bounds or itypes on a function, the declaration ends
+      // at the right paren of the declaration parameter list.
+      End = TypeLoc.getRParenLoc();
+
+      // If there's a bounds expression, this comes after the right paren of the
+      // function declaration parameter list.
+      if (auto *BoundsE = Decl->getBoundsExpr()) {
+        SourceLocation BoundsEnd = BoundsE->getEndLoc();
+        if (BoundsEnd.isValid())
+          End = BoundsEnd;
+      }
+
+      // If there's an itype, this also comes would also come after the right
+      // paren. In the case that there is a bounds expression and an itype,
+      // then we need check which is later in the file.
+      if (auto *InteropE = Decl->getInteropTypeExpr()) {
+        SourceLocation InteropEnd = InteropE->getEndLoc();
+        if (InteropEnd.isValid() &&
+            (!End.isValid() || SM.isBeforeInTranslationUnit(End, InteropEnd)))
+          End = InteropEnd;
+      }
+
       // SourceLocations are weird and turn up invalid for reasons I don't
-      // understand. Fallback to the original FunctionDecl end function.
+      // understand. Fallback to extracting r paren location from source
+      // character buffer.
       if (!End.isValid())
         End = getFunctionDeclRParen(Decl, SM);
     } else {
