@@ -97,7 +97,7 @@ public:
     }
     if (!TSInfo || TypeLoc.isNull())
       return SourceRange(Decl->getBeginLoc(),
-                         getFunctionDeclarationEnd(Decl, SM));
+                         getFunctionDeclRParen(Decl, SM));
 
     // Function pointer are funky, and require special handling to rewrite the
     // return type.
@@ -129,7 +129,7 @@ public:
       // SourceLocations are weird and turn up invalid for reasons I don't
       // understand. Fallback to the original FunctionDecl end function.
       if (!End.isValid())
-        End = getFunctionDeclarationEnd(Decl, SM);
+        End = getFunctionDeclRParen(Decl, SM);
     } else {
       End = Decl->getReturnTypeSourceRange().getEnd();
     }
