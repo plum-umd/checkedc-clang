@@ -229,7 +229,7 @@ int main(int argc, const char **argv) {
   }
 
   // Next solve the constraints.
-  if (!_3CInterface.solveConstraints(OptWarnRootCause)) {
+  if (!_3CInterface.solveConstraints()) {
     errs() << "Failure occurred while trying to solve constraints. Exiting.\n";
     return 1;
   }

@@ -13,7 +13,7 @@
 // not allow canwrite_constraints_function_and_variable.h to change, and the
 // internal types of q and the return should remain wild.
 //
-// RUN: cd %S && 3c -addcr -extra-arg=-I${PWD%/*} -output-postfix=checked -warn-root-cause -warn-all-root-cause -verify %s
+// RUN: cd %S && 3c -addcr -extra-arg=-I${PWD%/*} -output-postfix=checked -warn-all-root-cause -verify %s
 // RUN: FileCheck -match-full-lines -check-prefixes=CHECK_LOWER --input-file %S/canwrite_constraints_function_and_variable.checked.c %s
 // RUN: test ! -f %S/../canwrite_constraints_function_and_variable.checked.h
 // RUN: rm %S/canwrite_constraints_function_and_variable.checked.c

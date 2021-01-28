@@ -287,7 +287,7 @@ bool _3CInterface::buildInitialConstraints() {
   return true;
 }
 
-bool _3CInterface::solveConstraints(bool ComputeInterimState) {
+bool _3CInterface::solveConstraints() {
   std::lock_guard<std::mutex> Lock(InterfaceMutex);
   assert(ConstraintsBuilt && "Constraints not yet built. We need to call "
                              "build constraint before trying to solve them.");
@@ -303,7 +303,7 @@ bool _3CInterface::solveConstraints(bool ComputeInterimState) {
   if (Verbose)
     outs() << "Constraints solved\n";
 
-  if (ComputeInterimState)
+  if (WarnRootCause)
     GlobalProgramInfo.computeInterimConstraintState(FilePaths);
 
   if (DumpIntermediate)
