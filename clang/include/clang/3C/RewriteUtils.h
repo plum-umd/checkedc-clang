@@ -132,9 +132,9 @@ public:
           End = BoundsEnd;
       }
 
-      // If there's an itype, this also comes would also come after the right
-      // paren. In the case that there is a bounds expression and an itype,
-      // then we need check which is later in the file.
+      // If there's an itype, this also comes after the right paren. In the case
+      // that there is both a bounds expression and an itype, we need check
+      // which is later in the file and use that as the declaration end.
       if (auto *InteropE = Decl->getInteropTypeExpr()) {
         SourceLocation InteropEnd = InteropE->getEndLoc();
         if (InteropEnd.isValid() &&
