@@ -28,6 +28,8 @@ extern std::vector<std::string> AllocatorFunctions;
 extern bool AddCheckedRegions;
 extern bool WarnRootCause;
 extern bool WarnAllRootCause;
+extern bool DumpUnwritableChanges;
+extern bool AllowUnwritableChanges;
 
 #ifdef FIVE_C
 extern bool RemoveItypes;

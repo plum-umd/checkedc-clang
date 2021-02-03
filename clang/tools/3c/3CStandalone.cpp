@@ -135,6 +135,26 @@ static cl::opt<bool> OptVerifyDiagnosticOutput(
     cl::desc("Verify diagnostic output (for automated testing of 3C)."),
     cl::init(false), cl::cat(_3CCategory), cl::Hidden);
 
+// In the future, we may enhance this to write the output to individual files.
+// For now, the user has to copy and paste the correct portions of stderr.
+static cl::opt<bool> OptDumpUnwritableChanges(
+    "dump-unwritable-changes",
+    cl::desc("When 3C generates changes to a file it cannot write (due to "
+             "stdout mode or implementation limitations), dump the new version "
+             "of the file to stderr for troubleshooting."),
+    cl::init(false), cl::cat(_3CCategory));
+
+static cl::opt<bool> OptAllowUnwritableChanges(
+    "allow-unwritable-changes",
+    cl::desc("When 3C generates changes to a file it cannot write (due to "
+             "stdout mode or implementation limitations), issue a warning "
+             "instead of an error. This option is intended to be used "
+             "temporarily until you fix the root cause of the problem (by "
+             "correcting your usage of stdout mode or reporting the "
+             "implementation limitation to the 3C team to get it fixed) and "
+             "may be removed in the future."),
+    cl::init(false), cl::cat(_3CCategory));
+
 #ifdef FIVE_C
 static cl::opt<bool> OptRemoveItypes(
     "remove-itypes",
@@ -176,6 +196,8 @@ int main(int argc, const char **argv) {
   CcOptions.WarnRootCause = OptWarnRootCause;
   CcOptions.WarnAllRootCause = OptWarnAllRootCause;
   CcOptions.VerifyDiagnosticOutput = OptVerifyDiagnosticOutput;
+  CcOptions.DumpUnwritableChanges = OptDumpUnwritableChanges;
+  CcOptions.AllowUnwritableChanges = OptAllowUnwritableChanges;
 
 #ifdef FIVE_C
   CcOptions.RemoveItypes = OptRemoveItypes;
@@ -219,7 +241,7 @@ int main(int argc, const char **argv) {
   }
 
   // Next solve the constraints.
-  if (!_3CInterface.solveConstraints(OptWarnRootCause)) {
+  if (!_3CInterface.solveConstraints()) {
     errs() << "Failure occurred while trying to solve constraints. Exiting.\n";
     return 1;
   }
