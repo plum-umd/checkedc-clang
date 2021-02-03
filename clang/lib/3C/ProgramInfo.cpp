@@ -549,13 +549,18 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
     if (Variables.find(PLoc) != Variables.end()) {
       // Try to find a previous definition based on function name
       if (!getFuncConstraint(FD, AstContext)) {
+        // No function with the same name exists. It's concerning that
+        // something already exists at this source location, but we add the
+        // function to the function map anyways. The function map indexes by
+        // function name, so there's no collision.
         insertNewFVConstraint(FD, F, AstContext);
         constrainWildIfMacro(F, FD->getLocation());
       } else {
-        // FIXME: Visiting same function in same source location twice.
-        //        This shouldn't happen, but it does for some std lib functions
-        //        on our benchmarks programs (vsftpd, lua, etc.). Bailing for
-        //        now, but a real fix will catch and prevent this earlier.
+        // A function with the same name exists in the same source location.
+        // This happens when a function is defined in a header file which is
+        // included in multiple translation units. getFuncConstraint returned
+        // non-null, so we know that the definition has been processed already,
+        // and there is no more work to do.
       }
       return;
     }
