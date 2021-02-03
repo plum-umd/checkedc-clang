@@ -402,15 +402,13 @@ void ProgramInfo::exitCompilationUnit() {
   return;
 }
 
-bool ProgramInfo::insertIntoExternalFunctionMap(ExternalFunctionMapType &Map,
+void ProgramInfo::insertIntoExternalFunctionMap(ExternalFunctionMapType &Map,
                                                 const std::string &FuncName,
                                                 FVConstraint *NewC,
                                                 FunctionDecl *FD,
                                                 ASTContext *C) {
-  bool RetVal = false;
   if (Map.find(FuncName) == Map.end()) {
     Map[FuncName] = NewC;
-    RetVal = true;
   } else {
     auto *OldC = Map[FuncName];
     if (!OldC->hasBody()) {
@@ -418,7 +416,6 @@ bool ProgramInfo::insertIntoExternalFunctionMap(ExternalFunctionMapType &Map,
           (OldC->numParams() == 0 && NewC->numParams() != 0)) {
         NewC->brainTransplant(OldC, *this);
         Map[FuncName] = NewC;
-        RetVal = true;
       } else {
         // if the current FV constraint is not a definition?
         // then merge.
@@ -459,41 +456,33 @@ bool ProgramInfo::insertIntoExternalFunctionMap(ExternalFunctionMapType &Map,
       NewC->brainTransplant(OldC, *this);
     }
   }
-  return RetVal;
 }
 
-bool ProgramInfo::insertIntoStaticFunctionMap(StaticFunctionMapType &Map,
+void ProgramInfo::insertIntoStaticFunctionMap(StaticFunctionMapType &Map,
                                               const std::string &FuncName,
                                               const std::string &FileName,
                                               FVConstraint *ToIns,
                                               FunctionDecl *FD, ASTContext *C) {
-  bool RetVal = false;
-  if (Map.find(FileName) == Map.end()) {
+  if (Map.find(FileName) == Map.end())
     Map[FileName][FuncName] = ToIns;
-    RetVal = true;
-  } else {
-    RetVal =
-        insertIntoExternalFunctionMap(Map[FileName], FuncName, ToIns, FD, C);
-  }
-  return RetVal;
+  else
+    insertIntoExternalFunctionMap(Map[FileName], FuncName, ToIns, FD, C);
 }
 
-bool ProgramInfo::insertNewFVConstraint(FunctionDecl *FD, FVConstraint *FVCon,
+void ProgramInfo::insertNewFVConstraint(FunctionDecl *FD, FVConstraint *FVCon,
                                         ASTContext *C) {
-  bool Ret = false;
   std::string FuncName = FD->getNameAsString();
   if (FD->isGlobal()) {
     // external method.
-    Ret = insertIntoExternalFunctionMap(ExternalFunctionFVCons, FuncName, FVCon,
-                                        FD, C);
+    insertIntoExternalFunctionMap(ExternalFunctionFVCons, FuncName, FVCon, FD,
+                                  C);
   } else {
     // static method
     auto Psl = PersistentSourceLoc::mkPSL(FD, *C);
     std::string FuncFileName = Psl.getFileName();
-    Ret = insertIntoStaticFunctionMap(StaticFunctionFVCons, FuncName,
-                                      FuncFileName, FVCon, FD, C);
+    insertIntoStaticFunctionMap(StaticFunctionFVCons, FuncName, FuncFileName,
+                                FVCon, FD, C);
   }
-  return Ret;
 }
 
 void ProgramInfo::specialCaseVarIntros(ValueDecl *D, ASTContext *Context) {
