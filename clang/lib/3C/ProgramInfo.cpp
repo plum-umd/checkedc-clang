@@ -454,6 +454,8 @@ bool ProgramInfo::insertIntoExternalFunctionMap(ExternalFunctionMapType &Map,
       // The old constraint has a body, but we've encountered another prototype
       // for the function.
       assert(OldC->hasBody() && !NewC->hasBody());
+      // By transplanting the atoms of OldC into NewC, we ensure that any
+      // constraints applied to NewC later on constrain the atoms of OldC.
       NewC->brainTransplant(OldC, *this);
     }
   }
@@ -552,20 +554,14 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
     // Function Decls have FVConstraints.
     FVConstraint *F = new FVConstraint(D, *this, *AstContext);
     F->setValidDecl();
-    PVConstraint *RetExternal = F->getExternalReturn();
-    PVConstraint *RetInternal = F->getInternalReturn();
-    auto Ret_Ty = FD->getReturnType();
-    unifyIfTypedef(Ret_Ty.getTypePtr(), *AstContext, FD, RetExternal);
-    unifyIfTypedef(Ret_Ty.getTypePtr(), *AstContext, FD, RetInternal);
-
 
     // Handling of PSL collision for functions is different since we need to
     // consider the static and extern function maps.
     if (Variables.find(PLoc) != Variables.end()) {
       // Try to find a previous definition based on function name
       if (!getFuncConstraint(FD, AstContext)) {
-        constrainWildIfMacro(F, FD->getLocation());
         insertNewFVConstraint(FD, F, AstContext);
+        constrainWildIfMacro(F, FD->getLocation());
       } else {
         // FIXME: Visiting same function in same source location twice.
         //        This shouldn't happen, but it does for some std lib functions
@@ -575,8 +571,16 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
       return;
     }
 
-    /* Store the FVConstraint in the global and Variables maps */
+    // Store the FVConstraint in the global and Variables maps. In doing this,
+    // insertNewFVConstraint might replace the atoms in F with the atoms of a
+    // FVConstraint that already exists in the map. Doing this loses any
+    // constraints that might have effected the original atoms, so do not create
+    // any constraint on F before this function is called.
     insertNewFVConstraint(FD, F, AstContext);
+
+    auto RetTy = FD->getReturnType();
+    unifyIfTypedef(RetTy.getTypePtr(), *AstContext, FD, F->getExternalReturn());
+    unifyIfTypedef(RetTy.getTypePtr(), *AstContext, FD, F->getInternalReturn());
 
     NewCV = F;
     // Add mappings from the parameters PLoc to the constraint variables for

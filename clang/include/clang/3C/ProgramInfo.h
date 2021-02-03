@@ -189,7 +189,13 @@ private:
   void specialCaseVarIntros(ValueDecl *D, ASTContext *Context);
 
   // Inserts the given FVConstraint* set into the global map, depending
-  // on whether static or not; returns true on success
+  // on whether static or not.
+  // Note: This can trigger a brainTransplant from an existing FVConstraint into
+  // the argument FVConstraint. The brainTransplant copies the atoms of the
+  // existing FVConstraint into the argument. This effectively throws out any
+  // constraints that may been applied to the argument FVConstraint, so do not
+  // call this function any time other than immediately after constructing an
+  // FVConstraint.
   bool insertNewFVConstraint(FunctionDecl *FD, FVConstraint *FVCon,
                              ASTContext *C);
 
