@@ -5,10 +5,10 @@
 // RUN: 3c -alltypes %S/defn_then_decl.checked.c -- | count 0
 // RUN: rm %S/defn_then_decl.checked.c
 
-// Tests for when a function's declaration appears after the same function's
-// definition. A particular issue that existed in caused constraints added
-// onto the subsequent declaration (for example, because the declaration was in
-// a macro) were not applied to the original definition. 
+// Tests behavior when a function declaration appears after the definition for
+// that function. A specific issue that existed caused constraints applied to
+// the declaration (for example, when the declaration is in a macro) to not
+// be correctly applied to the original definition.
 
 void test0(int *p) {}
 #define MYDECL void test0(int *p);
@@ -26,8 +26,8 @@ void test2(int *p) {}
 void test2(int *p);
 //CHECK: void test2(_Ptr<int> p);
 
-void test3(int *p) { p = 1;}
-//CHECK: void test3(int *p : itype(_Ptr<int>)) { p = 1;}
+void test3(int *p) { p = 1; }
+//CHECK: void test3(int *p : itype(_Ptr<int>)) { p = 1; }
 void test3(int *p);
 //CHECK: void test3(int *p : itype(_Ptr<int>));
 
