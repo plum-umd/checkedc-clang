@@ -465,16 +465,16 @@ void ProgramInfo::insertNewFVConstraint(FunctionDecl *FD, FVConstraint *NewC,
   if (ReasonFailed == "") return;
 
   // Error reporting
-
-  clang::DiagnosticsEngine &DE = C->getDiagnostics();
-  unsigned FailID = DE.getCustomDiagID(DiagnosticsEngine::Fatal,
-                                       "merging failed for %q0 due to %1");
-  const auto Pointer = reinterpret_cast<intptr_t>(FD);
-  const auto Kind = clang::DiagnosticsEngine::ArgumentKind::ak_nameddecl;
-  auto DiagBuilder = DE.Report(FD->getLocation(), FailID);
-  DiagBuilder.AddTaggedVal(Pointer, Kind);
-  DiagBuilder.AddString(ReasonFailed);
-
+  { // block to force DiagBuilder destructor and emit message
+    clang::DiagnosticsEngine &DE = C->getDiagnostics();
+    unsigned FailID = DE.getCustomDiagID(DiagnosticsEngine::Fatal,
+                                         "merging failed for %q0 due to %1");
+    const auto Pointer = reinterpret_cast<intptr_t>(FD);
+    const auto Kind = clang::DiagnosticsEngine::ArgumentKind::ak_nameddecl;
+    auto DiagBuilder = DE.Report(FD->getLocation(), FailID);
+    DiagBuilder.AddTaggedVal(Pointer, Kind);
+    DiagBuilder.AddString(ReasonFailed);
+  }
   // Kill the process and stop conversion
   // Without this code here, 3C simply ignores this pair of functions
   // and converts the rest of the files as it will (in semi-compliance

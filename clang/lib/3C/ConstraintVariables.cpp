@@ -1855,7 +1855,7 @@ void FunctionVariableConstraint::brainTransplant(ConstraintVariable *FromCV,
       }
     }
   } else {
-    llvm_unreachable("Brain Transplant on empty params");
+    ReasonFailed = "transplant on differing param count";
   }
 }
 
