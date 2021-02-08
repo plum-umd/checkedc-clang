@@ -167,20 +167,7 @@ private:
   // For each call to a generic function, remember how the type parameters were
   // instantiated so they can be inserted during rewriting.
   TypeParamBindingsT TypeParamBindings;
-
-  // Insert the given FVConstraint* set into the provided Map.
-  void insertIntoExternalFunctionMap(ExternalFunctionMapType &Map,
-                                     const std::string &FuncName,
-                                     FVConstraint *NewC, FunctionDecl *FD,
-                                     ASTContext *C);
-
-  // Inserts the given FVConstraint* set into the provided static map.
-  void insertIntoStaticFunctionMap(StaticFunctionMapType &Map,
-                                   const std::string &FuncName,
-                                   const std::string &FileName,
-                                   FVConstraint *ToIns, FunctionDecl *FD,
-                                   ASTContext *C);
-
+  
   // Special-case handling for decl introductions. For the moment this covers:
   //  * void-typed variables
   //  * va_list-typed variables

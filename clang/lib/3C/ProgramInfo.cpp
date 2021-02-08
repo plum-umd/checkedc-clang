@@ -402,87 +402,84 @@ void ProgramInfo::exitCompilationUnit() {
   return;
 }
 
-void ProgramInfo::insertIntoExternalFunctionMap(ExternalFunctionMapType &Map,
-                                                const std::string &FuncName,
-                                                FVConstraint *NewC,
-                                                FunctionDecl *FD,
-                                                ASTContext *C) {
-  if (Map.find(FuncName) == Map.end()) {
-    Map[FuncName] = NewC;
-  } else {
-    auto *OldC = Map[FuncName];
-    if (!OldC->hasBody()) {
-      if (NewC->hasBody() ||
-          (OldC->numParams() == 0 && NewC->numParams() != 0)) {
-        NewC->brainTransplant(OldC, *this);
-        Map[FuncName] = NewC;
-      } else {
-        // if the current FV constraint is not a definition?
-        // then merge.
-        std::string ReasonFailed = "";
-        OldC->mergeDeclaration(NewC, *this, ReasonFailed);
-        bool MergingFailed = ReasonFailed != "";
-        if (MergingFailed) {
-          clang::DiagnosticsEngine &DE = C->getDiagnostics();
-          unsigned MergeFailID = DE.getCustomDiagID(
-              DiagnosticsEngine::Fatal, "merging failed for %q0 due to %1");
-          const auto Pointer = reinterpret_cast<intptr_t>(FD);
-          const auto Kind =
-              clang::DiagnosticsEngine::ArgumentKind::ak_nameddecl;
-          auto DiagBuilder = DE.Report(FD->getLocation(), MergeFailID);
-          DiagBuilder.AddTaggedVal(Pointer, Kind);
-          DiagBuilder.AddString(ReasonFailed);
-        }
-        if (MergingFailed) {
-          // Kill the process and stop conversion
-          // Without this code here, 3C simply ignores this pair of functions
-          // and converts the rest of the files as it will (in semi-compliance
-          // with Mike's (2) listed on the original issue (#283)
-          exit(1);
-        }
-      }
-    } else if (NewC->hasBody()) {
-      clang::DiagnosticsEngine &DE = C->getDiagnostics();
-      unsigned DuplicateDefinitionsID = DE.getCustomDiagID(
-          DiagnosticsEngine::Fatal, "duplicate definition for function %0");
-      DE.Report(FD->getLocation(), DuplicateDefinitionsID).AddString(FuncName);
-      exit(1);
-    } else {
-      // The old constraint has a body, but we've encountered another prototype
-      // for the function.
-      assert(OldC->hasBody() && !NewC->hasBody());
-      // By transplanting the atoms of OldC into NewC, we ensure that any
-      // constraints applied to NewC later on constrain the atoms of OldC.
-      NewC->brainTransplant(OldC, *this);
-    }
-  }
-}
-
-void ProgramInfo::insertIntoStaticFunctionMap(StaticFunctionMapType &Map,
-                                              const std::string &FuncName,
-                                              const std::string &FileName,
-                                              FVConstraint *ToIns,
-                                              FunctionDecl *FD, ASTContext *C) {
-  if (Map.find(FileName) == Map.end())
-    Map[FileName][FuncName] = ToIns;
-  else
-    insertIntoExternalFunctionMap(Map[FileName], FuncName, ToIns, FD, C);
-}
-
-void ProgramInfo::insertNewFVConstraint(FunctionDecl *FD, FVConstraint *FVCon,
+void ProgramInfo::insertNewFVConstraint(FunctionDecl *FD, FVConstraint *NewC,
                                         ASTContext *C) {
   std::string FuncName = FD->getNameAsString();
-  if (FD->isGlobal()) {
-    // external method.
-    insertIntoExternalFunctionMap(ExternalFunctionFVCons, FuncName, FVCon, FD,
-                                  C);
-  } else {
-    // static method
+
+  // Choose a storage location
+
+  // assume a global function, but change to a static if not
+  ExternalFunctionMapType *Map = &ExternalFunctionFVCons;
+  if (!FD->isGlobal()) {
+    // if the filename is new, just insert and we're done
     auto Psl = PersistentSourceLoc::mkPSL(FD, *C);
-    std::string FuncFileName = Psl.getFileName();
-    insertIntoStaticFunctionMap(StaticFunctionFVCons, FuncName, FuncFileName,
-                                FVCon, FD, C);
+    std::string FileName = Psl.getFileName();
+    if (StaticFunctionFVCons.find(FileName) == StaticFunctionFVCons.end()){
+      StaticFunctionFVCons[FileName][FuncName] = NewC;
+      return;
+    }
+
+    // store in static map
+    Map = &StaticFunctionFVCons[FileName];
   }
+
+  // if the function is new, just insert and we're done
+  if (Map->find(FuncName) == Map->end()) {
+    (*Map)[FuncName] = NewC;
+    return;
+  }
+
+  // Resolve conflicts
+
+  // We need to keep the version with a body, if it exists,
+  // so branch based on it
+  auto *OldC = (*Map)[FuncName];
+  bool NewHasBody = NewC->hasBody();
+  bool OldHasBody = OldC->hasBody();
+  std::string ReasonFailed = "";
+
+  if (OldHasBody && NewHasBody) {
+    // Two separate bodies for a function is irreconcilable
+    ReasonFailed = "multiple function bodies";
+  } else if (OldHasBody && !NewHasBody) {
+    // By transplanting the atoms of OldC into NewC, we ensure that any
+    // constraints applied to NewC later on constrain the atoms of OldC.
+    NewC->brainTransplant(OldC, *this, ReasonFailed);
+  } else if (!OldHasBody && NewHasBody) {
+    // as above, but the new version has the body
+    NewC->brainTransplant(OldC, *this, ReasonFailed);
+    (*Map)[FuncName] = NewC;
+  } else if (!OldHasBody && !NewHasBody) {
+    // special case for undeclared params
+    if (OldC->numParams() == 0 && NewC->numParams() != 0) {
+      NewC->brainTransplant(OldC, *this, ReasonFailed);
+      (*Map)[FuncName] = NewC;
+    } else {
+      // Merging favors the checked types.
+      // It assumes the author changed a few and missed a few.
+      OldC->mergeDeclaration(NewC, *this, ReasonFailed);
+    }
+  }
+
+  // If successful, we're done and can skip error reporting
+  if (ReasonFailed == "") return;
+
+  // Error reporting
+
+  clang::DiagnosticsEngine &DE = C->getDiagnostics();
+  unsigned FailID = DE.getCustomDiagID(DiagnosticsEngine::Fatal,
+                                       "merging failed for %q0 due to %1");
+  const auto Pointer = reinterpret_cast<intptr_t>(FD);
+  const auto Kind = clang::DiagnosticsEngine::ArgumentKind::ak_nameddecl;
+  auto DiagBuilder = DE.Report(FD->getLocation(), FailID);
+  DiagBuilder.AddTaggedVal(Pointer, Kind);
+  DiagBuilder.AddString(ReasonFailed);
+
+  // Kill the process and stop conversion
+  // Without this code here, 3C simply ignores this pair of functions
+  // and converts the rest of the files as it will (in semi-compliance
+  // with Mike's (2) listed on the original issue (#283)
+  exit(1);
 }
 
 void ProgramInfo::specialCaseVarIntros(ValueDecl *D, ASTContext *Context) {

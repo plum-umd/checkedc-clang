@@ -1724,16 +1724,21 @@ bool isAValidPVConstraint(const ConstraintVariable *C) {
 
 // Replace CVars and ArgumentConstraints with those in [FromCV].
 void PointerVariableConstraint::brainTransplant(ConstraintVariable *FromCV,
-                                                ProgramInfo &I) {
+                                                ProgramInfo &I,
+                                                std::string &ReasonFailed) {
   PVConstraint *From = dyn_cast<PVConstraint>(FromCV);
   assert(From != nullptr);
   CAtoms CFrom = From->getCvars();
-  assert(Vars.size() == CFrom.size());
+  if(Vars.size() != CFrom.size()) {
+    ReasonFailed = "transplanting different pointer levels";
+    return;
+  }
   if (From->hasBoundsKey()) {
     // If this has bounds key!? Then do brain transplant of
     // bound keys as well.
     if (hasBoundsKey())
-      I.getABoundsInfo().brainTransplant(getBoundsKey(), From->getBoundsKey());
+      I.getABoundsInfo().brainTransplant(getBoundsKey(),
+                                         From->getBoundsKey());
 
     ValidBoundsKey = From->hasBoundsKey();
     BKey = From->getBoundsKey();
@@ -1742,7 +1747,7 @@ void PointerVariableConstraint::brainTransplant(ConstraintVariable *FromCV,
   ArgumentConstraints = From->getArgumentConstraints();
   if (FV) {
     assert(From->FV);
-    FV->brainTransplant(From->FV, I);
+    FV->brainTransplant(From->FV, I, ReasonFailed);
   }
 }
 
@@ -1816,15 +1821,26 @@ Atom *PointerVariableConstraint::getAtom(unsigned AtomIdx, Constraints &CS) {
 
 // Brain Transplant params and returns in [FromCV], recursively.
 void FunctionVariableConstraint::brainTransplant(ConstraintVariable *FromCV,
-                                                 ProgramInfo &I) {
+                                                 ProgramInfo &I,
+                                                 std::string &ReasonFailed) {
   FVConstraint *From = dyn_cast<FVConstraint>(FromCV);
   assert(From != nullptr);
   // Transplant returns.
-  ReturnVar.brainTransplant(&From->ReturnVar, I);
+  ReturnVar.brainTransplant(&From->ReturnVar, I, ReasonFailed);
+  if (ReasonFailed != "") {
+    ReasonFailed += "for return value";
+    return;
+  }
+
   // Transplant params.
   if (numParams() == From->numParams()) {
-    for (unsigned J = 0; J < From->numParams(); J++)
-      ParamVars[J].brainTransplant(&From->ParamVars[J], I);
+    for (unsigned J = 0; J < From->numParams(); J++) {
+      ParamVars[J].brainTransplant(&From->ParamVars[J], I, ReasonFailed);
+      if (ReasonFailed != "") {
+        ReasonFailed += "for parameter " + std::to_string(J);
+        return;
+      }
+    }
   } else if (numParams() != 0 && From->numParams() == 0) {
     auto &CS = I.getConstraints();
     const std::vector<ParamDeferment> &Defers = From->getDeferredParams();
@@ -1865,7 +1881,7 @@ void FunctionVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
   }
   if (this->numParams() == 0) {
     // This is an untyped declaration, we need to perform a transplant
-    From->brainTransplant(this, I);
+    From->brainTransplant(this, I, ReasonFailed);
   } else {
     // Standard merge
     if (this->numParams() != From->numParams()) {
@@ -1913,14 +1929,17 @@ void FVComponentVariable::mergeDeclaration(FVComponentVariable *From,
 }
 
 void FVComponentVariable::brainTransplant(FVComponentVariable *From,
-                                          ProgramInfo &I) {
+                                          ProgramInfo &I,
+                                          std::string &ReasonFailed) {
   // As in mergeDeclaration, special handling is required if the original
   // declaration did not allocate split constraint variables.
   if (InternalConstraint == ExternalConstraint)
     InternalConstraint = From->InternalConstraint;
   else
-    InternalConstraint->brainTransplant(From->InternalConstraint, I);
-  ExternalConstraint->brainTransplant(From->ExternalConstraint, I);
+    InternalConstraint->brainTransplant(From->InternalConstraint, I,
+                                        ReasonFailed);
+  ExternalConstraint->brainTransplant(From->ExternalConstraint, I,
+                                      ReasonFailed);
 }
 
 std::string
