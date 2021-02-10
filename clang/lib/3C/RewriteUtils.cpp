@@ -198,7 +198,10 @@ static void emit(Rewriter &R, ASTContext &C) {
       // Produce a path/file name for the rewritten source file.
       std::string NFile;
       std::error_code EC;
-
+      // We now know that we are using either OutputPostfix or OutputDir mode
+      // because stdout mode is handled above. OutputPostfix defaults to "-"
+      // when it's not provided, so any other value means that we should use
+      // OutputPostfix. Otherwise, we must be in OutputDir mode. 
       if (OutputPostfix != "-") {
         // That path should be the same as the old one, with a
         // suffix added between the file name and the extension.
