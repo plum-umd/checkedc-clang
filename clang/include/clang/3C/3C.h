@@ -97,9 +97,10 @@ public:
   // datatype that is accepted in our codebase
   // (https://llvm.org/docs/ProgrammersManual.html#fallible-constructors) seems
   // too unwieldy to use right now.
-  static _3CInterface *create(const struct _3COptions &CCopt,
-                              const std::vector<std::string> &SourceFileList,
-                              clang::tooling::CompilationDatabase *CompDB);
+  static std::unique_ptr<_3CInterface> create(
+      const struct _3COptions &CCopt,
+      const std::vector<std::string> &SourceFileList,
+      clang::tooling::CompilationDatabase *CompDB);
 
   // Constraint Building.
 

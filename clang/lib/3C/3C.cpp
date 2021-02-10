@@ -195,15 +195,14 @@ void runSolver(ProgramInfo &Info, std::set<std::string> &SourceFiles) {
   }
 }
 
-_3CInterface *
+std::unique_ptr<_3CInterface>
 _3CInterface::create(const struct _3COptions &CCopt,
                      const std::vector<std::string> &SourceFileList,
                      CompilationDatabase *CompDB) {
   bool Failed = false;
-  _3CInterface *_3CInter =
-      new _3CInterface(CCopt, SourceFileList, CompDB, Failed);
+  std::unique_ptr<_3CInterface> _3CInter(
+      new _3CInterface(CCopt, SourceFileList, CompDB, Failed));
   if (Failed) {
-    delete _3CInter;
     return nullptr;
   }
   return _3CInter;
