@@ -61,11 +61,13 @@ you want to use for all source files (this is equivalent to specifying those
 options via -extra-arg before the "--").
 
 You can use either -output-dir or -output-postfix to control the paths at which
-3c writes the new versions of your files. If you use neither, then you can only
+3c writes the new versions of your files. With either of these options, if 3c
+does not write a new version of a given file, that means the file needs no
+changes. If you use neither -output-dir nor -output-postfix, then you can only
 pass one source file on the command line and the new version of that file is
-written to stdout ("stdout mode"), but 3c still solves for changes to all files
-under the -base-dir that are "#include"-d by that file and it is an error if any
-other file changes.
+written to stdout regardless of whether it differs from the original ("stdout
+mode"), but 3c still solves for changes to all files under the -base-dir that
+are "#include"-d by that file and it is an error if any other file changes.
 
 )";
 
