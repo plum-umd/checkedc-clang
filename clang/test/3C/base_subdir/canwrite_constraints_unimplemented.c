@@ -10,7 +10,8 @@
 // expected-error@../base_subdir_partial_defn.h:1 {{3C internal error: 3C generated changes to this file even though it is not allowed to write to the file}}
 // expected-note@../base_subdir_partial_defn.h:1 {{-dump-unwritable-changes}}
 
-// The "../base_subdir_partial_defn.h" path is testing two former base dir matching bugs from
+// The "../base_subdir_partial_defn.h" path is testing two former base dir
+// matching bugs from
 // https://github.com/correctcomputation/checkedc-clang/issues/327:
 //
 // 1. 3C canonicalizes ".." path elements. Otherwise, it would think ".." is a
