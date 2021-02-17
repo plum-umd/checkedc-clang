@@ -183,9 +183,9 @@ void CastPlacementVisitor::surroundByCast(ConstraintVariable *Dst,
   // of adding a new expression.
   if (auto *CE = dyn_cast<CStyleCastExpr>(E->IgnoreParens())) {
     SourceRange CastTypeRange(CE->getLParenLoc(), CE->getRParenLoc());
-    Writer.ReplaceText(CastTypeRange, CastStrs.first.substr(1));
+    rewriteSourceRange(Writer, CastTypeRange, CastStrs.first.substr(1));
   } else {
-    // First try to insert the cast prefix and suffix around the extression in
+    // First try to insert the cast prefix and suffix around the expression in
     // the source code.
     bool FrontRewritable = Writer.isRewritable(E->getBeginLoc());
     bool EndRewritable = Writer.isRewritable(E->getEndLoc());
@@ -197,7 +197,7 @@ void CastPlacementVisitor::surroundByCast(ConstraintVariable *Dst,
     } else {
       // Sometimes we can't insert the cast around the expression due to macros
       // getting in the way. In these cases, we can sometimes replace the entire
-      // expression source with a new string containing the orginal expression
+      // expression source with a new string containing the original expression
       // and the cast.
       auto CRA = CharSourceRange::getTokenRange(E->getSourceRange());
       auto NewCRA = clang::Lexer::makeFileCharRange(
@@ -206,8 +206,24 @@ void CastPlacementVisitor::surroundByCast(ConstraintVariable *Dst,
       // This doesn't always work either. We can't rewrite if the cast needs to
       // be placed fully inside a macro rather than around a macro or on an
       // argument to the macro.
-      if (!SrcText.empty())
+      if (!SrcText.empty()) {
+        // Do not use rewriteSourceRange because NewCRA is already an expanded
+        // source range. We already know we're dealing with some macros, so
+        // there's no need to go through the extra steps.
         Writer.ReplaceText(NewCRA, CastStrs.first + SrcText + CastStrs.second);
+      } else {
+        // FIXME: This is a warning rather than an error so that a new benchmark
+        //        failure is not introduced in Lua.
+        clang::DiagnosticsEngine &DE = Context->getDiagnostics();
+        unsigned ErrorId =
+          DE.getCustomDiagID(DiagnosticsEngine::Warning,
+                             "Unable to surround expression with cast.\n"
+                             "Intended cast: \"%0\"");
+        auto ErrorBuilder = DE.Report(E->getExprLoc(), ErrorId);
+        ErrorBuilder.AddSourceRange(
+          Context->getSourceManager().getExpansionRange(E->getSourceRange()));
+        ErrorBuilder.AddString(CastStrs.first + CastStrs.second);
+      }
     }
   }
 }

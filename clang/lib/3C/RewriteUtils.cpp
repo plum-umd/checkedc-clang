@@ -128,8 +128,49 @@ GlobalVariableGroups::~GlobalVariableGroups() {
 // Note that R.getRangeSize will return -1 if SR is within
 // a macro as well. This means that we can't re-write any
 // text that occurs within a macro.
-bool canRewrite(Rewriter &R, SourceRange &SR) {
+bool canRewrite(Rewriter &R, const SourceRange &SR) {
   return SR.isValid() && (R.getRangeSize(SR) != -1);
+}
+
+void rewriteSourceRange(Rewriter &R, const SourceRange &Range,
+                        const std::string &NewText) {
+  if (canRewrite(R, Range)) {
+    R.ReplaceText(Range, NewText);
+  } else {
+    // There is a macro somewhere in the source range, but it wasn't noticed
+    // during constraint generation. This typically means that the only part of
+    // the range being rewritten is in a macro. For declarations, this seems to
+    // mean that the identifier is not in a macro, but other parts of the
+    // declaration might be.
+    SourceRange Expand = R.getSourceMgr().getExpansionRange(Range).getAsRange();
+    clang::DiagnosticsEngine &DE = R.getSourceMgr().getDiagnostics();
+    if (canRewrite(R, Expand)) {
+      // Rewrite using the expansion range if possible. The clobbers any macros
+      // that were used in the source range if we haven't already made an
+      // effort to preserve them when constructing the replacement text. E.g, a
+      // macro used in the base type of a pointer is not clobbered, but a macro
+      // used as a type qualifier is.
+      unsigned WarningID =
+        DE.getCustomDiagID(DiagnosticsEngine::Warning,
+                           "Rewriting might clobber macro");
+      auto WarningBuilder = DE.Report(Range.getBegin(), WarningID);
+      WarningBuilder.AddSourceRange(R.getSourceMgr().getExpansionRange(Range));
+
+      R.ReplaceText(Expand, NewText);
+    } else {
+      // If we can't rewrite the expanded source range, then we're out of
+      // options. This is more likely to be a bug in 3C than an issue with the
+      // input, but emitting a diagnostic here with the intended rewriting is
+      // much more useful than crashing with an assert fail.
+      unsigned ErrorId =
+        DE.getCustomDiagID(DiagnosticsEngine::Error,
+                           "Unable to rewrite converted source range.\n"
+                           "Intended rewriting: \"%0\"");
+      auto ErrorBuilder = DE.Report(Range.getBegin(), ErrorId);
+      ErrorBuilder.AddSourceRange(R.getSourceMgr().getExpansionRange(Range));
+      ErrorBuilder.AddString(NewText);
+    }
+  }
 }
 
 static void emit(Rewriter &R, ASTContext &C) {
@@ -308,12 +349,9 @@ private:
            }));
 
     for (auto *CV : CVSingleton)
-      // Only rewrite if the type has changed.
-      if (CV->anyChanges(Vars)) {
-        // Replace the original type with this new one
-        if (canRewrite(Writer, Range))
-          Writer.ReplaceText(Range, CV->mkString(Vars, false));
-      }
+      // Replace the original type with this new one if the type has changed
+      if (CV->anyChanges(Vars))
+        rewriteSourceRange(Writer, Range, CV->mkString(Vars, false));
   }
 };
 

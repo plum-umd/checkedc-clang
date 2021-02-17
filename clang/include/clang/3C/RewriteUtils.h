@@ -254,6 +254,9 @@ private:
   void emitRootCauseDiagnostics(ASTContext &Context);
 };
 
-bool canRewrite(Rewriter &R, SourceRange &SR);
+bool canRewrite(Rewriter &R, const SourceRange &SR);
+
+void rewriteSourceRange(Rewriter &R, const SourceRange &Range,
+                        const std::string &NewText);
 
 #endif // LLVM_CLANG_3C_REWRITEUTILS_H
