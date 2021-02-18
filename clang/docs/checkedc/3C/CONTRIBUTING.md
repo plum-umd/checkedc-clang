@@ -38,11 +38,12 @@ getting your contribution accepted upstream and/or ensure it is merged
 quickly to CCI's repository.
 
 If the previous paragraph does not apply, just submit a pull request
-here. You must grant the same license on your contribution as the
-existing codebase. We do not have a formal contributor license
-agreement (CLA) process at this time, but we may set one up and
-require you to complete it before we accept your contribution. Also be
-aware that we need to keep 5C ([our proprietary extension of
+to CCI's repository. You must grant the same license on your
+contribution as the existing codebase. We do not have a formal
+contributor license agreement (CLA) process at this time, but we may
+set one up and require you to complete it before we accept your
+contribution. Also be aware that we need to keep 5C ([our proprietary
+extension of
 3C](README.md#what-3c-users-should-know-about-the-development-process))
 working, so you may have to wait for us to address 5C-specific
 problems arising from your 3C pull request and/or we may ask you to
@@ -88,6 +89,10 @@ in your code. Specifically:
 
 * Space before and after `:` in iterators, i.e., `for (auto &k : List)`
 
-All files should be formatted with `clang-format` and pass `clang-tidy` ([more
-information](clang-tidy.md)), and nonempty files should have a final newline
-(surprisingly, `clang-format` cannot enforce this).
+Our goal is that all files should be formatted with `clang-format` and
+pass `clang-tidy` ([more information](clang-tidy.md)), and nonempty
+files should have a final newline (surprisingly, `clang-format` cannot
+enforce this). However, until we have better automation, we decided it
+isn't reasonable to require contributors to manually run these tools
+and fix style nits in each change; instead, we periodically run the
+tools on the entire 3C codebase.
