@@ -158,6 +158,7 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
 }
 
 void DeclRewriter::rewrite(RSet &ToRewrite) {
+  auto Len = ToRewrite.size();
   for (auto *const N : ToRewrite) {
     assert(N->getDecl() != nullptr);
 
@@ -574,8 +575,6 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
 
   // If this is an external function, there is no need to rewrite the
   // declaration. We cannot change the signature of external functions.
-  if (!Defnc->hasBody())
-    return true;
 
   // DidAnyParams tracks if we have made any changes to the parameters for this
   // declarations. If no changes are made, then there is no need to rewrite the
@@ -618,6 +617,7 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
   if (FD->getReturnType()->isFunctionPointerType() && RewriteReturn)
     RewriteParams = true;
 
+
   // Combine parameter and return variables rewritings into a single rewriting
   // for the entire function declaration.
   std::string NewSig = "";
@@ -646,8 +646,10 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
   // Add new declarations to RewriteThese if it has changed
   if (RewriteReturn || RewriteParams) {
     for (auto *const RD : Definition->redecls())
-      RewriteThese.insert(new FunctionDeclReplacement(RD, NewSig, RewriteReturn,
-                                                      RewriteParams));
+      if (!RD->isImplicit())
+        RewriteThese.insert(new FunctionDeclReplacement(RD, NewSig,
+                                                        RewriteReturn,
+                                                        RewriteParams));
     // Save the modified function signature.
     if (FD->isStatic()) {
       auto FileName = PersistentSourceLoc::mkPSL(FD, *Context).getFileName();
@@ -710,7 +712,8 @@ FunctionDeclBuilder::buildDeclVar(PVConstraint *IntCV, PVConstraint *ExtCV,
   // strings are taken unchanged from the original source.
   if (isa<ParmVarDecl>(Decl)) {
     Type = getSourceText(Decl->getSourceRange(), *Context);
-    IType = "";
+    IType = getExistingIType(ExtCV);
+    IType += ABRewriter.getBoundsString(ExtCV, Decl, !IType.empty());
   } else {
     Type = ExtCV->getOriginalTy() + " ";
     IType = getExistingIType(ExtCV);

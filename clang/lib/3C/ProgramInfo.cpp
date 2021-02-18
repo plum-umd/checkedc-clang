@@ -335,12 +335,8 @@ bool ProgramInfo::link() {
           "Unchecked pointer in parameter or return of external function " +
           FuncName;
       G->getInternalReturn()->constrainToWild(CS, Rsn);
-      if (!G->getExternalReturn()->getIsGeneric())
-        G->getExternalReturn()->constrainToWild(CS, Rsn);
       for (unsigned I = 0; I < G->numParams(); I++) {
         G->getInternalParam(I)->constrainToWild(CS, Rsn);
-        if (!G->getExternalParam(I)->getIsGeneric())
-          G->getExternalParam(I)->constrainToWild(CS, Rsn);
       }
     }
   }
