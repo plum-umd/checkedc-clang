@@ -207,10 +207,8 @@ void CastPlacementVisitor::surroundByCast(ConstraintVariable *Dst,
       // be placed fully inside a macro rather than around a macro or on an
       // argument to the macro.
       if (!SrcText.empty()) {
-        // Do not use rewriteSourceRange because NewCRA is already an expanded
-        // source range. We already know we're dealing with some macros, so
-        // there's no need to go through the extra steps.
-        Writer.ReplaceText(NewCRA, CastStrs.first + SrcText + CastStrs.second);
+        rewriteSourceRange(Writer, NewCRA,
+                           CastStrs.first + SrcText + CastStrs.second);
       } else {
         // FIXME: This is a warning rather than an error so that a new benchmark
         //        failure is not introduced in Lua.

@@ -128,11 +128,16 @@ GlobalVariableGroups::~GlobalVariableGroups() {
 // Note that R.getRangeSize will return -1 if SR is within
 // a macro as well. This means that we can't re-write any
 // text that occurs within a macro.
-bool canRewrite(Rewriter &R, const SourceRange &SR) {
+bool canRewrite(Rewriter &R, const CharSourceRange &SR) {
   return SR.isValid() && (R.getRangeSize(SR) != -1);
 }
 
 void rewriteSourceRange(Rewriter &R, const SourceRange &Range,
+                        const std::string &NewText) {
+  rewriteSourceRange(R, CharSourceRange::getTokenRange(Range), NewText);
+}
+
+void rewriteSourceRange(Rewriter &R, const CharSourceRange &Range,
                         const std::string &NewText) {
   if (canRewrite(R, Range)) {
     R.ReplaceText(Range, NewText);
@@ -142,7 +147,7 @@ void rewriteSourceRange(Rewriter &R, const SourceRange &Range,
     // the range being rewritten is in a macro. For declarations, this seems to
     // mean that the identifier is not in a macro, but other parts of the
     // declaration might be.
-    SourceRange Expand = R.getSourceMgr().getExpansionRange(Range).getAsRange();
+    CharSourceRange Expand = R.getSourceMgr().getExpansionRange(Range);
     clang::DiagnosticsEngine &DE = R.getSourceMgr().getDiagnostics();
     if (canRewrite(R, Expand)) {
       // Rewrite using the expansion range if possible. The clobbers any macros
