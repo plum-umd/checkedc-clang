@@ -212,6 +212,7 @@ void CastPlacementVisitor::surroundByCast(ConstraintVariable *Dst,
       } else {
         // FIXME: This is a warning rather than an error so that a new benchmark
         //        failure is not introduced in Lua.
+        //        github.com/correctcomputation/checkedc-clang/issues/439
         clang::DiagnosticsEngine &DE = Context->getDiagnostics();
         unsigned ErrorId =
           DE.getCustomDiagID(DiagnosticsEngine::Warning,
