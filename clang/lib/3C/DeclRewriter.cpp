@@ -700,6 +700,10 @@ void FunctionDeclBuilder::buildItypeDecl(PVConstraint *Defn,
   return;
 }
 
+// Note: For a parameter, Type + IType will give the full declaration (including
+// the name) but the breakdown between Type and IType is not guaranteed. For a
+// return, Type will be what goes before the name and IType will be what goes
+// after the parentheses.
 void
 FunctionDeclBuilder::buildDeclVar(PVConstraint *IntCV, PVConstraint *ExtCV,
                                   DeclaratorDecl *Decl, std::string &Type,
@@ -725,19 +729,26 @@ FunctionDeclBuilder::buildDeclVar(PVConstraint *IntCV, PVConstraint *ExtCV,
   // For parameter variables, we try to extract the declaration from the source
   // code. This preserves macros and other formatting. This isn't possible for
   // return variables because the itype on returns is located after the
-  // parameter list. Sometimes the source range for a parameter declaration is
-  // not valid, for example if a function prototype is declared using a typedef.
-  // For these cases, we just fall back to reconstructing the declaration from
-  // the PVConstraint.
-  SourceRange Range = Decl->getSourceRange();
-  if (isa<ParmVarDecl>(Decl) && Range.isValid()) {
-    Type = getSourceText(Range, *Context);
-    IType = "";
+  // parameter list. Sometimes we cannot get the original source for a parameter
+  // declaration, for example if a function prototype is declared using a
+  // typedef or the parameter declaration is inside a macro. For these cases, we
+  // just fall back to reconstructing the declaration from the PVConstraint.
+  ParmVarDecl *PVD = dyn_cast<ParmVarDecl>(Decl);
+  if (PVD) {
+    Type = getSourceText(PVD->getSourceRange(), *Context);
+    if (!Type.empty()) {
+      // Great, we got the original source including any itype and bounds.
+      IType = "";
+      return;
+    }
+    // Otherwise, reconstruct the name and type, and reuse the code below for
+    // the itype and bounds.
+    Type = qtyToStr(PVD->getOriginalType(), PVD->getNameAsString());
   } else {
     Type = ExtCV->getOriginalTy() + " ";
-    IType = getExistingIType(ExtCV);
-    IType += ABRewriter.getBoundsString(ExtCV, Decl, !IType.empty());
   }
+  IType = getExistingIType(ExtCV);
+  IType += ABRewriter.getBoundsString(ExtCV, Decl, !IType.empty());
 }
 
 std::string FunctionDeclBuilder::getExistingIType(ConstraintVariable *DeclC) {
