@@ -577,11 +577,11 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
   if (!Defnc->hasBody())
     return true;
 
-  // RewriteParam and RewriteReturns track if we will need to rewrite the
-  // parameter and return type declarations on this function. There are first
+  // RewriteParams and RewriteReturn track if we will need to rewrite the
+  // parameter and return type declarations on this function. They are first
   // set to true if any changes are made to the types of the parameter and
-  // return. If the type has changed, then it must be rewritten. There are then
-  // some special circumstances which require rewriting the paramter or return
+  // return. If a type has changed, then it must be rewritten. There are then
+  // some special circumstances which require rewriting the parameter or return
   // even when the type as not changed.
   bool RewriteParams = false;
   bool RewriteReturn = false;
@@ -619,10 +619,15 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
   if (FD->getReturnType()->isFunctionPointerType() && RewriteReturn)
     RewriteParams = true;
 
-  // If the function is declared with using a typedef for the function type,
-  // then we need to rewrite parameters and the return if either would have been
+  // If the function is declared using a typedef for the function type, then we
+  // need to rewrite parameters and the return if either would have been
   // rewritten. What this does is expand the typedef to the full function type
-  // to avoid the problem of rewriting inside the typdef.
+  // to avoid the problem of rewriting inside the typedef.
+  // FIXME: If issue #437 is fixed in way that preserves typedefs on function
+  //        declarations, then this conditional should be removed to enable
+  //        separate rewriting of return type and parameters on the
+  //        corresponding definition.
+  //        https://github.com/correctcomputation/checkedc-clang/issues/437
   if ((RewriteReturn || RewriteParams) && hasDeclWithTypedef(FD)) {
     RewriteParams = true;
     RewriteReturn = true;
@@ -747,14 +752,13 @@ bool FunctionDeclBuilder::isFunctionVisited(std::string FuncName) {
   return VisitedSet.find(FuncName) != VisitedSet.end();
 }
 
-// Given a function declaration figure out if this declaration or any
-// other declarations for the same function are declared using a typedefed
-// function type.
+// Given a function declaration figure out if this declaration or any other
+// declaration of the same function is declared using a typedefed function type.
 bool FunctionDeclBuilder::hasDeclWithTypedef(const FunctionDecl *FD) {
   for (FunctionDecl *FDIter : FD->redecls()) {
-    // If the declaration type is TypedefType, then this is definitely
-    // declared using a typedef. This only happens when the typedefed
-    // declaration is the first declaration of a function.
+    // If the declaration type is TypedefType, then this is definitely declared
+    // using a typedef. This only happens when the typedefed declaration is the
+    // first declaration of a function.
     if (isa_and_nonnull<TypedefType>(FDIter->getType().getTypePtrOrNull()))
       return true;
     // Next look for a TypeDefTypeLoc. This is present on the typedefed
@@ -765,8 +769,8 @@ bool FunctionDeclBuilder::hasDeclWithTypedef(const FunctionDecl *FD) {
         return true;
     } else {
       // This still could possibly be a typedef type if TSI was NULL.
-      // TypeSourceInfo can be null for implicit function declarations, so if
-      // that implicit declaration used a typedef, we would miss it. That's fine
+      // TypeSourceInfo is null for implicit function declarations, so if a
+      // implicit declaration uses a typedef, it will be missed. That's fine
       // since an implicit declaration can't be rewritten anyways.
       // There might be other ways it can be null that I'm not aware of.
       if (Verbose) {
