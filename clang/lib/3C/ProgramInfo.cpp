@@ -411,7 +411,7 @@ void ProgramInfo::insertNewFVConstraint(FunctionDecl *FD, FVConstraint *NewC,
   // assume a global function, but change to a static if not
   ExternalFunctionMapType *Map = &ExternalFunctionFVCons;
   if (!FD->isGlobal()) {
-    // if the filename is new, just insert and we're done
+    // if the filename has not yet been seen, just insert and we're done
     auto Psl = PersistentSourceLoc::mkPSL(FD, *C);
     std::string FileName = Psl.getFileName();
     if (StaticFunctionFVCons.find(FileName) == StaticFunctionFVCons.end()){
@@ -423,7 +423,7 @@ void ProgramInfo::insertNewFVConstraint(FunctionDecl *FD, FVConstraint *NewC,
     Map = &StaticFunctionFVCons[FileName];
   }
 
-  // if the function is new, just insert and we're done
+  // if the function has not yet been seen, just insert and we're done
   if (Map->find(FuncName) == Map->end()) {
     (*Map)[FuncName] = NewC;
     return;
