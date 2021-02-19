@@ -1729,7 +1729,7 @@ void PointerVariableConstraint::brainTransplant(ConstraintVariable *FromCV,
   PVConstraint *From = dyn_cast<PVConstraint>(FromCV);
   assert(From != nullptr);
   CAtoms CFrom = From->getCvars();
-  if(Vars.size() != CFrom.size()) {
+  if (Vars.size() != CFrom.size()) {
     ReasonFailed = "transplanting between pointers with different depths";
     return;
   }
@@ -1748,6 +1748,10 @@ void PointerVariableConstraint::brainTransplant(ConstraintVariable *FromCV,
   if (FV) {
     assert(From->FV);
     FV->brainTransplant(From->FV, I, ReasonFailed);
+    if (ReasonFailed != "") {
+      ReasonFailed += " within the referenced function";
+      return;
+    }
   }
 }
 
@@ -1788,7 +1792,7 @@ void PointerVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
     ++I;
     ++J;
   }
-  assert(Vars.size() == NewVatoms.size() && "Merging Failed");
+  assert(Vars.size() == NewVatoms.size() && "Merging Error");
   Vars = NewVatoms;
   SrcHasItype = SrcHasItype || From->SrcHasItype;
   if (!From->ItypeStr.empty())
@@ -1800,6 +1804,10 @@ void PointerVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
   if (FV) {
     assert(From->FV);
     FV->mergeDeclaration(From->FV, Info, ReasonFailed);
+    if (ReasonFailed != "") {
+      ReasonFailed += " within the referenced function";
+      return;
+    }
   }
 }
 
@@ -1924,6 +1932,10 @@ void FVComponentVariable::mergeDeclaration(FVComponentVariable *From,
     InternalConstraint->mergeDeclaration(From->InternalConstraint, I,
                                          ReasonFailed);
   }
+  if (ReasonFailed != ""){
+    ReasonFailed += " during internal merge";
+    return;
+  }
   ExternalConstraint->mergeDeclaration(From->ExternalConstraint, I,
                                        ReasonFailed);
 }
@@ -1938,6 +1950,10 @@ void FVComponentVariable::brainTransplant(FVComponentVariable *From,
   else
     InternalConstraint->brainTransplant(From->InternalConstraint, I,
                                         ReasonFailed);
+  if (ReasonFailed != ""){
+    ReasonFailed += " during internal merge";
+    return;
+  }
   ExternalConstraint->brainTransplant(From->ExternalConstraint, I,
                                       ReasonFailed);
 }
