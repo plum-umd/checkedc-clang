@@ -183,7 +183,12 @@ void CastPlacementVisitor::surroundByCast(ConstraintVariable *Dst,
   // of adding a new expression.
   if (auto *CE = dyn_cast<CStyleCastExpr>(E->IgnoreParens())) {
     SourceRange CastTypeRange(CE->getLParenLoc(), CE->getRParenLoc());
-    rewriteSourceRange(Writer, CastTypeRange, CastStrs.first.substr(1));
+    assert("Cast expected to start with '('" && !CastStrs.first.empty() &&
+           CastStrs.first[0] == '(');
+    std::string CastStr = CastStrs.first.substr(1);
+    bool Failed = Writer.ReplaceText(CastTypeRange, CastStr);
+    if (Failed)
+      reportCastInsertionFailure(E, CastStrs.first.substr(1));
   } else {
     // First try to insert the cast prefix and suffix around the expression in
     // the source code.
@@ -206,25 +211,29 @@ void CastPlacementVisitor::surroundByCast(ConstraintVariable *Dst,
       // This doesn't always work either. We can't rewrite if the cast needs to
       // be placed fully inside a macro rather than around a macro or on an
       // argument to the macro.
-      if (!SrcText.empty()) {
+      if (!SrcText.empty())
         rewriteSourceRange(Writer, NewCRA,
                            CastStrs.first + SrcText + CastStrs.second);
-      } else {
-        // FIXME: This is a warning rather than an error so that a new benchmark
-        //        failure is not introduced in Lua.
-        //        github.com/correctcomputation/checkedc-clang/issues/439
-        clang::DiagnosticsEngine &DE = Context->getDiagnostics();
-        unsigned ErrorId =
-          DE.getCustomDiagID(DiagnosticsEngine::Warning,
-                             "Unable to surround expression with cast.\n"
-                             "Intended cast: \"%0\"");
-        auto ErrorBuilder = DE.Report(E->getExprLoc(), ErrorId);
-        ErrorBuilder.AddSourceRange(
-          Context->getSourceManager().getExpansionRange(E->getSourceRange()));
-        ErrorBuilder.AddString(CastStrs.first + CastStrs.second);
-      }
+      else
+        reportCastInsertionFailure(E, CastStrs.first + CastStrs.second);
     }
   }
+}
+
+void CastPlacementVisitor::reportCastInsertionFailure
+    (Expr *E, const std::string &CastStr) {
+  // FIXME: This is a warning rather than an error so that a new benchmark
+  //        failure is not introduced in Lua.
+  //        github.com/correctcomputation/checkedc-clang/issues/439
+  clang::DiagnosticsEngine &DE = Context->getDiagnostics();
+  unsigned ErrorId =
+    DE.getCustomDiagID(DiagnosticsEngine::Warning,
+                       "Unable to surround expression with cast.\n"
+                       "Intended cast: \"%0\"");
+  auto ErrorBuilder = DE.Report(E->getExprLoc(), ErrorId);
+  ErrorBuilder.AddSourceRange(
+    Context->getSourceManager().getExpansionRange(E->getSourceRange()));
+  ErrorBuilder.AddString(CastStr);
 }
 
 bool CastLocatorVisitor::VisitCastExpr(CastExpr *C) {
