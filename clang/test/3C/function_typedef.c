@@ -8,7 +8,7 @@
 // Tests for the single file case in issue #430
 // Functions declared using a typedef should be rewritten in a way that doesn't
 // crash 3C or generate uncompilable code.  The expected output for these tests
-// expected to change when issue #437.
+// is expected to change when issue #437 is resolved.
 
 typedef void foo(int*);
 foo foo_impl;

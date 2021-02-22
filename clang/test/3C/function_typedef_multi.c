@@ -4,9 +4,9 @@
 
 // Test for the two file case in issue #430
 // This test caused an assertion to fail prior to PR #436
-// This test function_typedef_multi.h. The header is deliberately not included
-// in this file. Including the header prevented the assertion fail even without
-// the changes in PR #436.
+// This test uses function_typedef_multi.h. The header is deliberately not
+// included in this file. Including it prevented the assertion fail even
+// without the changes in PR #436.
 
 int foo(int a, int b[1]) {
   return 0;
