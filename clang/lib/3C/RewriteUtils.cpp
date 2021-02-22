@@ -147,7 +147,8 @@ void rewriteSourceRange(Rewriter &R, const CharSourceRange &Range,
     // the range being rewritten is in a macro. For declarations, this seems to
     // mean that the identifier is not in a macro, but other parts of the
     // declaration might be.
-    CharSourceRange Expand = R.getSourceMgr().getExpansionRange(Range);
+    CharSourceRange Expand = clang::Lexer::makeFileCharRange(
+        Range, R.getSourceMgr(), R.getLangOpts());
     clang::DiagnosticsEngine &DE = R.getSourceMgr().getDiagnostics();
     if (canRewrite(R, Expand)) {
       // Rewrite using the expansion range if possible. The clobbers any macros
