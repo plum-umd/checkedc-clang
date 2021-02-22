@@ -640,6 +640,8 @@ void ConstraintBuilderConsumer::HandleTranslationUnit(ASTContext &C) {
     // variable information gathered in the type variable traversal.
     VAV.TraverseDecl(D);
     CSBV.TraverseDecl(D);
+  }
+  for (const auto &D : TUD->decls()) {
     TV.TraverseDecl(D);
     GV.TraverseDecl(D);
   }
