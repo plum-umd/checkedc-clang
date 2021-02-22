@@ -139,43 +139,36 @@ void rewriteSourceRange(Rewriter &R, const SourceRange &Range,
 
 void rewriteSourceRange(Rewriter &R, const CharSourceRange &Range,
                         const std::string &NewText) {
-  if (canRewrite(R, Range)) {
-    R.ReplaceText(Range, NewText);
-  } else {
-    // There is a macro somewhere in the source range, but it wasn't noticed
-    // during constraint generation. This typically means that the only part of
-    // the range being rewritten is in a macro. For declarations, this seems to
-    // mean that the identifier is not in a macro, but other parts of the
-    // declaration might be.
-    CharSourceRange Expand = clang::Lexer::makeFileCharRange(
-        Range, R.getSourceMgr(), R.getLangOpts());
-    clang::DiagnosticsEngine &DE = R.getSourceMgr().getDiagnostics();
-    if (canRewrite(R, Expand)) {
-      // Rewrite using the expansion range if possible. The clobbers any macros
-      // that were used in the source range if we haven't already made an
-      // effort to preserve them when constructing the replacement text. E.g, a
-      // macro used in the base type of a pointer is not clobbered, but a macro
-      // used as a type qualifier is.
-      unsigned WarningID =
-        DE.getCustomDiagID(DiagnosticsEngine::Warning,
-                           "Rewriting might clobber macro");
-      auto WarningBuilder = DE.Report(Range.getBegin(), WarningID);
-      WarningBuilder.AddSourceRange(R.getSourceMgr().getExpansionRange(Range));
+  // Attempt to rewrite the source range. First use the source range directly
+  // from the parameter.
+  bool RewriteSuccess = false;
+  if (canRewrite(R, Range))
+    RewriteSuccess = !R.ReplaceText(Range, NewText);
 
-      R.ReplaceText(Expand, NewText);
-    } else {
-      // If we can't rewrite the expanded source range, then we're out of
-      // options. This is more likely to be a bug in 3C than an issue with the
-      // input, but emitting a diagnostic here with the intended rewriting is
-      // much more useful than crashing with an assert fail.
-      unsigned ErrorId =
-        DE.getCustomDiagID(DiagnosticsEngine::Error,
-                           "Unable to rewrite converted source range.\n"
-                           "Intended rewriting: \"%0\"");
-      auto ErrorBuilder = DE.Report(Range.getBegin(), ErrorId);
-      ErrorBuilder.AddSourceRange(R.getSourceMgr().getExpansionRange(Range));
-      ErrorBuilder.AddString(NewText);
-    }
+  // If initial rewriting attempt failed (either because canRewrite returned
+  // false or because ReplaceText failed (returning true), try rewriting again
+  // with the source range expanded to be outside any macros used in the range.
+  if (!RewriteSuccess) {
+    CharSourceRange Expand = clang::Lexer::makeFileCharRange(Range,
+                                                             R.getSourceMgr(),
+                                                             R.getLangOpts());
+    if (canRewrite(R, Expand))
+      RewriteSuccess = !R.ReplaceText(Expand, NewText);
+  }
+
+  // Emit an error if we were unable to rewrite the source range. This is more
+  // likely to be a bug in 3C than an issue with the input, but emitting a
+  // diagnostic here with the intended rewriting is much more useful than
+  // crashing with an assert fail.
+  if (!RewriteSuccess) {
+    clang::DiagnosticsEngine &DE = R.getSourceMgr().getDiagnostics();
+    unsigned ErrorId =
+      DE.getCustomDiagID(DiagnosticsEngine::Error,
+                         "Unable to rewrite converted source range.\n"
+                         "Intended rewriting: \"%0\"");
+    auto ErrorBuilder = DE.Report(Range.getBegin(), ErrorId);
+    ErrorBuilder.AddSourceRange(R.getSourceMgr().getExpansionRange(Range));
+    ErrorBuilder.AddString(NewText);
   }
 }
 
