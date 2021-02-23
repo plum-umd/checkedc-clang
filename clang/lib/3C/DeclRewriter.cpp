@@ -708,6 +708,7 @@ FunctionDeclBuilder::buildDeclVar(PVConstraint *IntCV, PVConstraint *ExtCV,
     }
     // Otherwise, reconstruct the name and type, and reuse the code below for
     // the itype and bounds.
+    // TODO: Do we care about `register` or anything else this doesn't handle?
     Type = qtyToStr(PVD->getOriginalType(), PVD->getNameAsString());
   } else {
     Type = ExtCV->getOriginalTy() + " ";
