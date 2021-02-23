@@ -120,6 +120,10 @@ public:
 
   void addTypedef(PersistentSourceLoc PSL, bool ShouldCheck);
 
+  // For each pointer type in the declaration of D, add a variable to the
+  // constraint system for that pointer type.
+  void addVariable(clang::DeclaratorDecl *D, clang::ASTContext *AstContext);
+
 private:
   // List of constraint variables for declarations, indexed by their location in
   // the source. This information persists across invocations of the constraint
@@ -198,10 +202,6 @@ private:
 
   // Retrieves a FVConstraint* from a Decl (which could be static, or global)
   FVConstraint *getFuncFVConstraint(FunctionDecl *FD, ASTContext *C);
-
-  // For each pointer type in the declaration of D, add a variable to the
-  // constraint system for that pointer type.
-  void addVariable(clang::DeclaratorDecl *D, clang::ASTContext *AstContext);
 
   void insertIntoPtrSourceMap(const PersistentSourceLoc *PSL,
                               ConstraintVariable *CV);

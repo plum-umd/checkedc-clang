@@ -481,20 +481,6 @@ public:
                                 TypeVarInfo &TVI)
       : Context(Context), Info(I), CB(Info, Context), TVInfo(TVI), ISD() {}
 
-  bool VisitTypedefDecl(TypedefDecl* TD) { 
-      CVarSet empty;
-      auto PSL = PersistentSourceLoc::mkPSL(TD, *Context);
-      // If we haven't seen this typedef before, initialize it's entry in the
-      // typedef map. If we have seen it before, and we need to preserve the
-      // constraints contained within it
-      if (!Info.seenTypedef(PSL))
-        // Add this typedef to the program info, if it contains a ptr to
-        // an anonymous struct we mark as not being rewritable
-        Info.addTypedef(PSL, !PtrToStructDef::containsPtrToStructDef(TD));
-
-      return true;
-  }
-
   bool VisitVarDecl(VarDecl *G) {
 
     if (G->hasGlobalStorage() && isPtrOrArrayType(G->getType())) {
@@ -565,9 +551,23 @@ private:
 // visitor which is executed before both of the other visitors.
 class VariableAdderVisitor : public RecursiveASTVisitor<VariableAdderVisitor> {
 public:
-  explicit VariableAdderVisitor(ASTContext *Context, ProgramVariableAdder &VA)
-    : Context(Context), VarAdder(VA) {}
+  explicit VariableAdderVisitor(ASTContext *Context, ProgramInfo &I)
+    : Context(Context), Info(I) {}
 
+
+  bool VisitTypedefDecl(TypedefDecl* TD) {
+    CVarSet empty;
+    auto PSL = PersistentSourceLoc::mkPSL(TD, *Context);
+    // If we haven't seen this typedef before, initialize it's entry in the
+    // typedef map. If we have seen it before, and we need to preserve the
+    // constraints contained within it
+    if (!Info.seenTypedef(PSL))
+      // Add this typedef to the program info, if it contains a ptr to
+      // an anonymous struct we mark as not being rewritable
+      Info.addTypedef(PSL, !PtrToStructDef::containsPtrToStructDef(TD));
+
+    return true;
+  }
 
   bool VisitVarDecl(VarDecl *D) {
     FullSourceLoc FL = Context->getFullLoc(D->getBeginLoc());
@@ -579,7 +579,7 @@ public:
   bool VisitFunctionDecl(FunctionDecl *D) {
     FullSourceLoc FL = Context->getFullLoc(D->getBeginLoc());
     if (FL.isValid())
-      VarAdder.addVariable(D, Context);
+      Info.addVariable(D, Context);
     return true;
   }
 
@@ -603,12 +603,12 @@ public:
 
 private:
   ASTContext *Context;
-  ProgramVariableAdder &VarAdder;
+  ProgramInfo &Info;
 
   void addVariable(DeclaratorDecl *D) {
-    VarAdder.addABoundsVariable(D);
+    Info.addABoundsVariable(D);
     if (isPtrOrArrayType(D->getType()))
-      VarAdder.addVariable(D, Context);
+      Info.addVariable(D, Context);
   }
 };
 
