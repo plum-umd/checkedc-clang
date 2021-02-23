@@ -442,21 +442,16 @@ void ProgramInfo::insertNewFVConstraint(FunctionDecl *FD, FVConstraint *NewC,
     // Two separate bodies for a function is irreconcilable
     ReasonFailed = "multiple function bodies";
   } else if (OldHasBody && !NewHasBody) {
-    // By transplanting the atoms of OldC into NewC, we ensure that any
-    // constraints applied to NewC later on constrain the atoms of OldC.
-    NewC->brainTransplant(OldC, *this, ReasonFailed);
+    OldC->mergeDeclaration(NewC, *this, ReasonFailed);
   } else if (!OldHasBody && NewHasBody) {
-    // as above, but the new version has the body
-    NewC->brainTransplant(OldC, *this, ReasonFailed);
+    NewC->mergeDeclaration(OldC, *this, ReasonFailed);
     (*Map)[FuncName] = NewC;
   } else if (!OldHasBody && !NewHasBody) {
-    // special case for undeclared params
+    // lacking bodies, we favor declared params
     if (OldC->numParams() == 0 && NewC->numParams() != 0) {
-      NewC->brainTransplant(OldC, *this, ReasonFailed);
+      NewC->mergeDeclaration(OldC, *this, ReasonFailed);
       (*Map)[FuncName] = NewC;
     } else {
-      // Merging favors the checked types.
-      // It assumes the author changed a few and missed a few.
       OldC->mergeDeclaration(NewC, *this, ReasonFailed);
     }
   }

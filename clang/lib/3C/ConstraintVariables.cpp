@@ -1882,7 +1882,7 @@ void FunctionVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
   }
   if (this->numParams() == 0) {
     // This is an untyped declaration, we need to perform a transplant
-    From->brainTransplant(this, I, ReasonFailed);
+    From->mergeDeclaration(this, I, ReasonFailed);
   } else {
     // Standard merge
     if (this->numParams() != From->numParams()) {
