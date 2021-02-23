@@ -164,7 +164,7 @@ void rewriteSourceRange(Rewriter &R, const CharSourceRange &Range,
     clang::DiagnosticsEngine &DE = R.getSourceMgr().getDiagnostics();
     unsigned ErrorId =
       DE.getCustomDiagID(DiagnosticsEngine::Error,
-                         "Unable to rewrite converted source range.\n"
+                         "Unable to rewrite converted source range. "
                          "Intended rewriting: \"%0\"");
     auto ErrorBuilder = DE.Report(Range.getBegin(), ErrorId);
     ErrorBuilder.AddSourceRange(R.getSourceMgr().getExpansionRange(Range));
