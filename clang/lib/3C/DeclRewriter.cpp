@@ -735,11 +735,14 @@ FunctionDeclBuilder::buildDeclVar(PVConstraint *IntCV, PVConstraint *ExtCV,
   // just fall back to reconstructing the declaration from the PVConstraint.
   ParmVarDecl *PVD = dyn_cast<ParmVarDecl>(Decl);
   if (PVD) {
-    Type = getSourceText(PVD->getSourceRange(), *Context);
-    if (!Type.empty()) {
-      // Great, we got the original source including any itype and bounds.
-      IType = "";
-      return;
+    SourceRange Range = PVD->getSourceRange();
+    if (Range.isValid()) {
+      Type = getSourceText(Range, *Context);
+      if (!Type.empty()) {
+        // Great, we got the original source including any itype and bounds.
+        IType = "";
+        return;
+      }
     }
     // Otherwise, reconstruct the name and type, and reuse the code below for
     // the itype and bounds.
