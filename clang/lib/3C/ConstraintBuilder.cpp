@@ -266,7 +266,7 @@ public:
               constrainConsVarGeq(ParameterDC, ArgumentConstraints, CS, &PL,
                                   Wild_to_Safe, false, &Info, false);
 
-              if (AllTypes && TFD != nullptr) {
+              if (AllTypes && TFD != nullptr && I < TFD->getNumParams()) {
                 auto *PVD = TFD->getParamDecl(I);
                 auto &ABI = Info.getABoundsInfo();
                 // Here, we need to handle context-sensitive assignment.
