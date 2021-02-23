@@ -264,9 +264,9 @@ bool canRewrite(Rewriter &R, const SourceRange &SR);
 // code after conversion. It emits an error if it cannot rewrite even after
 // expansion.
 void rewriteSourceRange(Rewriter &R, const CharSourceRange &Range,
-                        const std::string &NewText);
+                        const std::string &NewText, bool ErrFail = true);
 
 void rewriteSourceRange(Rewriter &R, const SourceRange &Range,
-                        const std::string &NewText);
+                        const std::string &NewText, bool ErrFail = true);
 
 #endif // LLVM_CLANG_3C_REWRITEUTILS_H

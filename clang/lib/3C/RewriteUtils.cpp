@@ -133,12 +133,12 @@ bool canRewrite(Rewriter &R, const CharSourceRange &SR) {
 }
 
 void rewriteSourceRange(Rewriter &R, const SourceRange &Range,
-                        const std::string &NewText) {
-  rewriteSourceRange(R, CharSourceRange::getTokenRange(Range), NewText);
+                        const std::string &NewText, bool ErrFail) {
+  rewriteSourceRange(R, CharSourceRange::getTokenRange(Range), NewText, ErrFail);
 }
 
 void rewriteSourceRange(Rewriter &R, const CharSourceRange &Range,
-                        const std::string &NewText) {
+                        const std::string &NewText, bool ErrFail) {
   // Attempt to rewrite the source range. First use the source range directly
   // from the parameter.
   bool RewriteSuccess = false;
@@ -163,9 +163,9 @@ void rewriteSourceRange(Rewriter &R, const CharSourceRange &Range,
   if (!RewriteSuccess) {
     clang::DiagnosticsEngine &DE = R.getSourceMgr().getDiagnostics();
     unsigned ErrorId =
-      DE.getCustomDiagID(DiagnosticsEngine::Error,
-                         "Unable to rewrite converted source range. "
-                         "Intended rewriting: \"%0\"");
+      DE.getCustomDiagID(
+        ErrFail ? DiagnosticsEngine::Error : DiagnosticsEngine::Warning,
+        "Unable to rewrite converted source range. Intended rewriting: \"%0\"");
     auto ErrorBuilder = DE.Report(Range.getBegin(), ErrorId);
     ErrorBuilder.AddSourceRange(R.getSourceMgr().getExpansionRange(Range));
     ErrorBuilder.AddString(NewText);

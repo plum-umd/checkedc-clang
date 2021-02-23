@@ -186,9 +186,9 @@ void CastPlacementVisitor::surroundByCast(ConstraintVariable *Dst,
     assert("Cast expected to start with '('" && !CastStrs.first.empty() &&
            CastStrs.first[0] == '(');
     std::string CastStr = CastStrs.first.substr(1);
-    bool Failed = Writer.ReplaceText(CastTypeRange, CastStr);
-    if (Failed)
-      reportCastInsertionFailure(E, CastStrs.first.substr(1));
+    // FIXME: This rewriting is known to fail on the benchmark programs.
+    //        https://github.com/correctcomputation/checkedc-clang/issues/444
+    rewriteSourceRange(Writer, CastTypeRange, CastStr, false);
   } else {
     // First try to insert the cast prefix and suffix around the expression in
     // the source code.
