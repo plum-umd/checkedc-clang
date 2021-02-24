@@ -258,11 +258,12 @@ bool canRewrite(Rewriter &R, const SourceRange &SR);
 
 
 // Rewrites the given source range with fallbacks for when the SourceRange is
-// inside a macro. This should be prefered to direct calls to ReplaceText
-// because this function will automatically expand macros where it needs to. It
-// emit warnings on macro expansion since user may want to keep macros in their
-// code after conversion. It emits an error if it cannot rewrite even after
-// expansion.
+// inside a macro. This should be preferred to direct calls to ReplaceText
+// because this function will automatically expand macros where it needs to and
+// emits an error if it cannot rewrite even after expansion. If there is a
+// rewriting that is known to fail in circumstances where we want to maintain
+// a zero exit code, ErrFail can be set to false. This downgrades rewrite
+// failures to a warning.
 void rewriteSourceRange(Rewriter &R, const CharSourceRange &Range,
                         const std::string &NewText, bool ErrFail = true);
 
