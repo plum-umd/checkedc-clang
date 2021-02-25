@@ -612,7 +612,7 @@ private:
   }
 };
 
-void ConstraintBuilderConsumer::HandleTranslationUnit(ASTContext &C) {
+void VariableAdderConsumer::HandleTranslationUnit(ASTContext &C) {
   Info.enterCompilationUnit(C);
   if (Verbose) {
     SourceManager &SM = C.getSourceManager();
@@ -626,11 +626,6 @@ void ConstraintBuilderConsumer::HandleTranslationUnit(ASTContext &C) {
 
 
   VariableAdderVisitor VAV = VariableAdderVisitor(&C, Info);
-  TypeVarVisitor TV = TypeVarVisitor(&C, Info);
-  ConstraintResolver CSResolver(Info, &C);
-  ContextSensitiveBoundsKeyVisitor CSBV =
-      ContextSensitiveBoundsKeyVisitor(&C, Info);
-  ConstraintGenVisitor GV = ConstraintGenVisitor(&C, Info, TV);
   TranslationUnitDecl *TUD = C.getTranslationUnitDecl();
   // Generate constraints.
   for (const auto &D : TUD->decls()) {
@@ -639,9 +634,38 @@ void ConstraintBuilderConsumer::HandleTranslationUnit(ASTContext &C) {
     // added to ProgramInfo, and the constraint gen visitor requires the type
     // variable information gathered in the type variable traversal.
     VAV.TraverseDecl(D);
-    CSBV.TraverseDecl(D);
   }
+
+  if (Verbose)
+    errs() << "Done analyzing\n";
+
+  Info.exitCompilationUnit();
+  return;
+}
+
+void ConstraintBuilderConsumer::HandleTranslationUnit(ASTContext &C) {
+  Info.enterCompilationUnit(C);
+  if (Verbose) {
+    SourceManager &SM = C.getSourceManager();
+    FileID MainFileId = SM.getMainFileID();
+    const FileEntry *FE = SM.getFileEntryForID(MainFileId);
+    if (FE != nullptr)
+      errs() << "Analyzing file " << FE->getName() << "\n";
+    else
+      errs() << "Analyzing\n";
+  }
+
+
+  TypeVarVisitor TV = TypeVarVisitor(&C, Info);
+  ConstraintResolver CSResolver(Info, &C);
+  ContextSensitiveBoundsKeyVisitor CSBV =
+      ContextSensitiveBoundsKeyVisitor(&C, Info);
+  ConstraintGenVisitor GV = ConstraintGenVisitor(&C, Info, TV);
+  TranslationUnitDecl *TUD = C.getTranslationUnitDecl();
+
+  // Generate constraints.
   for (const auto &D : TUD->decls()) {
+    CSBV.TraverseDecl(D);
     TV.TraverseDecl(D);
     GV.TraverseDecl(D);
   }

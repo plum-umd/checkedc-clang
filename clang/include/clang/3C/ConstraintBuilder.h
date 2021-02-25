@@ -15,6 +15,17 @@
 #include "TypeVariableAnalysis.h"
 #include "clang/AST/ASTConsumer.h"
 
+class VariableAdderConsumer : public clang::ASTConsumer {
+public:
+  explicit VariableAdderConsumer(ProgramInfo &I, clang::ASTContext *C)
+      : Info(I) {}
+
+  virtual void HandleTranslationUnit(clang::ASTContext &);
+
+private:
+  ProgramInfo &Info;
+};
+
 class ConstraintBuilderConsumer : public clang::ASTConsumer {
 public:
   explicit ConstraintBuilderConsumer(ProgramInfo &I, clang::ASTContext *C)

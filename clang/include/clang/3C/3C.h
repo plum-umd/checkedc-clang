@@ -104,6 +104,8 @@ public:
 
   // Constraint Building.
 
+  bool addVariables();
+
   // Build initial constraints.
   bool buildInitialConstraints();
 
