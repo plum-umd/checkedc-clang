@@ -22,5 +22,6 @@ inline void no_op() {}
 
 // In the lower case, this should stay wild
 // In the higher case, this should solve to checked
+// expected-warning@+1 {{Declaration in non-writable file}}
 typedef int* intptr;
 // CHECK_HIGHER: typedef _Ptr<int> intptr;
