@@ -31,3 +31,13 @@ int *bar(int *q) {
   foo(q);
   return foo_var;
 }
+
+
+int gar(intptr a) {
+        int* b = a;
+        //CHECK_LOEWR int* b = a;
+        //CHCEK_HIGHER _Ptr<int> b = a;
+        return *b;
+}
+
+
