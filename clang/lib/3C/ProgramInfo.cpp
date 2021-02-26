@@ -402,7 +402,8 @@ void ProgramInfo::exitCompilationUnit() {
   return;
 }
 
-void ProgramInfo::insertNewFVConstraint(FunctionDecl *FD, FVConstraint *NewC,
+FunctionVariableConstraint *
+ProgramInfo::insertNewFVConstraint(FunctionDecl *FD, FVConstraint *NewC,
                                         ASTContext *C) {
   std::string FuncName = FD->getNameAsString();
 
@@ -416,7 +417,7 @@ void ProgramInfo::insertNewFVConstraint(FunctionDecl *FD, FVConstraint *NewC,
     std::string FileName = Psl.getFileName();
     if (StaticFunctionFVCons.find(FileName) == StaticFunctionFVCons.end()){
       StaticFunctionFVCons[FileName][FuncName] = NewC;
-      return;
+      return NewC;
     }
 
     // store in static map
@@ -426,7 +427,7 @@ void ProgramInfo::insertNewFVConstraint(FunctionDecl *FD, FVConstraint *NewC,
   // if the function has not yet been seen, just insert and we're done
   if (Map->find(FuncName) == Map->end()) {
     (*Map)[FuncName] = NewC;
-    return;
+    return NewC;
   }
 
   // Resolve conflicts
@@ -457,7 +458,7 @@ void ProgramInfo::insertNewFVConstraint(FunctionDecl *FD, FVConstraint *NewC,
   }
 
   // If successful, we're done and can skip error reporting
-  if (ReasonFailed == "") return;
+  if (ReasonFailed == "") return (*Map)[FuncName];
 
   // Error reporting
   { // block to force DiagBuilder destructor and emit message
@@ -562,13 +563,13 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
     // FVConstraint that already exists in the map. Doing this loses any
     // constraints that might have effected the original atoms, so do not create
     // any constraint on F before this function is called.
-    insertNewFVConstraint(FD, F, AstContext);
+    F = insertNewFVConstraint(FD, F, AstContext);
+    NewCV = F;
 
     auto RetTy = FD->getReturnType();
     unifyIfTypedef(RetTy.getTypePtr(), *AstContext, FD, F->getExternalReturn());
     unifyIfTypedef(RetTy.getTypePtr(), *AstContext, FD, F->getInternalReturn());
 
-    NewCV = F;
     // Add mappings from the parameters PLoc to the constraint variables for
     // the parameters.
     for (unsigned I = 0; I < FD->getNumParams(); I++) {

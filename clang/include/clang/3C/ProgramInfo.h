@@ -184,8 +184,8 @@ private:
   // constraints that may been applied to the argument FVConstraint, so do not
   // call this function any time other than immediately after constructing an
   // FVConstraint.
-  void insertNewFVConstraint(FunctionDecl *FD, FVConstraint *FVCon,
-                             ASTContext *C);
+  FunctionVariableConstraint *
+  insertNewFVConstraint(FunctionDecl *FD, FVConstraint *FVCon, ASTContext *C);
 
   // Retrieves a FVConstraint* from a Decl (which could be static, or global)
   FVConstraint *getFuncFVConstraint(FunctionDecl *FD, ASTContext *C);
