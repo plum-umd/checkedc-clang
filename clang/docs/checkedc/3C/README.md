@@ -107,9 +107,9 @@ this configuration.
 As noted in the [setup instructions](INSTALL.md#basics), both 3C and
 the Checked C compiler depend on the Checked C system headers, which
 Microsoft maintains in [a subdirectory of a separate repository named
-"checkedc"](https://github.com/microsoft/checkedc/tree/master/include)
-(contrast). CCI has [a fork of this
+`checkedc`](https://github.com/microsoft/checkedc/tree/master/include).
+CCI has [a fork of this
 repository](https://github.com/correctcomputation/checkedc), but
 currently it is used only for submitting changes to Microsoft. All
-users should use Microsoft's "checkedc" repository regardless of which
-"checkedc-clang" repository they use.
+users should use Microsoft's `checkedc` repository regardless of which
+`checkedc-clang` repository they use.
