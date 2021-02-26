@@ -32,7 +32,8 @@ Checked C verify the safety of your existing code, edit your code to
 make its safety easier to verify, and/or mark parts of the code that
 you don't want to try to verify with Checked C (because you know they
 are beyond what Checked C can handle or verifying them just isn't
-worthwhile to you at the moment).
+worthwhile to you at the moment). Compile your program with the
+Checked C compiler (`clang`) to check your work.
 
 3. Repeat until you are satisfied.
 
@@ -73,20 +74,36 @@ want to use. You can add compiler options that you want to use for all
 files after the `--`.
 
 This "stdout mode" only supports a single source file. If you have
-multiple files, you can specify a directory under which the new
-versions should be written, for example:
+multiple files, you must use one of the modes that writes the output
+to files. You can specify either a string to be inserted into the
+names of the new files or a directory under which they should be
+written. For example, this command:
 
 ```
-3c -addcr -alltypes -output-dir=new foo.c bar.c --
+3c -addcr -alltypes -output-postfix=checked foo.c bar.c --
 ```
 
-This will write the new versions to `new/foo.c` and `new/bar.c`. If
+will write the new versions to `foo.checked.c` and `bar.checked.c`. If
 one of these files is not created, it means the original file needs no
 changes. If `foo.c` includes a header file `foo.h`, then `3c` will
 automatically include it in the conversion and write the new version
-of it to `new/foo.h` if there are changes; you don't need to specify
-header files separately on the command line, just as they wouldn't
-have their own entries in a compilation database.
+of it to `foo.checked.h` if there are changes; you don't need to
+specify header files separately on the command line, just as they
+wouldn't have their own entries in a compilation database.
+
+The `-output-postfix` mode may be convenient for running tools such as
+`diff` on individual files by hand. For heavier-duty scenarios, this
+command:
+
+```
+3c -addcr -alltypes -output-dir=/path/to/new foo.c bar.c --
+```
+
+will write the new versions to `/path/to/new/foo.c` and
+`/path/to/new/bar.c`. You can then run something like `diff -ru .
+/path/to/new` to diff all the files at once (_without_ the `-N` option
+because many files in your starting directory may not have new
+versions written out).
 
 We typically recommend using the `-addcr` and `-alltypes` options, as
 shown above. Here's what they mean:
