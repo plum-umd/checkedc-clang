@@ -74,6 +74,10 @@ may reduce the build time and/or peak memory use:
 
 - Pass `-DLLVM_OPTIMIZED_TABLEGEN=ON`.
 
+- Pass `-DLLVM_APPEND_VC_REV=OFF` to turn off embedding of your Git
+  head commit ID in the executables and thus avoid the need to re-link
+  all of them every time the commit ID changes.
+
 (The reference for improving build performance is [this LLVM
 page](https://www.llvm.org/docs/GettingStarted.html#common-problems),
 but we have attempted to describe the most promising options here.)
