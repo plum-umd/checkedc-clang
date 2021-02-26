@@ -71,7 +71,7 @@ The `--` at the end of the command line indicates that you _do not_
 want to use a compilation database. This is important to ensure `3c`
 doesn't automatically detect a compilation database that you don't
 want to use. You can add compiler options that you want to use for all
-files after the `--`.
+files after the `--`, such as `-I` for include directories, etc.
 
 This "stdout mode" only supports a single source file. If you have
 multiple files, you must use one of the modes that writes the output
