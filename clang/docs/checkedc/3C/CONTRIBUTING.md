@@ -80,16 +80,17 @@ Then run the following in the `clang/test/3C` directory:
 llvm-lit -vv TEST.c
 ```
 
-where `TEST.c` is the path of the test you want to run. (This assumes
-you've put the `bin` subdirectory of your build directory on your
-`$PATH` or arranged some other means of running `llvm-lit` from
-there.) The first `-v` makes `llvm-lit` display the stdout and stderr
-of failed tests; the second makes it display the `RUN` commands as
-they execute so you can tell which one failed.
+where `TEST.c` is the path of the test you want to run (you can also
+specify more than one test). This assumes you've put the `bin`
+subdirectory of your build directory on your `$PATH` or arranged some
+other means of running `llvm-lit` from there. The first `-v` makes
+`llvm-lit` display the stdout and stderr of failed tests; the second
+makes it display the `RUN` commands as they execute so you can tell
+which one failed.
 
 Every `.c` file under `clang/test/3C` is a test file. There are a few
 in subdirectories, so `*.c` will not pick up all of them; instead you
-can specify `llvm-lit -vv .`.
+can use `llvm-lit -vv .`.
 
 ## Coding guidelines
 
