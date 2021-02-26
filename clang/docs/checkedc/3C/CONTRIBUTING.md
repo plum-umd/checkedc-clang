@@ -1,9 +1,8 @@
 # Contributing to 3C
 
 Issues and pull requests related to 3C should be submitted to [CCI's
-repository](https://github.com/correctcomputation/checkedc-clang), not
-[Microsoft's Checked C
-repository](https://github.com/microsoft/checkedc-clang), except as
+`checkedc-clang` repository](https://github.com/correctcomputation/checkedc-clang), not
+[Microsoft's](https://github.com/microsoft/checkedc-clang), except as
 stated below.
 
 ## Issues
@@ -30,7 +29,7 @@ your version.
 
 If your contribution does not touch any 3C-specific code (or is a
 codebase-wide cleanup of low risk to 3C) and you can reasonably submit
-it to [Microsoft's Checked C
+it to [Microsoft's
 repository](https://github.com/microsoft/checkedc-clang) instead, we
 generally prefer that you do so. If such a contribution has particular
 benefit to 3C, feel free to let us know, and we may assist you in
@@ -59,7 +58,7 @@ an idea.) The easiest way to run it is to run the following in your
 build directory:
 
 ```
-ninja check-clang-3c
+ninja check-3c
 ```
 
 This command will build everything needed that hasn't already been
@@ -67,6 +66,30 @@ built, run the test suite, report success or failure (exit 0 or 1, so
 you can use it in scripts), and display some information about any
 failures, which may or may not be enough for you to understand what
 went wrong.
+
+For deeper troubleshooting, run the following in your build directory
+to build all dependencies of the test suite:
+
+```
+ninja check-3c-deps
+```
+
+Then run the following in the `clang/test/3C` directory:
+
+```
+llvm-lit -vv TEST.c
+```
+
+where `TEST.c` is the path of the test you want to run. (This assumes
+you've put the `bin` subdirectory of your build directory on your
+`$PATH` or arranged some other means of running `llvm-lit` from
+there.) The first `-v` makes `llvm-lit` display the stdout and stderr
+of failed tests; the second makes it display the `RUN` commands as
+they execute so you can tell which one failed.
+
+Every `.c` file under `clang/test/3C` is a test file. There are a few
+in subdirectories, so `*.c` will not pick up all of them; instead you
+can specify `llvm-lit -vv .`.
 
 ## Coding guidelines
 
