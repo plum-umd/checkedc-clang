@@ -45,6 +45,9 @@ modified version of Clang). Executables will end up in `build/bin`;
 you'll likely want to add this directory to your `$PATH` or write
 suitable wrapper scripts.
 
+Here is [how to use the `3c` tool](../../../tools/3c/README.md) once
+you build it.
+
 ## Build options
 
 Because all of LLVM and clang are built as dependencies, this may
