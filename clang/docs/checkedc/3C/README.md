@@ -99,11 +99,6 @@ March 2021):
   so far, when we've seen Mac-specific problems, we've usually gotten
   a fix into Microsoft's repository reasonably quickly.
 
-You can potentially use some tools from one repository and some from
-the other (for example, the Checked C compiler from Microsoft's
-repository and 3C from CCI's), though neither CCI nor Microsoft tests
-this configuration.
-
 As noted in the [setup instructions](INSTALL.md#basics), both 3C and
 the Checked C compiler depend on the Checked C system headers, which
 Microsoft maintains in [a subdirectory of a separate repository named
