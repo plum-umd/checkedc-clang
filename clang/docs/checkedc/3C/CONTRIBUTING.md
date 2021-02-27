@@ -90,7 +90,8 @@ which one failed.
 
 Every `.c` file under `clang/test/3C` is a test file. There are a few
 in subdirectories, so `*.c` will not pick up all of them; instead you
-can use `llvm-lit -vv .`.
+can use `llvm-lit -vv .` to specify all test files under the current
+directory.
 
 ## Coding guidelines
 

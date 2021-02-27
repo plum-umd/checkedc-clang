@@ -92,8 +92,7 @@ specify header files separately on the command line, just as they
 wouldn't have their own entries in a compilation database.
 
 The `-output-postfix` mode may be convenient for running tools such as
-`diff` on individual files by hand. For heavier-duty scenarios, this
-command:
+`diff` on individual files by hand. Alternatively, this command:
 
 ```
 3c -addcr -alltypes -output-dir=/path/to/new foo.c bar.c --
@@ -114,11 +113,16 @@ shown above. Here's what they mean:
   soon as it is stable enough.
 
 - By default, 3C tries to ensure that its output always passes the
-  Checked C type checker. The `-alltypes` option enables some 3C
+  Checked C compiler's type checker. The `-alltypes` option enables some 3C
   features that try to generate annotations that are closer to what
   you ultimately want but may not pass the type checker right away
   without manual corrections. Currently, the only such feature is
-  inference of array types.
+  inference of array types. 3C's determination of whether a pointer
+  points to an array is generally reliable, but it isn't always able
+  to infer correct bounds that will pass the type checker, so when
+  `-alltypes` is off, 3C will infer `_Ptr` types as normal but leave
+  array pointers unchecked. With `-alltypes`, 3C infers `_Array_ptr`
+  and `_Nt_array_ptr` types with its best guess of the bounds.
 
 ## The base directory
 
