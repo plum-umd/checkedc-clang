@@ -128,8 +128,62 @@ GlobalVariableGroups::~GlobalVariableGroups() {
 // Note that R.getRangeSize will return -1 if SR is within
 // a macro as well. This means that we can't re-write any
 // text that occurs within a macro.
-bool canRewrite(Rewriter &R, SourceRange &SR) {
+bool canRewrite(Rewriter &R, const CharSourceRange &SR) {
   return SR.isValid() && (R.getRangeSize(SR) != -1);
+}
+
+void rewriteSourceRange(Rewriter &R, const SourceRange &Range,
+                        const std::string &NewText, bool ErrFail) {
+  rewriteSourceRange(R, CharSourceRange::getTokenRange(Range), NewText,
+                     ErrFail);
+}
+
+void rewriteSourceRange(Rewriter &R, const CharSourceRange &Range,
+                        const std::string &NewText, bool ErrFail) {
+  // Attempt to rewrite the source range. First use the source range directly
+  // from the parameter.
+  bool RewriteSuccess = false;
+  if (canRewrite(R, Range))
+    RewriteSuccess = !R.ReplaceText(Range, NewText);
+
+  // If initial rewriting attempt failed (either because canRewrite returned
+  // false or because ReplaceText failed (returning true), try rewriting again
+  // with the source range expanded to be outside any macros used in the range.
+  if (!RewriteSuccess) {
+    CharSourceRange Expand = clang::Lexer::makeFileCharRange(
+        Range, R.getSourceMgr(), R.getLangOpts());
+    if (canRewrite(R, Expand))
+      RewriteSuccess = !R.ReplaceText(Expand, NewText);
+  }
+
+  // Emit an error if we were unable to rewrite the source range. This is more
+  // likely to be a bug in 3C than an issue with the input, but emitting a
+  // diagnostic here with the intended rewriting is much more useful than
+  // crashing with an assert fail.
+  if (!RewriteSuccess) {
+    clang::DiagnosticsEngine &DE = R.getSourceMgr().getDiagnostics();
+    bool ReportError = ErrFail && !AllowRewriteFailures;
+    {
+      // Put this in a block because Clang only allows one DiagnosticBuilder to
+      // exist at a time.
+      unsigned ErrorId = DE.getCustomDiagID(
+          ReportError ? DiagnosticsEngine::Error : DiagnosticsEngine::Warning,
+          "Unable to rewrite converted source range. Intended rewriting: "
+          "\"%0\"");
+      auto ErrorBuilder = DE.Report(Range.getBegin(), ErrorId);
+      ErrorBuilder.AddSourceRange(R.getSourceMgr().getExpansionRange(Range));
+      ErrorBuilder.AddString(NewText);
+    }
+    if (ReportError) {
+      unsigned NoteId = DE.getCustomDiagID(
+          DiagnosticsEngine::Note,
+          "you can use the -allow-rewrite-failures option to temporarily "
+          "downgrade this error to a warning");
+      // If we pass the location here, the macro call stack gets dumped again,
+      // which looks silly.
+      DE.Report(NoteId);
+    }
+  }
 }
 
 static void emit(Rewriter &R, ASTContext &C) {
@@ -139,7 +193,7 @@ static void emit(Rewriter &R, ASTContext &C) {
   bool StdoutMode = (OutputPostfix == "-" && OutputDir.empty());
   bool StdoutModeSawMainFile = false;
   SourceManager &SM = C.getSourceManager();
-  // Iterate over each modified rewrite buffer
+  // Iterate over each modified rewrite buffer.
   for (auto Buffer = R.buffer_begin(); Buffer != R.buffer_end(); ++Buffer) {
     if (const FileEntry *FE = SM.getFileEntryForID(Buffer->first)) {
       assert(FE->isValid());
@@ -147,18 +201,29 @@ static void emit(Rewriter &R, ASTContext &C) {
       DiagnosticsEngine::Level UnwritableChangeDiagnosticLevel =
           AllowUnwritableChanges ? DiagnosticsEngine::Warning
                                  : DiagnosticsEngine::Error;
-      auto MaybeDumpUnwritableChange = [&]() {
-        if (DumpUnwritableChanges) {
-          errs() << "=== Beginning of new version of " << FE->getName() << " ===\n";
-          Buffer->second.write(errs());
-          errs() << "=== End of new version of " << FE->getName() << " ===\n";
-        } else {
-          DiagnosticsEngine &DE = C.getDiagnostics();
-          unsigned ID = DE.getCustomDiagID(
+      auto PrintExtraUnwritableChangeInfo = [&]() {
+        DiagnosticsEngine &DE = C.getDiagnostics();
+        // With -dump-unwritable-changes and not -allow-unwritable-changes, we
+        // want the -allow-unwritable-changes note before the dump.
+        if (!DumpUnwritableChanges) {
+          unsigned DumpNoteId = DE.getCustomDiagID(
               DiagnosticsEngine::Note,
               "use the -dump-unwritable-changes option to see the new version "
               "of the file");
-          DE.Report(SM.translateFileLineCol(FE, 1, 1), ID);
+          DE.Report(DumpNoteId);
+        }
+        if (!AllowUnwritableChanges) {
+          unsigned AllowNoteId = DE.getCustomDiagID(
+              DiagnosticsEngine::Note,
+              "you can use the -allow-unwritable-changes option to temporarily "
+              "downgrade this error to a warning");
+          DE.Report(AllowNoteId);
+        }
+        if (DumpUnwritableChanges) {
+          errs() << "=== Beginning of new version of " << FE->getName()
+                 << " ===\n";
+          Buffer->second.write(errs());
+          errs() << "=== End of new version of " << FE->getName() << " ===\n";
         }
       };
 
@@ -167,13 +232,15 @@ static void emit(Rewriter &R, ASTContext &C) {
       getCanonicalFilePath(std::string(FE->getName()), FeAbsS);
       if (!canWrite(FeAbsS)) {
         DiagnosticsEngine &DE = C.getDiagnostics();
-        unsigned ID = DE.getCustomDiagID(
-            UnwritableChangeDiagnosticLevel,
-            "3C internal error: 3C generated changes to this file even though it "
-            "is not allowed to write to the file "
-            "(https://github.com/correctcomputation/checkedc-clang/issues/387)");
+        unsigned ID =
+            DE.getCustomDiagID(UnwritableChangeDiagnosticLevel,
+                               "3C internal error: 3C generated changes to "
+                               "this file even though it is not allowed to "
+                               "write to the file "
+                               "(https://github.com/correctcomputation/"
+                               "checkedc-clang/issues/387)");
         DE.Report(SM.translateFileLineCol(FE, 1, 1), ID);
-        MaybeDumpUnwritableChange();
+        PrintExtraUnwritableChangeInfo();
         continue;
       }
 
@@ -190,7 +257,7 @@ static void emit(Rewriter &R, ASTContext &C) {
               "but is not the main file and thus cannot be written in stdout "
               "mode");
           DE.Report(SM.translateFileLineCol(FE, 1, 1), ID);
-          MaybeDumpUnwritableChange();
+          PrintExtraUnwritableChangeInfo();
         }
         continue;
       }
@@ -308,12 +375,9 @@ private:
            }));
 
     for (auto *CV : CVSingleton)
-      // Only rewrite if the type has changed.
-      if (CV->anyChanges(Vars)) {
-        // Replace the original type with this new one
-        if (canRewrite(Writer, Range))
-          Writer.ReplaceText(Range, CV->mkString(Vars, false));
-      }
+      // Replace the original type with this new one if the type has changed.
+      if (CV->anyChanges(Vars))
+        rewriteSourceRange(Writer, Range, CV->mkString(Vars, false));
   }
 };
 
@@ -400,9 +464,8 @@ private:
   }
 };
 
-std::string
-ArrayBoundsRewriter::getBoundsString(const PVConstraint *PV, Decl *D,
-                                     bool Isitype) {
+std::string ArrayBoundsRewriter::getBoundsString(const PVConstraint *PV,
+                                                 Decl *D, bool Isitype) {
   auto &ABInfo = Info.getABoundsInfo();
 
   // Try to find a bounds key for the constraint variable. If we can't,

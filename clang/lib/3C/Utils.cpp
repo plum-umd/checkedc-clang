@@ -152,7 +152,8 @@ bool isNULLExpression(clang::Expr *E, ASTContext &C) {
          E->isNullPointerConstant(C, Expr::NPC_ValueDependentIsNotNull);
 }
 
-std::error_code tryGetCanonicalFilePath(const std::string &FileName, std::string &AbsoluteFp) {
+std::error_code tryGetCanonicalFilePath(const std::string &FileName,
+                                        std::string &AbsoluteFp) {
   SmallString<255> AbsPath;
   std::error_code EC;
   if (FileName.empty()) {
@@ -169,7 +170,8 @@ std::error_code tryGetCanonicalFilePath(const std::string &FileName, std::string
   return EC;
 }
 
-void getCanonicalFilePath(const std::string &FileName, std::string &AbsoluteFp) {
+void getCanonicalFilePath(const std::string &FileName,
+                          std::string &AbsoluteFp) {
   std::error_code EC = tryGetCanonicalFilePath(FileName, AbsoluteFp);
   assert(!EC && "tryGetCanonicalFilePath failed");
 }
@@ -181,10 +183,10 @@ bool filePathStartsWith(const std::string &Path, const std::string &Prefix) {
   if (Prefix.empty() || Path == Prefix) {
     return true;
   }
-  StringRef separator = llvm::sys::path::get_separator();
+  StringRef Separator = llvm::sys::path::get_separator();
   std::string PrefixWithTrailingSeparator = Prefix;
-  if (!StringRef(Prefix).endswith(separator)) {
-    PrefixWithTrailingSeparator += separator;
+  if (!StringRef(Prefix).endswith(Separator)) {
+    PrefixWithTrailingSeparator += Separator;
   }
   return Path.substr(0, PrefixWithTrailingSeparator.size()) ==
          PrefixWithTrailingSeparator;
@@ -224,15 +226,14 @@ bool isStructOrUnionType(clang::VarDecl *VD) {
          VD->getType().getTypePtr()->isUnionType();
 }
 
-std::string tyToStr(const clang::Type *T) {
-  if (auto TDT = dyn_cast<TypedefType>(T)) {
-    auto D = TDT->getDecl();
-    std::string s = D->getNameAsString();
-    return s;
-  } else {
-    QualType QT(T, 0);
-    return QT.getAsString();
-  }
+std::string qtyToStr(clang::QualType QT, const std::string &Name) {
+  std::string S = Name;
+  QT.getAsStringInternal(S, LangOptions());
+  return S;
+}
+
+std::string tyToStr(const clang::Type *T, const std::string &Name) {
+  return qtyToStr(QualType(T, 0), Name);
 }
 
 Expr *removeAuxillaryCasts(Expr *E) {
@@ -333,7 +334,7 @@ static bool castCheck(clang::QualType DstType, clang::QualType SrcType) {
   if (SrcPtrTypePtr || DstPtrTypePtr)
     return false;
 
-  // Check function cast by comparing parameter and return types individually
+  // Check function cast by comparing parameter and return types individually.
   const auto *SrcFnType = dyn_cast<clang::FunctionProtoType>(SrcTypePtr);
   const auto *DstFnType = dyn_cast<clang::FunctionProtoType>(DstTypePtr);
   if (SrcFnType && DstFnType) {

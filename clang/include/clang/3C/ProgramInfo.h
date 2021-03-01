@@ -12,11 +12,11 @@
 #ifndef LLVM_CLANG_3C_PROGRAMINFO_H
 #define LLVM_CLANG_3C_PROGRAMINFO_H
 
-#include "3CInteractiveData.h"
-#include "AVarBoundsInfo.h"
-#include "ConstraintVariables.h"
-#include "PersistentSourceLoc.h"
-#include "Utils.h"
+#include "clang/3C/3CInteractiveData.h"
+#include "clang/3C/AVarBoundsInfo.h"
+#include "clang/3C/ConstraintVariables.h"
+#include "clang/3C/PersistentSourceLoc.h"
+#include "clang/3C/Utils.h"
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -110,9 +110,8 @@ public:
   void constrainWildIfMacro(ConstraintVariable *CV, SourceLocation Location,
                             PersistentSourceLoc *PSL = nullptr);
 
-
-  void unifyIfTypedef(const clang::Type*, clang::ASTContext&,
-                      clang::DeclaratorDecl*, PVConstraint*);
+  void unifyIfTypedef(const clang::Type *, clang::ASTContext &,
+                      clang::DeclaratorDecl *, PVConstraint *);
 
   std::pair<CVarSet, bool> lookupTypedef(PersistentSourceLoc PSL);
 
@@ -130,13 +129,13 @@ private:
   // analysis from compilation unit to compilation unit.
   VariableMap Variables;
 
-  // Map storing constraint information for typedefed types
-  // The set contains all the constraint variables that also use this tyepdef
-  // TODO this could be replaced w/ a signle CVar
+  // Map storing constraint information for typedefed types,
+  // The set contains all the constraint variables that also use this typedef.
+  // TODO this could be replaced w/ a single CVar.
   // The bool informs the rewriter whether or not this typedef should be
   // rewritten. It will be false for typedefs we don't support rewritting,
-  // such as typedefs that are pointers to anonymous structs
-  std::map<PersistentSourceLoc, std::pair<CVarSet, bool>> typedefVars;
+  // such as typedefs that are pointers to anonymous structs.
+  std::map<PersistentSourceLoc, std::pair<CVarSet, bool>> TypedefVars;
 
   // Map with the same purpose as the Variables map, this stores constraint
   // variables for non-declaration expressions.
@@ -158,7 +157,7 @@ private:
   // has been seen before.
   std::map<std::string, bool> ExternGVars;
 
-  // Maps for global/static functions, global variables
+  // Maps for global/static functions, global variables.
   ExternalFunctionMapType ExternalFunctionFVCons;
   StaticFunctionMapType StaticFunctionFVCons;
   std::map<std::string, std::set<PVConstraint *>> GlobalVariableSymbols;

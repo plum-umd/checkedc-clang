@@ -20,7 +20,7 @@
 #include <sstream>
 
 #ifdef FIVE_C
-#include <clang/3C/DeclRewriter_5C.h>
+#include "clang/3C/DeclRewriter_5C.h"
 #endif
 
 using namespace llvm;
@@ -51,19 +51,22 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
   for (const auto &D : Context.getTranslationUnitDecl()->decls()) {
     TRV->TraverseDecl(D);
     SVI.TraverseDecl(D);
-    if (const auto &TD  = dyn_cast<TypedefDecl>(D)) {
+    if (const auto &TD = dyn_cast<TypedefDecl>(D)) {
       auto PSL = PersistentSourceLoc::mkPSL(TD, Context);
-      if (!TD->getUnderlyingType()->isBuiltinType()) { // Don't rewrite base types like int
-        const auto pair = Info.lookupTypedef(PSL);
-        const auto VSet = pair.first;
-        if (!VSet.empty()) { // We ignore typedefs that are never used
+      // Don't rewrite base types like int.
+      if (!TD->getUnderlyingType()->isBuiltinType()) {
+        const auto Pair = Info.lookupTypedef(PSL);
+        const auto VSet = Pair.first;
+        if (!VSet.empty()) { // We ignore typedefs that are never used.
           const auto Var = VSet.begin();
           const auto &Env = Info.getConstraints().getVariables();
           if ((*Var)->anyChanges(Env)) {
-            std::string newTy = getStorageQualifierString(D) +
-              (*Var)->mkString(Info.getConstraints().getVariables(),
-                               false, false, false, true) + " " + TD->getNameAsString();
-            RewriteThese.insert(new TypedefDeclReplacement(TD, nullptr, newTy));
+            std::string NewTy =
+                getStorageQualifierString(D) +
+                (*Var)->mkString(Info.getConstraints().getVariables(), false,
+                                 false, false, true) +
+                " " + TD->getNameAsString();
+            RewriteThese.insert(new TypedefDeclReplacement(TD, nullptr, NewTy));
           }
         }
       }
@@ -81,7 +84,7 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
   for (const auto &D : TUD->decls()) {
     MV.TraverseDecl(D);
     detectInlineStruct(D, Context.getSourceManager());
-    if(FunctionDecl *FD = dyn_cast<FunctionDecl>(D)) {
+    if (FunctionDecl *FD = dyn_cast<FunctionDecl>(D)) {
       if (FD->hasBody() && FD->isThisDeclarationADefinition()) {
         for (auto &D : FD->decls()) {
           detectInlineStruct(D, Context.getSourceManager());
@@ -201,16 +204,14 @@ void DeclRewriter::rewriteParmVarDecl(ParmVarDeclReplacement *N) {
       ParmVarDecl *Rewrite = CurFD->getParamDecl(PIdx);
       assert(Rewrite != nullptr);
       SourceRange TR = Rewrite->getSourceRange();
-
-      if (canRewrite(R, TR))
-        R.ReplaceText(TR, N->getReplacement());
+      rewriteSourceRange(R, TR, N->getReplacement());
     }
 }
 
-void DeclRewriter::rewriteTypedefDecl(TypedefDeclReplacement *TDR, RSet &ToRewrite) {
+void DeclRewriter::rewriteTypedefDecl(TypedefDeclReplacement *TDR,
+                                      RSet &ToRewrite) {
   rewriteSingleDecl(TDR, ToRewrite);
 }
-
 
 template <typename DRType>
 void DeclRewriter::rewriteFieldOrVarDecl(DRType *N, RSet &ToRewrite) {
@@ -218,16 +219,15 @@ void DeclRewriter::rewriteFieldOrVarDecl(DRType *N, RSet &ToRewrite) {
                     std::is_same<DRType, VarDeclReplacement>::value,
                 "Method expects variable or field declaration replacement.");
 
-  if (InlineVarDecls.find(N->getDecl()) != InlineVarDecls.end()
-      && VisitedMultiDeclMembers.find(N) == VisitedMultiDeclMembers.end()) {
+  if (InlineVarDecls.find(N->getDecl()) != InlineVarDecls.end() &&
+      VisitedMultiDeclMembers.find(N) == VisitedMultiDeclMembers.end()) {
     std::vector<Decl *> SameLineDecls;
     getDeclsOnSameLine(N, SameLineDecls);
     if (std::find(SameLineDecls.begin(), SameLineDecls.end(),
                   VDToRDMap[N->getDecl()]) == SameLineDecls.end())
       SameLineDecls.insert(SameLineDecls.begin(), VDToRDMap[N->getDecl()]);
     rewriteMultiDecl(N, ToRewrite, SameLineDecls, true);
-  }
-  else if (isSingleDeclaration(N)) {
+  } else if (isSingleDeclaration(N)) {
     rewriteSingleDecl(N, ToRewrite);
   } else if (VisitedMultiDeclMembers.find(N) == VisitedMultiDeclMembers.end()) {
     std::vector<Decl *> SameLineDecls;
@@ -243,8 +243,9 @@ void DeclRewriter::rewriteFieldOrVarDecl(DRType *N, RSet &ToRewrite) {
 }
 
 void DeclRewriter::rewriteSingleDecl(DeclReplacement *N, RSet &ToRewrite) {
-  bool isSingleDecl = dyn_cast<TypedefDecl>(N->getDecl()) || isSingleDeclaration(N);
-  assert("Declaration is not a single declaration." && isSingleDecl);
+  bool IsSingleDecl =
+      dyn_cast<TypedefDecl>(N->getDecl()) || isSingleDeclaration(N);
+  assert("Declaration is not a single declaration." && IsSingleDecl);
   // This is the easy case, we can rewrite it locally, at the declaration.
   SourceRange TR = N->getDecl()->getSourceRange();
   doDeclRewrite(TR, N);
@@ -276,12 +277,11 @@ void DeclRewriter::rewriteMultiDecl(DeclReplacement *N, RSet &ToRewrite,
   //         initializers are preserved, any declarations that an initializer to
   //         be valid checked-c are given one.
 
-
   bool IsFirst = true;
   SourceLocation PrevEnd;
   for (const auto &DL : SameLineDecls) {
     std::string ReplaceText = ";\n";
-    // Find the declaration replacement object for the current declaration
+    // Find the declaration replacement object for the current declaration.
     DeclReplacement *SameLineReplacement;
     bool Found = false;
     for (const auto &NLT : RewritesForThisDecl)
@@ -340,7 +340,7 @@ void DeclRewriter::rewriteMultiDecl(DeclReplacement *N, RSet &ToRewrite,
         // either the end of the declaration or just before the initializer if
         // one is present.
         SourceRange SR(PrevEnd, DL->getEndLoc());
-        R.ReplaceText(SR, DeclStream.str());
+        rewriteSourceRange(R, SR, DeclStream.str());
 
         // Undo prior trickery. This need to happen so that the PSL for the decl
         // is not changed since the PSL is used as a map key in a few places.
@@ -349,11 +349,10 @@ void DeclRewriter::rewriteMultiDecl(DeclReplacement *N, RSet &ToRewrite,
       }
     }
 
-
     SourceRange End;
     // In the event that IsFirst was not set to false, that implies we are
     // separating the RecordDecl and VarDecl, so instead of searching for
-    // the next comma, we simply specify the end of the RecordDecl
+    // the next comma, we simply specify the end of the RecordDecl.
     if (IsFirst) {
       IsFirst = false;
       End = DL->getEndLoc();
@@ -362,7 +361,7 @@ void DeclRewriter::rewriteMultiDecl(DeclReplacement *N, RSet &ToRewrite,
     // are separate statements separated by a semicolon and a newline.
     else
       End = getNextCommaOrSemicolon(DL->getEndLoc());
-    R.ReplaceText(End, ReplaceText);
+    rewriteSourceRange(R, End, ReplaceText);
     // Offset by one to skip past what we've just added so it isn't overwritten.
     PrevEnd = End.getEnd().getLocWithOffset(1);
   }
@@ -378,7 +377,7 @@ void DeclRewriter::rewriteMultiDecl(DeclReplacement *N, RSet &ToRewrite,
 // invoking the rewriter) is to add any required initializer expression.
 void DeclRewriter::doDeclRewrite(SourceRange &SR, DeclReplacement *N) {
   std::string Replacement = N->getReplacement();
-  if (dyn_cast<TypedefDecl>(N->getDecl()))
+  if (isa<TypedefDecl>(N->getDecl()))
     Replacement = "typedef " + Replacement;
   if (auto *VD = dyn_cast<VarDecl>(N->getDecl())) {
     if (VD->hasInit()) {
@@ -402,71 +401,40 @@ void DeclRewriter::doDeclRewrite(SourceRange &SR, DeclReplacement *N) {
     }
   }
 
-  if (canRewrite(R, SR)) {
-    R.ReplaceText(SR, Replacement);
-  } else {
-    // This can happen if SR is within a macro. If that is the case, maybe there
-    // is still something we can do because Decl refers to a non-macro line.
-    SourceRange Possible(R.getSourceMgr().getExpansionLoc(SR.getBegin()),
-                         SR.getEnd());
-
-    if (canRewrite(R, Possible))
-      R.ReplaceText(Possible, Replacement);
-    else
-      llvm_unreachable(
-          "Still can't rewrite declaration."
-          "This should have been made WILD during constraint generation.");
-  }
+  rewriteSourceRange(R, SR, Replacement);
 }
 
 void DeclRewriter::rewriteFunctionDecl(FunctionDeclReplacement *N) {
-  // TODO: If the return type is a fully-specified function pointer,
-  //       then clang will give back an invalid source range for the
-  //       return type source range. For now, check that the source
-  //       range is valid.
-  //       Additionally, a source range can be (mis) identified as
-  //       spanning multiple files. We don't know how to re-write that,
-  //       so don't.
-  SourceRange SR = N->getSourceRange(A.getSourceManager());
-  if (canRewrite(R, SR)) {
-    R.ReplaceText(SR, N->getReplacement());
-  } else {
-    SourceRange Possible(R.getSourceMgr().getExpansionLoc(SR.getBegin()),
-                         SR.getEnd());
-    if (canRewrite(R, Possible)) {
-      R.ReplaceText(Possible, N->getReplacement());
-    } else if (Verbose) {
-      errs() << "Don't know how to re-write FunctionDecl\n";
-      N->getDecl()->dump();
-      errs() << "at\n";
-      if (N->getStatement())
-        N->getStatement()->dump();
-      errs() << "with " << N->getReplacement() << "\n";
-    }
-  }
+  rewriteSourceRange(R, N->getSourceRange(A.getSourceManager()),
+                     N->getReplacement());
 }
 
 // A function to detect the presence of inline struct declarations
 // by tracking VarDecls and RecordDecls and populating data structures
-// later used in rewriting
+// later used in rewriting.
 
-// These variables are duplicated in the header file and here because
-// static vars need to be initialized in the cpp file where the class is defined
+// These variables are duplicated in the header file and here because static
+// vars need to be initialized in the cpp file where the class is defined.
 /*static*/ RecordDecl *DeclRewriter::LastRecordDecl = nullptr;
 /*static*/ std::map<Decl *, Decl *> DeclRewriter::VDToRDMap;
 /*static*/ std::set<Decl *> DeclRewriter::InlineVarDecls;
 void DeclRewriter::detectInlineStruct(Decl *D, SourceManager &SM) {
-  if (RecordDecl *RD = dyn_cast<RecordDecl>(D)) {
+  RecordDecl *RD = dyn_cast<RecordDecl>(D);
+  if (RD != nullptr &&
+      // With -fms-extensions (default on Windows), Clang injects an implicit
+      // `struct _GUID` with an invalid location, which would cause an assertion
+      // failure in SM.isPointWithin below.
+      RD->getBeginLoc().isValid()) {
     LastRecordDecl = RD;
   }
   if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
-    if(LastRecordDecl != nullptr) {
-      auto lastRecordLocation = LastRecordDecl->getBeginLoc();
+    if (LastRecordDecl != nullptr) {
+      auto LastRecordLocation = LastRecordDecl->getBeginLoc();
       auto Begin = VD->getBeginLoc();
       auto End = VD->getEndLoc();
-      bool IsInLineStruct = SM.isPointWithin(lastRecordLocation, Begin, End);
-      bool IsNamedInLineStruct = IsInLineStruct &&
-                                 LastRecordDecl->getNameAsString() != "";
+      bool IsInLineStruct = SM.isPointWithin(LastRecordLocation, Begin, End);
+      bool IsNamedInLineStruct =
+          IsInLineStruct && LastRecordDecl->getNameAsString() != "";
       if (IsNamedInLineStruct) {
         VDToRDMap[VD] = LastRecordDecl;
         InlineVarDecls.insert(VD);
@@ -577,16 +545,16 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
   if (!Defnc->hasBody())
     return true;
 
-  // DidAnyParams tracks if we have made any changes to the parameters for this
-  // declarations. If no changes are made, then there is no need to rewrite the
-  // parameter declarations. This will also be set to true if an itype is added
-  // to the return, since return itypes are inserted afters params.
+  // RewriteParams and RewriteReturn track if we will need to rewrite the
+  // parameter and return type declarations on this function. They are first
+  // set to true if any changes are made to the types of the parameter and
+  // return. If a type has changed, then it must be rewritten. There are then
+  // some special circumstances which require rewriting the parameter or return
+  // even when the type as not changed.
   bool RewriteParams = false;
-  // Does the same job as RewriteParams, but with respect to the return value.
-  // If the return does not change, there is no need to rewrite it.
   bool RewriteReturn = false;
 
-  // Get rewritten parameter variable declarations
+  // Get rewritten parameter variable declarations.
   std::vector<std::string> ParmStrs;
   for (unsigned I = 0; I < Defnc->numParams(); ++I) {
     PVConstraint *ExtCV = Defnc->getExternalParam(I);
@@ -606,17 +574,32 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
       RewriteParams = true;
   }
 
-  // Get rewritten return variable
+  // Get rewritten return variable.
   std::string ReturnVar, ItypeStr;
   this->buildDeclVar(Defnc->getInternalReturn(), Defnc->getExternalReturn(), FD,
                      ReturnVar, ItypeStr, RewriteParams, RewriteReturn);
 
   // If the return is a function pointer, we need to rewrite the whole
-  // declaration even if no actual changes were made to the parameters. It could
-  // probably be done better, but getting the correct source locations is
-  // painful.
+  // declaration even if no actual changes were made to the parameters because
+  // the parameter for the function pointer type appear later in the source than
+  // the parameters for the function declaration. It could probably be done
+  // better, but getting the correct source locations is painful.
   if (FD->getReturnType()->isFunctionPointerType() && RewriteReturn)
     RewriteParams = true;
+
+  // If the function is declared using a typedef for the function type, then we
+  // need to rewrite parameters and the return if either would have been
+  // rewritten. What this does is expand the typedef to the full function type
+  // to avoid the problem of rewriting inside the typedef.
+  // FIXME: If issue #437 is fixed in way that preserves typedefs on function
+  //        declarations, then this conditional should be removed to enable
+  //        separate rewriting of return type and parameters on the
+  //        corresponding definition.
+  //        https://github.com/correctcomputation/checkedc-clang/issues/437
+  if ((RewriteReturn || RewriteParams) && hasDeclWithTypedef(FD)) {
+    RewriteParams = true;
+    RewriteReturn = true;
+  }
 
   // Combine parameter and return variables rewritings into a single rewriting
   // for the entire function declaration.
@@ -685,11 +668,14 @@ void FunctionDeclBuilder::buildItypeDecl(PVConstraint *Defn,
   return;
 }
 
-void
-FunctionDeclBuilder::buildDeclVar(PVConstraint *IntCV, PVConstraint *ExtCV,
-                                  DeclaratorDecl *Decl, std::string &Type,
-                                  std::string &IType, bool &RewriteParm,
-                                  bool &RewriteRet) {
+// Note: For a parameter, Type + IType will give the full declaration (including
+// the name) but the breakdown between Type and IType is not guaranteed. For a
+// return, Type will be what goes before the name and IType will be what goes
+// after the parentheses.
+void FunctionDeclBuilder::buildDeclVar(PVConstraint *IntCV, PVConstraint *ExtCV,
+                                       DeclaratorDecl *Decl, std::string &Type,
+                                       std::string &IType, bool &RewriteParm,
+                                       bool &RewriteRet) {
   const auto &Env = Info.getConstraints().getVariables();
   // If the external constraint variable is checked, then the parameter should
   // be advertised as checked to callers. This requires adding either an itype
@@ -706,16 +692,34 @@ FunctionDeclBuilder::buildDeclVar(PVConstraint *IntCV, PVConstraint *ExtCV,
       buildItypeDecl(ExtCV, Decl, Type, IType, RewriteParm, RewriteRet);
     return;
   }
-  // Variables that do not need to be rewritten fall through to here. Type
-  // strings are taken unchanged from the original source.
-  if (isa<ParmVarDecl>(Decl)) {
-    Type = getSourceText(Decl->getSourceRange(), *Context);
-    IType = "";
+  // Variables that do not need to be rewritten fall through to here.
+  // For parameter variables, we try to extract the declaration from the source
+  // code. This preserves macros and other formatting. This isn't possible for
+  // return variables because the itype on returns is located after the
+  // parameter list. Sometimes we cannot get the original source for a parameter
+  // declaration, for example if a function prototype is declared using a
+  // typedef or the parameter declaration is inside a macro. For these cases, we
+  // just fall back to reconstructing the declaration from the PVConstraint.
+  ParmVarDecl *PVD = dyn_cast<ParmVarDecl>(Decl);
+  if (PVD) {
+    SourceRange Range = PVD->getSourceRange();
+    if (Range.isValid()) {
+      Type = getSourceText(Range, *Context);
+      if (!Type.empty()) {
+        // Great, we got the original source including any itype and bounds.
+        IType = "";
+        return;
+      }
+    }
+    // Otherwise, reconstruct the name and type, and reuse the code below for
+    // the itype and bounds.
+    // TODO: Do we care about `register` or anything else this doesn't handle?
+    Type = qtyToStr(PVD->getOriginalType(), PVD->getNameAsString());
   } else {
     Type = ExtCV->getOriginalTy() + " ";
-    IType = getExistingIType(ExtCV);
-    IType += ABRewriter.getBoundsString(ExtCV, Decl, !IType.empty());
   }
+  IType = getExistingIType(ExtCV);
+  IType += ABRewriter.getBoundsString(ExtCV, Decl, !IType.empty());
 }
 
 std::string FunctionDeclBuilder::getExistingIType(ConstraintVariable *DeclC) {
@@ -728,6 +732,37 @@ std::string FunctionDeclBuilder::getExistingIType(ConstraintVariable *DeclC) {
 // Check if the function is handled by this visitor.
 bool FunctionDeclBuilder::isFunctionVisited(std::string FuncName) {
   return VisitedSet.find(FuncName) != VisitedSet.end();
+}
+
+// Given a function declaration figure out if this declaration or any other
+// declaration of the same function is declared using a typedefed function type.
+bool FunctionDeclBuilder::hasDeclWithTypedef(const FunctionDecl *FD) {
+  for (FunctionDecl *FDIter : FD->redecls()) {
+    // If the declaration type is TypedefType, then this is definitely declared
+    // using a typedef. This only happens when the typedefed declaration is the
+    // first declaration of a function.
+    if (isa_and_nonnull<TypedefType>(FDIter->getType().getTypePtrOrNull()))
+      return true;
+    // Next look for a TypeDefTypeLoc. This is present on the typedefed
+    // declaration even when it is not the first declaration.
+    TypeSourceInfo *TSI = FDIter->getTypeSourceInfo();
+    if (TSI) {
+      if (!TSI->getTypeLoc().getAs<TypedefTypeLoc>().isNull())
+        return true;
+    } else {
+      // This still could possibly be a typedef type if TSI was NULL.
+      // TypeSourceInfo is null for implicit function declarations, so if a
+      // implicit declaration uses a typedef, it will be missed. That's fine
+      // since an implicit declaration can't be rewritten anyways.
+      // There might be other ways it can be null that I'm not aware of.
+      if (Verbose) {
+        llvm::errs() << "Unable to conclusively determine if a function "
+                     << "declaration uses a typedef.\n";
+        FDIter->dump();
+      }
+    }
+  }
+  return false;
 }
 
 bool FieldFinder::VisitFieldDecl(FieldDecl *FD) {

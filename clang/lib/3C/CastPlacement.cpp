@@ -13,7 +13,7 @@
 #include "clang/3C/3CGlobalOptions.h"
 #include "clang/3C/ConstraintResolver.h"
 #include "clang/3C/Utils.h"
-#include <clang/Tooling/Transformer/SourceCode.h>
+#include "clang/Tooling/Transformer/SourceCode.h"
 
 using namespace clang;
 
@@ -46,7 +46,7 @@ bool CastPlacementVisitor::VisitCallExpr(CallExpr *CE) {
   if (Info.hasTypeParamBindings(CE, Context))
     TypeVars = Info.getTypeParamBindings(CE, Context);
 
-  // Cast on arguments
+  // Cast on arguments.
   unsigned PIdx = 0;
   for (const auto &A : CE->arguments()) {
     if (PIdx < FV->numParams()) {
@@ -63,9 +63,8 @@ bool CastPlacementVisitor::VisitCallExpr(CallExpr *CE) {
 
       CVarSet ArgConstraints = CR.getExprConstraintVars(ArgExpr);
       for (auto *ArgC : ArgConstraints) {
-        CastNeeded CastKind = needCasting(ArgC, ArgC,
-                                          FV->getInternalParam(PIdx),
-                                          FV->getExternalParam(PIdx));
+        CastNeeded CastKind = needCasting(
+            ArgC, ArgC, FV->getInternalParam(PIdx), FV->getExternalParam(PIdx));
         if (CastKind != NO_CAST) {
           surroundByCast(FV->getExternalParam(PIdx), CastKind, A);
           ExprsWithCast.insert(ignoreCheckedCImplicit(A));
@@ -101,11 +100,9 @@ bool CastPlacementVisitor::VisitCallExpr(CallExpr *CE) {
   return true;
 }
 
-CastPlacementVisitor::CastNeeded
-CastPlacementVisitor::needCasting(ConstraintVariable *SrcInt,
-                                  ConstraintVariable *SrcExt,
-                                  ConstraintVariable *DstInt,
-                                  ConstraintVariable *DstExt) {
+CastPlacementVisitor::CastNeeded CastPlacementVisitor::needCasting(
+    ConstraintVariable *SrcInt, ConstraintVariable *SrcExt,
+    ConstraintVariable *DstInt, ConstraintVariable *DstExt) {
   Constraints &CS = Info.getConstraints();
   // No casting is required if the source exactly matches either the
   // destinations itype or the destinations regular type.
@@ -138,54 +135,71 @@ CastPlacementVisitor::getCastString(ConstraintVariable *Dst,
                                     CastNeeded CastKind) {
   const auto &E = Info.getConstraints().getVariables();
   switch (CastKind) {
-    case CAST_TO_WILD:
-      return std::make_pair(
-        "((" + Dst->getRewritableOriginalTy() + ")",
-        ")");
-    case CAST_TO_CHECKED: {
-      std::string Suffix = ")";
-      if (const auto *DstPVC = dyn_cast<PVConstraint>(Dst)) {
-        assert("Checked cast not to a pointer" && !DstPVC->getCvars().empty());
-        ConstAtom *CA = Info.getConstraints().getAssignment(
-          DstPVC->getCvars().at(0));
+  case CAST_TO_WILD:
+    return std::make_pair("((" + Dst->getRewritableOriginalTy() + ")", ")");
+  case CAST_TO_CHECKED: {
+    std::string Suffix = ")";
+    if (const auto *DstPVC = dyn_cast<PVConstraint>(Dst)) {
+      assert("Checked cast not to a pointer" && !DstPVC->getCvars().empty());
+      ConstAtom *CA =
+          Info.getConstraints().getAssignment(DstPVC->getCvars().at(0));
 
-        // Writing an _Assume_bounds_cast to an array type requires inserting
-        // the bounds for destination array. These can come from the source
-        // code or the infered bounds. If neither source is available, use empty
-        // bounds.
-        if (isa<ArrAtom>(CA) || isa<NTArrAtom>(CA)) {
-          std::string Bounds = "";
-          if (DstPVC->srcHasBounds())
-            Bounds = DstPVC->getBoundsStr();
-          else if (DstPVC->hasBoundsKey())
-            Bounds = ABRewriter.getBoundsString(DstPVC, nullptr, true);
-          if (Bounds.empty())
-            Bounds = "byte_count(0)";
+      // Writing an _Assume_bounds_cast to an array type requires inserting
+      // the bounds for destination array. These can come from the source
+      // code or the infered bounds. If neither source is available, use empty
+      // bounds.
+      if (isa<ArrAtom>(CA) || isa<NTArrAtom>(CA)) {
+        std::string Bounds = "";
+        if (DstPVC->srcHasBounds())
+          Bounds = DstPVC->getBoundsStr();
+        else if (DstPVC->hasBoundsKey())
+          Bounds = ABRewriter.getBoundsString(DstPVC, nullptr, true);
+        if (Bounds.empty())
+          Bounds = "byte_count(0)";
 
-          Suffix = ", " + Bounds + ")";
-        }
+        Suffix = ", " + Bounds + ")";
       }
-      return std::make_pair(
-        "_Assume_bounds_cast<" + Dst->mkString(E, false) +
-        ">(", Suffix);
     }
-    default:
-      llvm_unreachable("No casting needed");
+    return std::make_pair(
+        "_Assume_bounds_cast<" + Dst->mkString(E, false) + ">(", Suffix);
+  }
+  default:
+    llvm_unreachable("No casting needed");
   }
 }
 
-
 void CastPlacementVisitor::surroundByCast(ConstraintVariable *Dst,
                                           CastNeeded CastKind, Expr *E) {
+  PersistentSourceLoc PSL = PersistentSourceLoc::mkPSL(E, *Context);
+  if (!canWrite(PSL.getFileName())) {
+    // 3C has known bugs that can cause attempted cast insertion in
+    // unwritable files in common use cases. Until they are fixed, report a
+    // warning rather than letting the main "unwritable change" error trigger
+    // later.
+    clang::DiagnosticsEngine &DE = Writer.getSourceMgr().getDiagnostics();
+    unsigned ErrorId = DE.getCustomDiagID(
+        DiagnosticsEngine::Warning,
+        "3C internal error: tried to insert a cast into an unwritable file "
+        "(https://github.com/correctcomputation/checkedc-clang/issues/454)");
+    DE.Report(E->getBeginLoc(), ErrorId);
+    return;
+  }
+
   auto CastStrs = getCastString(Dst, CastKind);
 
   // If E is already a cast expression, we will try to rewrite the cast instead
   // of adding a new expression.
-  if (auto *CE = dyn_cast<CStyleCastExpr>(E->IgnoreParens())) {
+  if (isa<CStyleCastExpr>(E->IgnoreParens()) && CastKind == CAST_TO_WILD) {
+    auto *CE = cast<CStyleCastExpr>(E->IgnoreParens());
     SourceRange CastTypeRange(CE->getLParenLoc(), CE->getRParenLoc());
-    Writer.ReplaceText(CastTypeRange, CastStrs.first.substr(1));
+    assert("Cast expected to start with '('" && !CastStrs.first.empty() &&
+           CastStrs.first[0] == '(');
+    std::string CastStr = CastStrs.first.substr(1);
+    // FIXME: This rewriting is known to fail on the benchmark programs.
+    //        https://github.com/correctcomputation/checkedc-clang/issues/444
+    rewriteSourceRange(Writer, CastTypeRange, CastStr, false);
   } else {
-    // First try to insert the cast prefix and suffix around the extression in
+    // First try to insert the cast prefix and suffix around the expression in
     // the source code.
     bool FrontRewritable = Writer.isRewritable(E->getBeginLoc());
     bool EndRewritable = Writer.isRewritable(E->getEndLoc());
@@ -197,7 +211,7 @@ void CastPlacementVisitor::surroundByCast(ConstraintVariable *Dst,
     } else {
       // Sometimes we can't insert the cast around the expression due to macros
       // getting in the way. In these cases, we can sometimes replace the entire
-      // expression source with a new string containing the orginal expression
+      // expression source with a new string containing the original expression
       // and the cast.
       auto CRA = CharSourceRange::getTokenRange(E->getSourceRange());
       auto NewCRA = clang::Lexer::makeFileCharRange(
@@ -207,9 +221,27 @@ void CastPlacementVisitor::surroundByCast(ConstraintVariable *Dst,
       // be placed fully inside a macro rather than around a macro or on an
       // argument to the macro.
       if (!SrcText.empty())
-        Writer.ReplaceText(NewCRA, CastStrs.first + SrcText + CastStrs.second);
+        rewriteSourceRange(Writer, NewCRA,
+                           CastStrs.first + SrcText + CastStrs.second);
+      else
+        reportCastInsertionFailure(E, CastStrs.first + CastStrs.second);
     }
   }
+}
+
+void CastPlacementVisitor::reportCastInsertionFailure(
+    Expr *E, const std::string &CastStr) {
+  // FIXME: This is a warning rather than an error so that a new benchmark
+  //        failure is not introduced in Lua.
+  //        github.com/correctcomputation/checkedc-clang/issues/439
+  clang::DiagnosticsEngine &DE = Context->getDiagnostics();
+  unsigned ErrorId = DE.getCustomDiagID(
+      DiagnosticsEngine::Warning, "Unable to surround expression with cast.\n"
+                                  "Intended cast: \"%0\"");
+  auto ErrorBuilder = DE.Report(E->getExprLoc(), ErrorId);
+  ErrorBuilder.AddSourceRange(
+      Context->getSourceManager().getExpansionRange(E->getSourceRange()));
+  ErrorBuilder.AddString(CastStr);
 }
 
 bool CastLocatorVisitor::VisitCastExpr(CastExpr *C) {

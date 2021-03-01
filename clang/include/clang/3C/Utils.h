@@ -11,7 +11,7 @@
 #ifndef LLVM_CLANG_3C_UTILS_H
 #define LLVM_CLANG_3C_UTILS_H
 
-#include "PersistentSourceLoc.h"
+#include "clang/3C/PersistentSourceLoc.h"
 #include "clang/AST/Type.h"
 #include "clang/Basic/SourceLocation.h"
 #include "llvm/Support/Casting.h"
@@ -142,7 +142,12 @@ bool isVarArgType(const std::string &TypeName);
 bool isStructOrUnionType(clang::VarDecl *VD);
 
 // Helper method to print a Type in a way that can be represented in the source.
-std::string tyToStr(const clang::Type *T);
+// If Name is given, it is included as the variable name (which otherwise isn't
+// trivial to do with function pointers, etc.).
+std::string tyToStr(const clang::Type *T, const std::string &Name = "");
+
+// Same as tyToStr with a QualType.
+std::string qtyToStr(clang::QualType QT, const std::string &Name = "");
 
 // Get the end source location of the end of the provided function.
 clang::SourceLocation getFunctionDeclRParen(clang::FunctionDecl *FD,
@@ -194,7 +199,7 @@ bool evaluateToInt(clang::Expr *E, const clang::ASTContext &C, int &Result);
 bool isZeroBoundsExpr(clang::BoundsExpr *BE, const clang::ASTContext &C);
 
 // Find the range in the source code for the base type of a type location.
-// The base type is the type after removing all
+// The base type is the type after removing all.
 clang::TypeLoc getBaseTypeLoc(clang::TypeLoc T);
 
 // Ignore all CheckedC temporary and clang implicit expression on E. This

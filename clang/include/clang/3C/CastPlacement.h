@@ -13,30 +13,30 @@
 #define LLVM_CLANG_3C_CASTPLACEMENT_H
 
 #include "clang/3C/ConstraintResolver.h"
+#include "clang/3C/RewriteUtils.h"
 #include "clang/AST/RecursiveASTVisitor.h"
-#include "RewriteUtils.h"
 
 // Locates expressions which are children of explicit cast expressions after
 // ignoring any intermediate implicit expressions introduced in the clang AST.
 class CastLocatorVisitor : public RecursiveASTVisitor<CastLocatorVisitor> {
 public:
-  explicit CastLocatorVisitor(ASTContext *C) : Context(C) {}
+  // This visitor happens to not use the ASTContext itself.
+  explicit CastLocatorVisitor(ASTContext *C) {}
 
   bool VisitCastExpr(CastExpr *C);
 
   std::set<Expr *> &getExprsWithCast() { return ExprsWithCast; }
 
 private:
-  ASTContext *Context;
   std::set<Expr *> ExprsWithCast;
 };
 
 class CastPlacementVisitor : public RecursiveASTVisitor<CastPlacementVisitor> {
 public:
-  explicit CastPlacementVisitor
-    (ASTContext *C, ProgramInfo &I, Rewriter &R, std::set<Expr *> &EWC)
-    : Context(C), Info(I), Writer(R), CR(Info, Context), ABRewriter(I),
-      ExprsWithCast(EWC) {}
+  explicit CastPlacementVisitor(ASTContext *C, ProgramInfo &I, Rewriter &R,
+                                std::set<Expr *> &EWC)
+      : Context(C), Info(I), Writer(R), CR(Info, Context), ABRewriter(I),
+        ExprsWithCast(EWC) {}
 
   bool VisitCallExpr(CallExpr *C);
 
@@ -48,21 +48,21 @@ private:
   ArrayBoundsRewriter ABRewriter;
   std::set<Expr *> &ExprsWithCast;
 
-  // Enumeration indicating what type of cast is required at a call site
+  // Enumeration indicating what type of cast is required at a call site.
   enum CastNeeded {
-    NO_CAST = 0,     // No casting required
-    CAST_TO_CHECKED, // A CheckedC bounds cast required (wild -> checked)
-    CAST_TO_WILD     // A standard C explicit cast required (checked -> wild)
+    NO_CAST = 0,     // No casting required.
+    CAST_TO_CHECKED, // A CheckedC bounds cast required (wild -> checked).
+    CAST_TO_WILD     // A standard C explicit cast required (checked -> wild).
   };
 
-  CastNeeded needCasting(ConstraintVariable *SrcInt,
-                         ConstraintVariable *SrcExt,
+  CastNeeded needCasting(ConstraintVariable *SrcInt, ConstraintVariable *SrcExt,
                          ConstraintVariable *DstInt,
                          ConstraintVariable *DstExt);
 
-  std::pair<std::string, std::string>
-  getCastString(ConstraintVariable *Dst, CastNeeded CastKind);
+  std::pair<std::string, std::string> getCastString(ConstraintVariable *Dst,
+                                                    CastNeeded CastKind);
 
   void surroundByCast(ConstraintVariable *Dst, CastNeeded CastKind, Expr *E);
+  void reportCastInsertionFailure(Expr *E, const std::string &CastStr);
 };
 #endif // LLVM_CLANG_3C_CASTPLACEMENT_H

@@ -9,19 +9,19 @@
 // visitors create constraints based on the AST of the program.
 //===----------------------------------------------------------------------===//
 
-#include <algorithm>
 #include "clang/3C/ConstraintBuilder.h"
 #include "clang/3C/3CGlobalOptions.h"
 #include "clang/3C/ArrayBoundsInferenceConsumer.h"
 #include "clang/3C/ConstraintResolver.h"
 #include "clang/3C/TypeVariableAnalysis.h"
-#include <clang/ASTMatchers/ASTMatchers.h>
+#include "clang/ASTMatchers/ASTMatchers.h"
+#include <algorithm>
 
 using namespace llvm;
 using namespace clang;
 
 // This class is intended to locate inline struct definitions
-// in order to mark them wild or signal a warning as appropriate
+// in order to mark them wild or signal a warning as appropriate.
 class InlineStructDetector {
 public:
   explicit InlineStructDetector() : LastRecordDecl(nullptr) {}
@@ -37,7 +37,7 @@ public:
         FileID FID = FL.getFileID();
         const FileEntry *FE = SM.getFileEntryForID(FID);
 
-        //detect whether this RecordDecl is part of an inline struct
+        // Detect whether this RecordDecl is part of an inline struct.
         bool IsInLineStruct = false;
         Decl *D = Declaration->getNextDeclInContext();
         if (VarDecl *VD = dyn_cast_or_null<VarDecl>(D)) {
@@ -56,10 +56,10 @@ public:
           for (const auto &F : Definition->fields()) {
             auto FieldTy = F->getType();
             // If the RecordDecl is a union or in a system header
-            // and this field is a pointer, we need to mark it wild;
+            // and this field is a pointer, we need to mark it wild.
             bool FieldInUnionOrSysHeader =
                 (FL.isInSystemHeader() || Definition->isUnion());
-            // mark field wild if the above is true and the field is a pointer
+            // Mark field wild if the above is true and the field is a pointer.
             if (isPtrOrArrayType(FieldTy) &&
                 (FieldInUnionOrSysHeader || IsInLineStruct)) {
               std::string Rsn = "Union or external struct field encountered";
@@ -76,20 +76,20 @@ public:
                       ConstraintResolver CB) {
     // If the last seen RecordDecl is non-null and coincides with the current
     // VarDecl (i.e. via an inline struct), we proceed as follows:
-    // if the struct is named, do nothing
-    // if the struct is anonymous:
-    //      when alltypes is on, do nothing, but signal a warning to
-    //                           the user indicating its presence
-    //      when alltypes is off, mark the VarDecl WILD in order to
+    // If the struct is named, do nothing.
+    // If the struct is anonymous:
+    //      When alltypes is on, do nothing, but signal a warning to
+    //                           the user indicating its presence.
+    //      When alltypes is off, mark the VarDecl WILD in order to
     //                           ensure the converted program compiles.
     if (LastRecordDecl != nullptr) {
-      auto lastRecordLocation = LastRecordDecl->getBeginLoc();
+      auto LastRecordLocation = LastRecordDecl->getBeginLoc();
       auto BeginLoc = VD->getBeginLoc();
       auto EndLoc = VD->getEndLoc();
       auto VarTy = VD->getType();
       SourceManager &SM = Context->getSourceManager();
       bool IsInLineStruct =
-          SM.isPointWithin(lastRecordLocation, BeginLoc, EndLoc) &&
+          SM.isPointWithin(LastRecordLocation, BeginLoc, EndLoc) &&
           isPtrOrArrayType(VarTy);
       bool IsNamedInLineStruct =
           IsInLineStruct && LastRecordDecl->getNameAsString() != "";
@@ -132,7 +132,8 @@ class FunctionVisitor : public RecursiveASTVisitor<FunctionVisitor> {
 public:
   explicit FunctionVisitor(ASTContext *C, ProgramInfo &I, FunctionDecl *FD,
                            TypeVarInfo &TVI)
-      : Context(C), Info(I), Function(FD), CB(Info, Context), TVInfo(TVI), ISD() {}
+      : Context(C), Info(I), Function(FD), CB(Info, Context), TVInfo(TVI),
+        ISD() {}
 
   // T x = e
   bool VisitDeclStmt(DeclStmt *S) {
@@ -202,7 +203,7 @@ public:
     // must have the same type.
     if (FVCons.size() > 1) {
       PersistentSourceLoc PL =
-        PersistentSourceLoc::mkPSL(E->getCallee(), *Context);
+          PersistentSourceLoc::mkPSL(E->getCallee(), *Context);
       constrainConsVarGeq(FVCons, FVCons, Info.getConstraints(), &PL,
                           Same_to_Same, false, &Info);
     }
@@ -246,8 +247,10 @@ public:
             if (I < TargetFV->numParams()) {
               // Remove casts to void* on polymorphic types that are used
               // consistently.
-              const int TyIdx = TargetFV->getExternalParam(I)->getGenericIndex();
-              if (ConsistentTypeParams.find(TyIdx) != ConsistentTypeParams.end())
+              const int TyIdx =
+                  TargetFV->getExternalParam(I)->getGenericIndex();
+              if (ConsistentTypeParams.find(TyIdx) !=
+                  ConsistentTypeParams.end())
                 ArgumentConstraints =
                     CB.getExprConstraintVars(A->IgnoreImpCasts());
               else
@@ -258,7 +261,7 @@ public:
             if (CallUntyped) {
               Deferred.push_back(ArgumentConstraints);
             } else if (I < TargetFV->numParams()) {
-              // constrain the arg CV to the param CV
+              // Constrain the arg CV to the param CV.
               ConstraintVariable *ParameterDC = TargetFV->getExternalParam(I);
 
               // Do not handle bounds key here because we will be
@@ -428,53 +431,48 @@ private:
 };
 
 class PtrToStructDef : public RecursiveASTVisitor<PtrToStructDef> {
-  public:
-    explicit PtrToStructDef(TypedefDecl *TDT) : TDT(TDT) {}
+public:
+  explicit PtrToStructDef(TypedefDecl *TDT) : TDT(TDT) {}
 
-    bool VisitPointerType(clang::PointerType *PT) {
-      ispointer = true;
-      return true;
+  bool VisitPointerType(clang::PointerType *PT) {
+    IsPointer = true;
+    return true;
+  }
+
+  bool VisitRecordType(RecordType *RT) {
+    auto *Decl = RT->getDecl();
+    auto DeclRange = Decl->getSourceRange();
+    auto TypedefRange = TDT->getSourceRange();
+    bool DeclContained = (TypedefRange.getBegin() < DeclRange.getBegin()) &&
+                         !(TypedefRange.getEnd() < TypedefRange.getEnd());
+    if (DeclContained) {
+      StructDefInTD = true;
+      return false;
     }
+    return true;
+  }
 
-    bool VisitRecordType(RecordType *RT) {
-      auto decl = RT->getDecl();
-      auto declRange = decl->getSourceRange();
-      auto typedefRange = TDT->getSourceRange();
-      bool declContained = (typedefRange.getBegin() < declRange.getBegin())
-        && !(typedefRange.getEnd() < typedefRange.getEnd());
-      if (declContained) {
-        structDefInTD = true;
-        return false;
-      } else {
-        return true;
-      }
-    }
+  bool VisitFunctionProtoType(FunctionProtoType *FPT) {
+    IsPointer = true;
+    return true;
+  }
 
-    bool VisitFunctionProtoType(FunctionProtoType *FPT) {
-      ispointer = true;
-      return true;
-    }
+  bool getResult(void) { return StructDefInTD; }
 
-    bool getResult(void) {
-      return structDefInTD;
-    }
+  static bool containsPtrToStructDef(TypedefDecl *TDT) {
+    PtrToStructDef Traverser(TDT);
+    Traverser.TraverseDecl(TDT);
+    return Traverser.getResult();
+  }
 
-    static bool containsPtrToStructDef(TypedefDecl *TDT) {
-      PtrToStructDef traverser(TDT);
-      traverser.TraverseDecl(TDT);
-      return traverser.getResult();
-    }
-
-  private:
-    TypedefDecl* TDT = nullptr;
-    bool ispointer = false;
-    bool structDefInTD = false;
-
+private:
+  TypedefDecl *TDT = nullptr;
+  bool IsPointer = false;
+  bool StructDefInTD = false;
 };
 
-
 // This class visits a global declaration, generating constraints
-//   for functions, variables, types, etc. that are visited
+// for functions, variables, types, etc. that are visited.
 class ConstraintGenVisitor : public RecursiveASTVisitor<ConstraintGenVisitor> {
 public:
   explicit ConstraintGenVisitor(ASTContext *Context, ProgramInfo &I,
@@ -589,14 +587,9 @@ public:
       assert("Declaration is a definition, but getDefinition() is null?" &&
              Definition);
       FullSourceLoc FL = Context->getFullLoc(Definition->getBeginLoc());
-      if (FL.isValid()) {
-        SourceManager &SM = Context->getSourceManager();
-        FileID FID = FL.getFileID();
-        const FileEntry *FE = SM.getFileEntryForID(FID);
-        if (FE && FE->isValid())
-          for (auto *const D : Definition->fields())
-            addVariable(D);
-      }
+      if (FL.isValid())
+        for (auto *const D : Definition->fields())
+          addVariable(D);
     }
     return true;
   }
@@ -623,7 +616,6 @@ void VariableAdderConsumer::HandleTranslationUnit(ASTContext &C) {
     else
       errs() << "Analyzing\n";
   }
-
 
   VariableAdderVisitor VAV = VariableAdderVisitor(&C, Info);
   TranslationUnitDecl *TUD = C.getTranslationUnitDecl();
