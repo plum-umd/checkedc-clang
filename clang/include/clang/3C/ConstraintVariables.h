@@ -137,9 +137,6 @@ public:
   // Force use of equality constraints in function calls for this CV
   virtual void equateArgumentConstraints(ProgramInfo &I) = 0;
 
-  // Update this CV with information from duplicate declaration CVs
-  virtual void brainTransplant(ConstraintVariable *, ProgramInfo &,
-                               std::string &ReasonFailed) = 0;
   virtual void mergeDeclaration(ConstraintVariable *, ProgramInfo &,
                                 std::string &ReasonFailed) = 0;
 
@@ -384,8 +381,6 @@ public:
 
   const CAtoms &getCvars() const { return Vars; }
 
-  void brainTransplant(ConstraintVariable *From, ProgramInfo &I,
-                       std::string &ReasonFailed) override;
   void mergeDeclaration(ConstraintVariable *From, ProgramInfo &I,
                         std::string &ReasonFailed) override;
 
@@ -468,9 +463,6 @@ public:
 
   void mergeDeclaration(FVComponentVariable *From, ProgramInfo &I,
                         std::string &ReasonFailed);
-  void brainTransplant(FVComponentVariable *From, ProgramInfo &I,
-                       std::string &ReasonFailed);
-
   std::string mkItypeStr(const EnvironmentMap &E) const;
   std::string mkTypeStr(const EnvironmentMap &E) const;
   std::string mkString(const EnvironmentMap &E) const;
@@ -539,8 +531,6 @@ public:
     return S->getKind() == FunctionVariable;
   }
 
-  void brainTransplant(ConstraintVariable *From, ProgramInfo &I,
-                       std::string &ReasonFailed) override;
   void mergeDeclaration(ConstraintVariable *FromCV, ProgramInfo &I,
                         std::string &ReasonFailed) override;
 

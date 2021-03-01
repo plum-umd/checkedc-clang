@@ -178,12 +178,6 @@ private:
   void specialCaseVarIntros(ValueDecl *D, ASTContext *Context);
 
   // Inserts the given FVConstraint set into the extern or static function map.
-  // Note: This can trigger a brainTransplant from an existing FVConstraint into
-  // the argument FVConstraint. The brainTransplant copies the atoms of the
-  // existing FVConstraint into the argument. This effectively throws out any
-  // constraints that may been applied to the argument FVConstraint, so do not
-  // call this function any time other than immediately after constructing an
-  // FVConstraint.
   FunctionVariableConstraint *
   insertNewFVConstraint(FunctionDecl *FD, FVConstraint *FVCon, ASTContext *C);
 
