@@ -53,8 +53,8 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
     SVI.TraverseDecl(D);
     if (const auto &TD = dyn_cast<TypedefDecl>(D)) {
       auto PSL = PersistentSourceLoc::mkPSL(TD, Context);
-      if (!TD->getUnderlyingType()
-               ->isBuiltinType()) { // Don't rewrite base types like int
+      // Don't rewrite base types like int
+      if (!TD->getUnderlyingType()->isBuiltinType()) {
         const auto Pair = Info.lookupTypedef(PSL);
         const auto VSet = Pair.first;
         if (!VSet.empty()) { // We ignore typedefs that are never used

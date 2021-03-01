@@ -312,8 +312,7 @@ _3CInterface::_3CInterface(const struct _3COptions &CCopt,
     EC = tryGetCanonicalFilePath(S, AbsPath);
     if (EC) {
       errs() << "3C initialization error: Failed to canonicalize source file "
-                "path \""
-             << S << "\": " << EC.message() << "\n";
+             << "path \"" << S << "\": " << EC.message() << "\n";
       Failed = true;
       continue;
     }
