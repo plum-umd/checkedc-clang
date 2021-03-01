@@ -1912,7 +1912,8 @@ bool FunctionVariableConstraint::getIsOriginallyChecked() const {
 void FVComponentVariable::mergeDeclaration(FVComponentVariable *From,
                                            ProgramInfo &I,
                                            std::string &ReasonFailed) {
-  if (InternalConstraint == ExternalConstraint) {
+  if (InternalConstraint == ExternalConstraint
+      && From->InternalConstraint != From->ExternalConstraint) {
     // Special handling for merging declarations where the original declaration
     // was allocated using the same constraint variable for internal and
     // external constraints but a subsequent declaration allocated separate
