@@ -471,3 +471,17 @@ Expr *ignoreCheckedCImplicit(Expr *E) {
   }
   return New;
 }
+
+FunctionTypeLoc getFunctionTypeLoc(TypeLoc TLoc) {
+  TLoc = getBaseTypeLoc(TLoc);
+  auto ATLoc = TLoc.getAs<AttributedTypeLoc>();
+  if (!ATLoc.isNull())
+    TLoc = ATLoc.getNextTypeLoc();
+  return TLoc.getAs<FunctionTypeLoc>();
+}
+
+FunctionTypeLoc getFunctionTypeLoc(DeclaratorDecl *Decl) {
+  if (auto *TSInfo = Decl->getTypeSourceInfo())
+    return getFunctionTypeLoc(TSInfo->getTypeLoc());
+  return FunctionTypeLoc();
+}

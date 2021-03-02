@@ -444,6 +444,85 @@ private:
   }
 };
 
+SourceRange FunctionDeclReplacement::getSourceRange(SourceManager &SM) const {
+  SourceLocation Begin = RewriteReturn ? getDeclBegin(SM) : getParamBegin(SM);
+  SourceLocation End = RewriteParams ? getDeclEnd(SM) : getReturnEnd(SM);
+  assert("Invalid FunctionDeclReplacement SourceRange!" && Begin.isValid() &&
+         End.isValid() && SM.isBeforeInTranslationUnit(Begin, End));
+  return SourceRange(Begin, End);
+}
+
+SourceLocation FunctionDeclReplacement::getDeclBegin(SourceManager &SM) const {
+  SourceLocation Begin = Decl->getBeginLoc();
+  return Begin;
+}
+
+SourceLocation FunctionDeclReplacement::getParamBegin(SourceManager &SM) const {
+  FunctionTypeLoc FTypeLoc = getFunctionTypeLoc(Decl);
+  // If we can't get a FunctionTypeLoc instance, then we'll guess that the
+  // l-paren is the token following the function name. This can clobber some
+  // comments and formatting.
+  if (FTypeLoc.isNull())
+    return Lexer::getLocForEndOfToken(Decl->getLocation(), 0, SM,
+                                      Decl->getLangOpts());
+  return FTypeLoc.getLParenLoc();
+}
+
+SourceLocation FunctionDeclReplacement::getReturnEnd(SourceManager &SM) const {
+  return Decl->getReturnTypeSourceRange().getEnd();
+}
+
+SourceLocation FunctionDeclReplacement::getDeclEnd(SourceManager &SM) const {
+  FunctionTypeLoc FTypeLoc = getFunctionTypeLoc(Decl);
+
+  SourceLocation End;
+  if (FTypeLoc.isNull()) {
+    // Without a FunctionTypeLocation, we have to approximate the end of the
+    // declaration as the location of the first r-paren before the start of the
+    // function body. This is messed up by comments and ifdef blocks containing
+    // r-paren, but works correctly most of the time.
+    End = getFunctionDeclRParen(Decl, SM);
+  } else if (Decl->getReturnType()->isFunctionPointerType()) {
+    // If a function returns a function pointer type, the paramter list for the
+    // returned function type comes after the top-level functions parameter
+    // list. Of course, this FunctionTypeLoc can also be null, so we have
+    // another fall back to the r-paren approximation.
+    FunctionTypeLoc T = getFunctionTypeLoc(FTypeLoc.getReturnLoc());
+    if (!T.isNull())
+      End = T.getRParenLoc();
+    else
+      End = getFunctionDeclRParen(Decl, SM);
+  } else {
+    End = FTypeLoc.getRParenLoc();
+  }
+
+  // If there's a bounds expression, this comes after the right paren of the
+  // function declaration parameter list.
+  if (auto *BoundsE = Decl->getBoundsExpr()) {
+    SourceLocation BoundsEnd = BoundsE->getEndLoc();
+    if (BoundsEnd.isValid())
+      End = BoundsEnd;
+  }
+
+  // If there's an itype, this also comes after the right paren. In the case
+  // that there is both a bounds expression and an itype, we need check
+  // which is later in the file and use that as the declaration end.
+  if (auto *InteropE = Decl->getInteropTypeExpr()) {
+    SourceLocation InteropEnd = InteropE->getEndLoc();
+    if (InteropEnd.isValid() &&
+        (!End.isValid() || SM.isBeforeInTranslationUnit(End, InteropEnd)))
+      End = InteropEnd;
+  }
+
+  // SourceLocations are weird and turn up invalid for reasons I don't
+  // understand. Fallback to extracting r paren location from source
+  // character buffer.
+  if (!End.isValid())
+    End = getFunctionDeclRParen(Decl, SM);
+
+  return End;
+}
+
 std::string ArrayBoundsRewriter::getBoundsString(const PVConstraint *PV,
                                                  Decl *D, bool Isitype) {
   auto &ABInfo = Info.getABoundsInfo();

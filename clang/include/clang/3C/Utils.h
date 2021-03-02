@@ -205,4 +205,11 @@ clang::TypeLoc getBaseTypeLoc(clang::TypeLoc T);
 // Ignore all CheckedC temporary and clang implicit expression on E. This
 // combines the behavior of IgnoreExprTmp and IgnoreImplicit.
 clang::Expr *ignoreCheckedCImplicit(clang::Expr *E);
+
+// Get a FunctionTypeLoc object from the declaration/type location. This is a
+// little complicated due to various clang wrapper types that come from
+// parenthesised types and function attributes.
+clang::FunctionTypeLoc getFunctionTypeLoc(clang::TypeLoc TLoc);
+clang::FunctionTypeLoc getFunctionTypeLoc(clang::DeclaratorDecl *Decl);
+
 #endif
