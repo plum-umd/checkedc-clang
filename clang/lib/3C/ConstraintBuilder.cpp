@@ -549,8 +549,8 @@ private:
 // visitor which is executed before both of the other visitors.
 class VariableAdderVisitor : public RecursiveASTVisitor<VariableAdderVisitor> {
 public:
-  explicit VariableAdderVisitor(ASTContext *Context, ProgramInfo &I)
-    : Context(Context), Info(I) {}
+  explicit VariableAdderVisitor(ASTContext *Context, ProgramVariableAdder &VA)
+    : Context(Context), VarAdder(VA) {}
 
 
   bool VisitTypedefDecl(TypedefDecl* TD) {
@@ -559,10 +559,10 @@ public:
     // If we haven't seen this typedef before, initialize it's entry in the
     // typedef map. If we have seen it before, and we need to preserve the
     // constraints contained within it
-    if (!Info.seenTypedef(PSL))
+    if (!VarAdder.seenTypedef(PSL))
       // Add this typedef to the program info, if it contains a ptr to
       // an anonymous struct we mark as not being rewritable
-      Info.addTypedef(PSL, !PtrToStructDef::containsPtrToStructDef(TD));
+      VarAdder.addTypedef(PSL, !PtrToStructDef::containsPtrToStructDef(TD));
 
     return true;
   }
@@ -577,7 +577,7 @@ public:
   bool VisitFunctionDecl(FunctionDecl *D) {
     FullSourceLoc FL = Context->getFullLoc(D->getBeginLoc());
     if (FL.isValid())
-      Info.addVariable(D, Context);
+      VarAdder.addVariable(D, Context);
     return true;
   }
 
@@ -596,12 +596,12 @@ public:
 
 private:
   ASTContext *Context;
-  ProgramInfo &Info;
+  ProgramVariableAdder &VarAdder;
 
   void addVariable(DeclaratorDecl *D) {
-    Info.addABoundsVariable(D);
+    VarAdder.addABoundsVariable(D);
     if (isPtrOrArrayType(D->getType()))
-      Info.addVariable(D, Context);
+      VarAdder.addVariable(D, Context);
   }
 };
 

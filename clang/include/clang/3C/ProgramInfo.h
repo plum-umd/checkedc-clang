@@ -31,6 +31,11 @@ public:
     getABoundsInfo().insertVariable(D);
   }
 
+  virtual bool seenTypedef(PersistentSourceLoc PSL) = 0;
+
+  virtual void addTypedef(PersistentSourceLoc PSL, bool ShouldCheck) = 0;
+
+
 protected:
   virtual AVarBoundsInfo &getABoundsInfo() = 0;
 };
@@ -119,10 +124,6 @@ public:
 
   void addTypedef(PersistentSourceLoc PSL, bool ShouldCheck);
 
-  // For each pointer type in the declaration of D, add a variable to the
-  // constraint system for that pointer type.
-  void addVariable(clang::DeclaratorDecl *D, clang::ASTContext *AstContext);
-
 private:
   // List of constraint variables for declarations, indexed by their location in
   // the source. This information persists across invocations of the constraint
@@ -190,6 +191,11 @@ private:
 
   void insertCVAtoms(ConstraintVariable *CV,
                      std::map<ConstraintKey, ConstraintVariable *> &AtomMap);
+
+  // For each pointer type in the declaration of D, add a variable to the
+  // constraint system for that pointer type.
+  void addVariable(clang::DeclaratorDecl *D, clang::ASTContext *AstContext);
+
 };
 
 #endif
