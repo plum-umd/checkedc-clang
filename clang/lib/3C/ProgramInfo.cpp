@@ -1045,7 +1045,7 @@ bool ProgramInfo::seenTypedef(PersistentSourceLoc PSL) {
 
 void ProgramInfo::addTypedef(PersistentSourceLoc PSL, bool CanRewriteDef,
                              TypedefDecl* TD, ASTContext &C) {
-  auto Name = "typedef__" + TD->getNameAsString();
+  auto Name = TD->getNameAsString();
   auto* PV = new PointerVariableConstraint(TD->getUnderlyingType(), nullptr,
                                        Name, *this, C);
   auto *const Rsn =

@@ -61,9 +61,8 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
           if (Var.anyChanges(Env)) {
             std::string newTy =
                   getStorageQualifierString(D) +
-                  Var.mkString(Info.getConstraints().getVariables(), false,
-                                   false, false, true) +
-                  " " + TD->getNameAsString();
+                  Var.mkString(Info.getConstraints().getVariables(), true,
+                                   false, false, true);
               RewriteThese.insert(
                   new TypedefDeclReplacement(TD, nullptr, newTy));
             }
