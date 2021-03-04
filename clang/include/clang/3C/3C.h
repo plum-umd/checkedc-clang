@@ -106,6 +106,7 @@ public:
 
   // Constraint Building.
 
+  // Create ConstraintVariables to hold constraints
   bool addVariables();
 
   // Build initial constraints.

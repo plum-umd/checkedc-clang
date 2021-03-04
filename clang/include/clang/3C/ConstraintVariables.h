@@ -379,6 +379,7 @@ public:
 
   const CAtoms &getCvars() const { return Vars; }
 
+  // Include new ConstAtoms, supplemental info, and merge function pointers
   void mergeDeclaration(ConstraintVariable *From, ProgramInfo &I,
                         std::string &ReasonFailed) override;
 
@@ -528,6 +529,7 @@ public:
     return S->getKind() == FunctionVariable;
   }
 
+  // Merge return value and all params
   void mergeDeclaration(ConstraintVariable *FromCV, ProgramInfo &I,
                         std::string &ReasonFailed) override;
 

@@ -558,11 +558,9 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
       return;
     }
 
-    // Store the FVConstraint in the global and Variables maps. In doing this,
-    // insertNewFVConstraint might replace the atoms in F with the atoms of a
-    // FVConstraint that already exists in the map. Doing this loses any
-    // constraints that might have effected the original atoms, so do not create
-    // any constraint on F before this function is called.
+    // Store the FVConstraint in the global and Variables maps. It may be
+    // merged with others if this is a redeclaration, and the merged version
+    // is returned.
     F = insertNewFVConstraint(FD, F, AstContext);
     NewCV = F;
 

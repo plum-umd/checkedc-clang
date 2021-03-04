@@ -178,6 +178,8 @@ private:
   void specialCaseVarIntros(ValueDecl *D, ASTContext *Context);
 
   // Inserts the given FVConstraint set into the extern or static function map.
+  // Returns the merged version if it was a redeclaration, or the constraint
+  // parameter if it was new.
   FunctionVariableConstraint *
   insertNewFVConstraint(FunctionDecl *FD, FVConstraint *FVCon, ASTContext *C);
 

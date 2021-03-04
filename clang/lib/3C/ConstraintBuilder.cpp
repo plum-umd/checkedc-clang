@@ -619,12 +619,8 @@ void VariableAdderConsumer::HandleTranslationUnit(ASTContext &C) {
 
   VariableAdderVisitor VAV = VariableAdderVisitor(&C, Info);
   TranslationUnitDecl *TUD = C.getTranslationUnitDecl();
-  // Generate constraints.
+  // Collect Variables.
   for (const auto &D : TUD->decls()) {
-    // The order of these traversals CANNOT be changed because both the type
-    // variable and constraint gen visitor require that variables have been
-    // added to ProgramInfo, and the constraint gen visitor requires the type
-    // variable information gathered in the type variable traversal.
     VAV.TraverseDecl(D);
   }
 
@@ -657,6 +653,10 @@ void ConstraintBuilderConsumer::HandleTranslationUnit(ASTContext &C) {
 
   // Generate constraints.
   for (const auto &D : TUD->decls()) {
+    // The order of these traversals CANNOT be changed because the constraint
+    // gen visitor requires the type variable information gathered in the type
+    // variable traversal.
+
     CSBV.TraverseDecl(D);
     TV.TraverseDecl(D);
     GV.TraverseDecl(D);
