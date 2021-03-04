@@ -136,6 +136,9 @@ public:
   // Force use of equality constraints in function calls for this CV
   virtual void equateArgumentConstraints(ProgramInfo &I) = 0;
 
+  // Internally combine the constraints and other data from the first parameter
+  // with this constraint variable. Used with redeclarations, especially of
+  // functions declared in multiple files.
   virtual void mergeDeclaration(ConstraintVariable *, ProgramInfo &,
                                 std::string &ReasonFailed) = 0;
 

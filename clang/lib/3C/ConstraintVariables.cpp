@@ -1757,7 +1757,8 @@ void PointerVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
     ++I;
     ++J;
   }
-  assert(Vars.size() == NewVatoms.size() && "Merging Error");
+  assert(Vars.size() == NewVatoms.size() &&
+         "Merging error, pointer depth change");
   Vars = NewVatoms;
   SrcHasItype = SrcHasItype || From->SrcHasItype;
   if (!From->ItypeStr.empty())
@@ -1813,7 +1814,8 @@ void FunctionVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
     return;
   }
   if (this->numParams() == 0) {
-    // This is an untyped declaration, we need to perform a transplant
+    // This is an untyped declaration, we need to switch to the other
+    assert(false && "This merge should happen in reverse");
     From->mergeDeclaration(this, I, ReasonFailed);
   } else {
     // Standard merge.
