@@ -1049,11 +1049,10 @@ void ProgramInfo::addTypedef(PersistentSourceLoc PSL, bool CanRewriteDef,
   ConstraintVariable* V = nullptr;
   const auto T = TD->getUnderlyingType();
   if (isa<clang::FunctionProtoType>(T) || isa<clang::FunctionNoProtoType>(T)) 
-	  V = new FunctionVariableConstraint(T.getTypePtr(),
-			  nullptr, Name, *this, C);
+    V = new FunctionVariableConstraint(T.getTypePtr(), 
+        nullptr, Name, *this, C);
    else  
-  	V = new PointerVariableConstraint(T, nullptr,
-       	                                Name, *this, C);
+    V = new PointerVariableConstraint(T, nullptr, Name, *this, C);
   auto *const Rsn =
       !CanRewriteDef ?
            "Unable to rewrite a typedef with multiple names"

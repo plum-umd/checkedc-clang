@@ -586,7 +586,6 @@ void PointerVariableConstraint::getQualString(uint32_t TypeIdx,
 void PointerVariableConstraint::insertQualType(uint32_t TypeIdx,
                                                QualType &QTy) {
   if (QTy.isConstQualified())
-  if (QTy.isConstQualified())
     QualMap[TypeIdx].insert(ConstQualification);
   if (QTy.isVolatileQualified())
     QualMap[TypeIdx].insert(VolatileQualification);
