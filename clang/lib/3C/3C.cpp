@@ -58,6 +58,7 @@ std::set<std::string> FilePaths;
 bool VerifyDiagnosticOutput;
 bool DumpUnwritableChanges;
 bool AllowUnwritableChanges;
+bool AllowRewriteFailures;
 
 #ifdef FIVE_C
 bool RemoveItypes;
@@ -106,7 +107,7 @@ newFrontendActionFactoryA(ProgramInfo &I, bool VerifyTheseDiagnostics = false) {
                                       bool VerifyTheseDiagnostics)
         : Info(I), VerifyTheseDiagnostics(VerifyTheseDiagnostics) {}
 
-    std::unique_ptr<FrontendAction> create() override { 
+    std::unique_ptr<FrontendAction> create() override {
       return std::unique_ptr<FrontendAction>(new T(Info));
     }
 
@@ -202,6 +203,8 @@ _3CInterface::create(const struct _3COptions &CCopt,
                      const std::vector<std::string> &SourceFileList,
                      CompilationDatabase *CompDB) {
   bool Failed = false;
+  // See clang/docs/checkedc/3C/clang-tidy.md#_3c-name-prefix
+  // NOLINTNEXTLINE(readability-identifier-naming)
   std::unique_ptr<_3CInterface> _3CInter(
       new _3CInterface(CCopt, SourceFileList, CompDB, Failed));
   if (Failed) {
@@ -235,6 +238,7 @@ _3CInterface::_3CInterface(const struct _3COptions &CCopt,
   VerifyDiagnosticOutput = CCopt.VerifyDiagnosticOutput;
   DumpUnwritableChanges = CCopt.DumpUnwritableChanges;
   AllowUnwritableChanges = CCopt.AllowUnwritableChanges;
+  AllowRewriteFailures = CCopt.AllowRewriteFailures;
 
 #ifdef FIVE_C
   RemoveItypes = CCopt.RemoveItypes;
@@ -273,7 +277,7 @@ _3CInterface::_3CInterface(const struct _3COptions &CCopt,
   EC = tryGetCanonicalFilePath(BaseDir, TmpPath);
   if (EC) {
     errs() << "3C initialization error: Failed to canonicalize base directory "
-              "\"" << BaseDir << "\": " << EC.message() << "\n";
+           << "\"" << BaseDir << "\": " << EC.message() << "\n";
     Failed = true;
     return;
   }
@@ -293,7 +297,7 @@ _3CInterface::_3CInterface(const struct _3COptions &CCopt,
     EC = tryGetCanonicalFilePath(OutputDir, TmpPath);
     if (EC) {
       errs() << "3C initialization error: Failed to canonicalize output "
-                "directory \"" << OutputDir << "\": " << EC.message() << "\n";
+             << "directory \"" << OutputDir << "\": " << EC.message() << "\n";
       Failed = true;
       return;
     }
@@ -308,7 +312,7 @@ _3CInterface::_3CInterface(const struct _3COptions &CCopt,
     EC = tryGetCanonicalFilePath(S, AbsPath);
     if (EC) {
       errs() << "3C initialization error: Failed to canonicalize source file "
-                "path \"" << S << "\": " << EC.message() << "\n";
+             << "path \"" << S << "\": " << EC.message() << "\n";
       Failed = true;
       continue;
     }
@@ -490,7 +494,7 @@ bool _3CInterface::writeAllConvertedFilesToDisk() {
 
   ClangTool &Tool = getGlobalClangTool();
 
-  // Rewrite the input files
+  // Rewrite the input files.
   std::unique_ptr<ToolAction> RewriteTool =
       newFrontendActionFactoryA<RewriteAction<RewriteConsumer, ProgramInfo>>(
           GlobalProgramInfo, VerifyDiagnosticOutput);

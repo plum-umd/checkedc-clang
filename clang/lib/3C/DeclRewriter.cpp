@@ -20,7 +20,7 @@
 #include <sstream>
 
 #ifdef FIVE_C
-#include <clang/3C/DeclRewriter_5C.h>
+#include "clang/3C/DeclRewriter_5C.h"
 #endif
 
 using namespace llvm;
@@ -51,7 +51,7 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
   for (const auto &D : Context.getTranslationUnitDecl()->decls()) {
     TRV->TraverseDecl(D);
     SVI.TraverseDecl(D);
-    if (const auto &TD  = dyn_cast<TypedefDecl>(D)) {
+    if (const auto &TD = dyn_cast<TypedefDecl>(D)) {
       auto PSL = PersistentSourceLoc::mkPSL(TD, Context);
       if (!TD->getUnderlyingType()->isBuiltinType()) { // Don't rewrite base types like int
         const auto O = Info.lookupTypedef(PSL);
@@ -82,7 +82,7 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
   for (const auto &D : TUD->decls()) {
     MV.TraverseDecl(D);
     detectInlineStruct(D, Context.getSourceManager());
-    if(FunctionDecl *FD = dyn_cast<FunctionDecl>(D)) {
+    if (FunctionDecl *FD = dyn_cast<FunctionDecl>(D)) {
       if (FD->hasBody() && FD->isThisDeclarationADefinition()) {
         for (auto &D : FD->decls()) {
           detectInlineStruct(D, Context.getSourceManager());
@@ -211,23 +211,21 @@ void DeclRewriter::rewriteTypedefDecl(TypedefDeclReplacement *TDR, RSet &ToRewri
   rewriteSingleDecl(TDR, ToRewrite);
 }
 
-
 template <typename DRType>
 void DeclRewriter::rewriteFieldOrVarDecl(DRType *N, RSet &ToRewrite) {
   static_assert(std::is_same<DRType, FieldDeclReplacement>::value ||
                     std::is_same<DRType, VarDeclReplacement>::value,
                 "Method expects variable or field declaration replacement.");
 
-  if (InlineVarDecls.find(N->getDecl()) != InlineVarDecls.end()
-      && VisitedMultiDeclMembers.find(N) == VisitedMultiDeclMembers.end()) {
+  if (InlineVarDecls.find(N->getDecl()) != InlineVarDecls.end() &&
+      VisitedMultiDeclMembers.find(N) == VisitedMultiDeclMembers.end()) {
     std::vector<Decl *> SameLineDecls;
     getDeclsOnSameLine(N, SameLineDecls);
     if (std::find(SameLineDecls.begin(), SameLineDecls.end(),
                   VDToRDMap[N->getDecl()]) == SameLineDecls.end())
       SameLineDecls.insert(SameLineDecls.begin(), VDToRDMap[N->getDecl()]);
     rewriteMultiDecl(N, ToRewrite, SameLineDecls, true);
-  }
-  else if (isSingleDeclaration(N)) {
+  } else if (isSingleDeclaration(N)) {
     rewriteSingleDecl(N, ToRewrite);
   } else if (VisitedMultiDeclMembers.find(N) == VisitedMultiDeclMembers.end()) {
     std::vector<Decl *> SameLineDecls;
@@ -243,8 +241,9 @@ void DeclRewriter::rewriteFieldOrVarDecl(DRType *N, RSet &ToRewrite) {
 }
 
 void DeclRewriter::rewriteSingleDecl(DeclReplacement *N, RSet &ToRewrite) {
-  bool isSingleDecl = dyn_cast<TypedefDecl>(N->getDecl()) || isSingleDeclaration(N);
-  assert("Declaration is not a single declaration." && isSingleDecl);
+  bool IsSingleDecl =
+      dyn_cast<TypedefDecl>(N->getDecl()) || isSingleDeclaration(N);
+  assert("Declaration is not a single declaration." && IsSingleDecl);
   // This is the easy case, we can rewrite it locally, at the declaration.
   SourceRange TR = N->getDecl()->getSourceRange();
   doDeclRewrite(TR, N);
@@ -276,12 +275,11 @@ void DeclRewriter::rewriteMultiDecl(DeclReplacement *N, RSet &ToRewrite,
   //         initializers are preserved, any declarations that an initializer to
   //         be valid checked-c are given one.
 
-
   bool IsFirst = true;
   SourceLocation PrevEnd;
   for (const auto &DL : SameLineDecls) {
     std::string ReplaceText = ";\n";
-    // Find the declaration replacement object for the current declaration
+    // Find the declaration replacement object for the current declaration.
     DeclReplacement *SameLineReplacement;
     bool Found = false;
     for (const auto &NLT : RewritesForThisDecl)
@@ -349,11 +347,10 @@ void DeclRewriter::rewriteMultiDecl(DeclReplacement *N, RSet &ToRewrite,
       }
     }
 
-
     SourceRange End;
     // In the event that IsFirst was not set to false, that implies we are
     // separating the RecordDecl and VarDecl, so instead of searching for
-    // the next comma, we simply specify the end of the RecordDecl
+    // the next comma, we simply specify the end of the RecordDecl.
     if (IsFirst) {
       IsFirst = false;
       End = DL->getEndLoc();
@@ -378,7 +375,7 @@ void DeclRewriter::rewriteMultiDecl(DeclReplacement *N, RSet &ToRewrite,
 // invoking the rewriter) is to add any required initializer expression.
 void DeclRewriter::doDeclRewrite(SourceRange &SR, DeclReplacement *N) {
   std::string Replacement = N->getReplacement();
-  if (dyn_cast<TypedefDecl>(N->getDecl()))
+  if (isa<TypedefDecl>(N->getDecl()))
     Replacement = "typedef " + Replacement;
   if (auto *VD = dyn_cast<VarDecl>(N->getDecl())) {
     if (VD->hasInit()) {
@@ -412,25 +409,30 @@ void DeclRewriter::rewriteFunctionDecl(FunctionDeclReplacement *N) {
 
 // A function to detect the presence of inline struct declarations
 // by tracking VarDecls and RecordDecls and populating data structures
-// later used in rewriting
+// later used in rewriting.
 
-// These variables are duplicated in the header file and here because
-// static vars need to be initialized in the cpp file where the class is defined
+// These variables are duplicated in the header file and here because static
+// vars need to be initialized in the cpp file where the class is defined.
 /*static*/ RecordDecl *DeclRewriter::LastRecordDecl = nullptr;
 /*static*/ std::map<Decl *, Decl *> DeclRewriter::VDToRDMap;
 /*static*/ std::set<Decl *> DeclRewriter::InlineVarDecls;
 void DeclRewriter::detectInlineStruct(Decl *D, SourceManager &SM) {
-  if (RecordDecl *RD = dyn_cast<RecordDecl>(D)) {
+  RecordDecl *RD = dyn_cast<RecordDecl>(D);
+  if (RD != nullptr &&
+      // With -fms-extensions (default on Windows), Clang injects an implicit
+      // `struct _GUID` with an invalid location, which would cause an assertion
+      // failure in SM.isPointWithin below.
+      RD->getBeginLoc().isValid()) {
     LastRecordDecl = RD;
   }
   if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
-    if(LastRecordDecl != nullptr) {
-      auto lastRecordLocation = LastRecordDecl->getBeginLoc();
+    if (LastRecordDecl != nullptr) {
+      auto LastRecordLocation = LastRecordDecl->getBeginLoc();
       auto Begin = VD->getBeginLoc();
       auto End = VD->getEndLoc();
-      bool IsInLineStruct = SM.isPointWithin(lastRecordLocation, Begin, End);
-      bool IsNamedInLineStruct = IsInLineStruct &&
-                                 LastRecordDecl->getNameAsString() != "";
+      bool IsInLineStruct = SM.isPointWithin(LastRecordLocation, Begin, End);
+      bool IsNamedInLineStruct =
+          IsInLineStruct && LastRecordDecl->getNameAsString() != "";
       if (IsNamedInLineStruct) {
         VDToRDMap[VD] = LastRecordDecl;
         InlineVarDecls.insert(VD);
@@ -550,7 +552,7 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
   bool RewriteParams = false;
   bool RewriteReturn = false;
 
-  // Get rewritten parameter variable declarations
+  // Get rewritten parameter variable declarations.
   std::vector<std::string> ParmStrs;
   for (unsigned I = 0; I < Defnc->numParams(); ++I) {
     PVConstraint *ExtCV = Defnc->getExternalParam(I);
@@ -570,7 +572,7 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
       RewriteParams = true;
   }
 
-  // Get rewritten return variable
+  // Get rewritten return variable.
   std::string ReturnVar, ItypeStr;
   this->buildDeclVar(Defnc->getInternalReturn(), Defnc->getExternalReturn(), FD,
                      ReturnVar, ItypeStr, RewriteParams, RewriteReturn);
@@ -668,11 +670,10 @@ void FunctionDeclBuilder::buildItypeDecl(PVConstraint *Defn,
 // the name) but the breakdown between Type and IType is not guaranteed. For a
 // return, Type will be what goes before the name and IType will be what goes
 // after the parentheses.
-void
-FunctionDeclBuilder::buildDeclVar(PVConstraint *IntCV, PVConstraint *ExtCV,
-                                  DeclaratorDecl *Decl, std::string &Type,
-                                  std::string &IType, bool &RewriteParm,
-                                  bool &RewriteRet) {
+void FunctionDeclBuilder::buildDeclVar(PVConstraint *IntCV, PVConstraint *ExtCV,
+                                       DeclaratorDecl *Decl, std::string &Type,
+                                       std::string &IType, bool &RewriteParm,
+                                       bool &RewriteRet) {
   const auto &Env = Info.getConstraints().getVariables();
   // If the external constraint variable is checked, then the parameter should
   // be advertised as checked to callers. This requires adding either an itype

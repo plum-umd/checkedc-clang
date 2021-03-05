@@ -12,11 +12,11 @@
 #ifndef LLVM_CLANG_3C_PROGRAMINFO_H
 #define LLVM_CLANG_3C_PROGRAMINFO_H
 
-#include "3CInteractiveData.h"
-#include "AVarBoundsInfo.h"
-#include "ConstraintVariables.h"
-#include "PersistentSourceLoc.h"
-#include "Utils.h"
+#include "clang/3C/3CInteractiveData.h"
+#include "clang/3C/AVarBoundsInfo.h"
+#include "clang/3C/ConstraintVariables.h"
+#include "clang/3C/PersistentSourceLoc.h"
+#include "clang/3C/Utils.h"
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -110,9 +110,8 @@ public:
   void constrainWildIfMacro(ConstraintVariable *CV, SourceLocation Location,
                             PersistentSourceLoc *PSL = nullptr);
 
-
-  void unifyIfTypedef(const clang::Type*, clang::ASTContext&,
-                      clang::DeclaratorDecl*, PVConstraint*);
+  void unifyIfTypedef(const clang::Type *, clang::ASTContext &,
+                      clang::DeclaratorDecl *, PVConstraint *);
 
   CVarOption lookupTypedef(PersistentSourceLoc PSL);
 
@@ -152,7 +151,7 @@ private:
   // has been seen before.
   std::map<std::string, bool> ExternGVars;
 
-  // Maps for global/static functions, global variables
+  // Maps for global/static functions, global variables.
   ExternalFunctionMapType ExternalFunctionFVCons;
   StaticFunctionMapType StaticFunctionFVCons;
   std::map<std::string, std::set<PVConstraint *>> GlobalVariableSymbols;

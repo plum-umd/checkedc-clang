@@ -27,9 +27,8 @@
 using namespace llvm;
 using namespace clang;
 
-
 // If S is a function body, then return the FunctionDecl, otherwise return null.
-// Used in both visitors so abstracted to a function
+// Used in both visitors so abstracted to a function.
 FunctionDecl *getFunctionDeclOfBody(ASTContext *Context, CompoundStmt *S) {
   const auto &Parents = Context->getParents(*S);
   if (Parents.empty()) {
@@ -104,8 +103,6 @@ CheckedRegionAdder::findParentCompound(const ast_type_traits::DynTypedNode &N,
   return *Min;
 }
 
-
-
 bool CheckedRegionAdder::isParentChecked(
     const ast_type_traits::DynTypedNode &DTN) {
   if (const auto *Parent = findParentCompound(DTN).first) {
@@ -175,19 +172,19 @@ bool CheckedRegionFinder::VisitCompoundStmt(CompoundStmt *S) {
       //
       // Currently, it's OK to perform this check only at the function level
       // because a function is normally in a single file and 3C doesn't add
-      // checked annotations at higher levels (e.g., `#pragma CHECKED_SCOPE`)
+      // checked annotations at higher levels (e.g., `#pragma CHECKED_SCOPE`).
       return false;
     }
 
-    // Need to check return type
-    auto retType = FD->getReturnType().getTypePtr();
-    if (retType->isPointerType()) {
+    // Need to check return type.
+    const auto *RetType = FD->getReturnType().getTypePtr();
+    if (RetType->isPointerType()) {
       CVarOption CV = Info.getVariable(FD, Context);
       Localwild |= isWild(CV) || containsUncheckedPtr(FD->getReturnType());
     }
   }
 
-  // Visit all subblocks, find all unchecked types
+  // Visit all subblocks, find all unchecked types.
   for (const auto &SubStmt : S->children()) {
     CheckedRegionFinder Sub(Context, Writer, Info, Seen, Map, EmitWarnings);
     Sub.TraverseStmt(SubStmt);
@@ -228,9 +225,8 @@ bool CheckedRegionFinder::VisitCallExpr(CallExpr *C) {
   } else {
     if (FD) {
       auto Type = FD->getReturnType();
-      Wild |=
-          (!(FD->hasPrototype() || FD->doesThisDeclarationHaveABody())) ||
-          containsUncheckedPtr(Type);
+      Wild |= (!(FD->hasPrototype() || FD->doesThisDeclarationHaveABody())) ||
+              containsUncheckedPtr(Type);
       auto *FV = Info.getFuncConstraint(FD, Context);
       for (unsigned I = 0; I < FV->numParams(); I++)
         Wild |= isWild(*FV->getExternalParam(I));
