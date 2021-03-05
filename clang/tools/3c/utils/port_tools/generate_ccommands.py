@@ -18,7 +18,7 @@ TOTAL_COMMANDS_FILE = os.path.realpath("convert_all.sh")
 VSCODE_SETTINGS_JSON = os.path.realpath("settings.json")
 
 # to separate multiple commands in a line
-CMD_SEP = " &"
+CMD_SEP = " &&"
 DEFAULT_ARGS = ["-dump-stats", "-output-postfix=checked", "-dump-intermediate"]
 if os.name == "nt":
     DEFAULT_ARGS.append("-extra-arg-before=--driver-mode=cl")
@@ -89,7 +89,8 @@ def tryFixUp(s):
     return
 
 
-def run3C(checkedc_bin, compile_commands_json, checkedc_include_dir, skip_paths,
+def run3C(checkedc_bin, extra_3c_args, compile_commands_json,
+          checkedc_include_dir, skip_paths,
           skip_running=False, run_individual=False):
     global INDIVIDUAL_COMMANDS_FILE
     global TOTAL_COMMANDS_FILE
@@ -111,7 +112,6 @@ def run3C(checkedc_bin, compile_commands_json, checkedc_include_dir, skip_paths,
         return
 
     s = set()
-    total_x_args = []
     all_files = []
     for i in cmds:
         file_to_add = i['file']
@@ -128,7 +128,6 @@ def run3C(checkedc_bin, compile_commands_json, checkedc_include_dir, skip_paths,
             file_to_add = i['directory'] + SLASH + file_to_add
             # get the 3c and compiler arguments
             compiler_x_args = getCheckedCArgs(i["arguments"], checkedc_include_dir, i['directory'])
-            total_x_args.extend(compiler_x_args)
             # get the directory used during compilation.
             target_directory = i['directory']
         file_to_add = os.path.realpath(file_to_add)
@@ -166,6 +165,7 @@ def run3C(checkedc_bin, compile_commands_json, checkedc_include_dir, skip_paths,
             args.extend(list(compiler_args))
         args.append('-base-dir="' + compilation_base_dir + '"')
         args.extend(DEFAULT_ARGS)
+        args.extend(extra_3c_args)
         args.append(src_file)
         # run individual commands.
         if run_individual:
@@ -190,7 +190,12 @@ def run3C(checkedc_bin, compile_commands_json, checkedc_include_dir, skip_paths,
     args = []
     args.append(prog_name)
     args.extend(DEFAULT_ARGS)
-    args.extend(list(set(total_x_args)))
+    args.extend(extra_3c_args)
+    args.append('-p')
+    args.append(compile_commands_json)
+    # Same as in getCheckedCArgs
+    args.append('-extra-arg-before=-I' + checkedc_include_dir)
+    args.append('-extra-arg-before=-w')
     vcodewriter.addClangdArg("-log=verbose")
     vcodewriter.addClangdArg(args[1:])
     args.append('-base-dir="' + compilation_base_dir + '"')

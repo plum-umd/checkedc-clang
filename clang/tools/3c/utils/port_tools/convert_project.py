@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 Given the path to the project and 3c binary,
 this script runs 3c on all the files.
@@ -52,6 +54,10 @@ def parseTheArg():
     parser.add_argument("-p", "--prog_name", dest='prog_name', type=str, default=_3c_bin,
                         help='Program name to run. i.e., path to 3c')
 
+    parser.add_argument("-extra-3c-arg", dest='extra_3c_args', type=str, default=[], nargs='*',
+                        help=('Extra argument to pass to 3c. '
+                              'Multiple -extra-3c-arg options can be used.'))
+
     parser.add_argument("-pr", "--project_path", dest='project_path', type=str, required=True,
                         help='Path to the folder containing all project sources.')
 
@@ -96,7 +102,7 @@ if __name__ == "__main__":
     logging.info("Finished updating project files.")
 
     logging.info("Trying to convert all the source files to header files")
-    run3C(progArgs.prog_name, compileCmdsJson, progArgs.includeDir,
+    run3C(progArgs.prog_name, progArgs.extra_3c_args, compileCmdsJson, progArgs.includeDir,
                        progArgs.skip_paths, progArgs.skip_exec)
     logging.info("Finished converting all the files to checkedc files.")
 
