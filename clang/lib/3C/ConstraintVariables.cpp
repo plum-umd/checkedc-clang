@@ -1420,6 +1420,9 @@ std::string FunctionVariableConstraint::mkString(const EnvironmentMap &E,
                                                  bool UnmaskTypedef) const {
   std::string Ret = ReturnVar.mkTypeStr(E);
   std::string Itype = ReturnVar.mkItypeStr(E);
+  // This is done to rewrite the typedef of a function proto
+  if (UnmaskTypedef && EmitName)
+    Ret += Name;
   Ret = Ret + "(";
   std::vector<std::string> ParmStrs;
   for (const auto &I : this->ParamVars)
@@ -1433,10 +1436,8 @@ std::string FunctionVariableConstraint::mkString(const EnvironmentMap &E,
     Ss << ParmStrs.back();
 
     Ret = Ret + Ss.str() + ")";
-  } else {
+  } else
     Ret = Ret + "void)";
-  }
-
   return Ret + Itype;
 }
 

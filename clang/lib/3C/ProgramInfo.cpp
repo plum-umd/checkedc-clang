@@ -1046,15 +1046,21 @@ bool ProgramInfo::seenTypedef(PersistentSourceLoc PSL) {
 void ProgramInfo::addTypedef(PersistentSourceLoc PSL, bool CanRewriteDef,
                              TypedefDecl* TD, ASTContext &C) {
   auto Name = TD->getNameAsString();
-  auto* PV = new PointerVariableConstraint(TD->getUnderlyingType(), nullptr,
-                                       Name, *this, C);
+  ConstraintVariable* V = nullptr;
+  const auto T = TD->getUnderlyingType();
+  if (isa<clang::FunctionProtoType>(T) || isa<clang::FunctionNoProtoType>(T)) 
+	  V = new FunctionVariableConstraint(T.getTypePtr(),
+			  nullptr, Name, *this, C);
+   else  
+  	V = new PointerVariableConstraint(T, nullptr,
+       	                                Name, *this, C);
   auto *const Rsn =
       !CanRewriteDef ?
            "Unable to rewrite a typedef with multiple names"
             : "Declaration in non-writable file";
   if (!(CanRewriteDef && canWrite(PSL.getFileName()))) {
-    PV->constrainToWild(this->getConstraints(), Rsn, &PSL);
+    V->constrainToWild(this->getConstraints(), Rsn, &PSL);
   }
-  constrainWildIfMacro(PV, TD->getLocation(), &PSL);
-  this->TypedefVars[PSL] = {*PV};
+  constrainWildIfMacro(V, TD->getLocation(), &PSL);
+  this->TypedefVars[PSL] = {*V};
 }

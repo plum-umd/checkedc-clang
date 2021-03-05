@@ -206,6 +206,7 @@ void DeclRewriter::rewriteParmVarDecl(ParmVarDeclReplacement *N) {
     }
 }
 
+
 void DeclRewriter::rewriteTypedefDecl(TypedefDeclReplacement *TDR, RSet &ToRewrite) {
   rewriteSingleDecl(TDR, ToRewrite);
 }
