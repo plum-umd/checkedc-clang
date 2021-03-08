@@ -17,6 +17,63 @@
 
 using namespace clang;
 
+void PerformanceStats::startCompileTime() {
+  CompileTimeSt = clock();
+}
+
+void PerformanceStats::endCompileTime() {
+  CompileTime += getTimeSpentInSeconds(CompileTimeSt);
+}
+
+void PerformanceStats::startConstraintBuilderTime() {
+  ConstraintBuilderTimeSt = clock();
+}
+
+void PerformanceStats::endConstraintBuilderTime() {
+  ConstraintBuilderTime += getTimeSpentInSeconds(ConstraintBuilderTimeSt);
+}
+
+void PerformanceStats::startConstraintSolverTime() {
+  ConstraintSolverTimeSt = clock();
+}
+
+void PerformanceStats::endConstraintSolverTime() {
+  ConstraintSolverTime += getTimeSpentInSeconds(ConstraintSolverTimeSt);
+}
+
+void PerformanceStats::startArrayBoundsInferenceTime() {
+  ArrayBoundsInferenceTimeSt = clock();
+}
+
+void PerformanceStats::endArrayBoundsInferenceTime() {
+  ArrayBoundsInferenceTime += getTimeSpentInSeconds(ArrayBoundsInferenceTimeSt);
+}
+
+void PerformanceStats::startRewritingTime() {
+  RewritingTimeSt = clock();
+}
+
+void PerformanceStats::endRewritingTime() {
+  RewritingTime += getTimeSpentInSeconds(RewritingTimeSt);
+}
+
+void PerformanceStats::startTotalTime() {
+  TotalTimeSt = clock();
+}
+
+void PerformanceStats::endTotalTime() {
+  TotalTime += getTimeSpentInSeconds(TotalTimeSt);
+}
+
+void PerformanceStats::printPerformanceStats(raw_ostream &O) {
+  O << "{\"TotalTime\":" << TotalTime;
+  O << ", \"ConstraintBuilderTime\":" << ConstraintBuilderTime;
+  O << ", \"ConstraintSolverTime\":" << ConstraintSolverTime;
+  O << ", \"ArrayBoundsInferenceTime\":" << ArrayBoundsInferenceTime;
+  O << ", \"RewritingTime\":" << RewritingTime;
+  O << "}";
+}
+
 ProgramInfo::ProgramInfo() : Persisted(true) {
   ExternalFunctionFVCons.clear();
   StaticFunctionFVCons.clear();
@@ -274,6 +331,9 @@ void ProgramInfo::printStats(const std::set<std::string> &F, raw_ostream &O,
   }
 
   if (JsonFormat) {
+    O << ",";
+    O << "\"TimingStats\":";
+    PerfS.printPerformanceStats(O);
     O << "}}";
   }
 }
@@ -635,17 +695,15 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
   Variables[PLoc] = NewCV;
 }
 
-void ProgramInfo::unifyIfTypedef(const Type *Ty, ASTContext &Context,
-                                 DeclaratorDecl *Decl, PVConstraint *P) {
-  if (const auto *const TDT = dyn_cast<TypedefType>(Ty)) {
-    auto *Decl = TDT->getDecl();
-    auto PSL = PersistentSourceLoc::mkPSL(Decl, Context);
-    auto &Pair = TypedefVars[PSL];
-    CVarSet &Bounds = Pair.first;
-    if (Pair.second) {
-      P->setTypedef(Decl, Decl->getNameAsString());
+void ProgramInfo::unifyIfTypedef(const Type* Ty, ASTContext& Context, DeclaratorDecl* Decl, PVConstraint* P) {
+  if (const auto* TDT = dyn_cast<TypedefType>(Ty)) {
+    auto* TDecl = TDT->getDecl();
+    auto PSL = PersistentSourceLoc::mkPSL(TDecl, Context);
+    auto O = lookupTypedef(PSL);
+    if (O.hasValue()) {
+      auto *Bounds = &O.getValue();
+      P->setTypedef(TDecl, TDecl->getNameAsString());
       constrainConsVarGeq(P, Bounds, CS, &PSL, Same_to_Same, true, this);
-      Bounds.insert(P);
     }
   }
 }
@@ -1032,7 +1090,7 @@ ProgramInfo::getTypeParamBindings(CallExpr *CE, ASTContext *C) const {
   return TypeParamBindings.at(PSL);
 }
 
-std::pair<CVarSet, bool> ProgramInfo::lookupTypedef(PersistentSourceLoc PSL) {
+CVarOption ProgramInfo::lookupTypedef(PersistentSourceLoc PSL) {
   return TypedefVars[PSL];
 }
 
@@ -1040,7 +1098,23 @@ bool ProgramInfo::seenTypedef(PersistentSourceLoc PSL) {
   return TypedefVars.count(PSL) != 0;
 }
 
-void ProgramInfo::addTypedef(PersistentSourceLoc PSL, bool ShouldCheck) {
-  CVarSet Empty;
-  TypedefVars[PSL] = make_pair(Empty, ShouldCheck);
+void ProgramInfo::addTypedef(PersistentSourceLoc PSL, bool CanRewriteDef,
+                             TypedefDecl* TD, ASTContext &C) {
+  auto Name = TD->getNameAsString();
+  ConstraintVariable* V = nullptr;
+  const auto T = TD->getUnderlyingType();
+  if (isa<clang::FunctionProtoType>(T) || isa<clang::FunctionNoProtoType>(T)) 
+    V = new FunctionVariableConstraint(T.getTypePtr(), 
+        nullptr, Name, *this, C);
+   else  
+    V = new PointerVariableConstraint(T, nullptr, Name, *this, C);
+  auto *const Rsn =
+      !CanRewriteDef ?
+           "Unable to rewrite a typedef with multiple names"
+            : "Declaration in non-writable file";
+  if (!(CanRewriteDef && canWrite(PSL.getFileName()))) {
+    V->constrainToWild(this->getConstraints(), Rsn, &PSL);
+  }
+  constrainWildIfMacro(V, TD->getLocation(), &PSL);
+  this->TypedefVars[PSL] = {*V};
 }

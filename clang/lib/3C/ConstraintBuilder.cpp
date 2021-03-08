@@ -562,8 +562,8 @@ public:
     if (!VarAdder.seenTypedef(PSL))
       // Add this typedef to the program info, if it contains a ptr to
       // an anonymous struct we mark as not being rewritable
-      VarAdder.addTypedef(PSL, !PtrToStructDef::containsPtrToStructDef(TD));
-
+      VarAdder.addTypedef(PSL, !PtrToStructDef::containsPtrToStructDef(TD),
+                          TD, *Context);
     return true;
   }
 
@@ -643,6 +643,9 @@ void ConstraintBuilderConsumer::HandleTranslationUnit(ASTContext &C) {
       errs() << "Analyzing\n";
   }
 
+  auto &PStats = Info.getPerfStats();
+
+  PStats.startConstraintBuilderTime();
 
   TypeVarVisitor TV = TypeVarVisitor(&C, Info);
   ConstraintResolver CSResolver(Info, &C);
@@ -667,6 +670,8 @@ void ConstraintBuilderConsumer::HandleTranslationUnit(ASTContext &C) {
 
   if (Verbose)
     errs() << "Done analyzing\n";
+
+  PStats.endConstraintBuilderTime();
 
   Info.exitCompilationUnit();
   return;
