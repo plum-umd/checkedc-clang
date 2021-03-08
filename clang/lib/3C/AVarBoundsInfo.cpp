@@ -68,8 +68,7 @@ bool AVarBoundsInfo::isValidBoundVariable(clang::Decl *D) {
   }
   if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
     return !VD->getNameAsString().empty();
-  }
-  if (FieldDecl *FD = dyn_cast<FieldDecl>(D)) {
+  } else if (FieldDecl *FD = dyn_cast<FieldDecl>(D)) {
     return !FD->getNameAsString().empty();
   }
   return false;
@@ -479,14 +478,6 @@ ProgramVar *AVarBoundsInfo::getProgramVar(BoundsKey VK) {
     Ret = PVarInfo[VK];
   }
   return Ret;
-}
-
-void AVarBoundsInfo::brainTransplant(BoundsKey NewBK, BoundsKey OldBK) {
-  // Here, we use the ProgramVar of NewBK and use it for OldBK.
-  if (NewBK != OldBK) {
-    ProgramVar *NewPVar = getProgramVar(NewBK);
-    insertProgramVar(OldBK, NewPVar);
-  }
 }
 
 bool AVarBoundsInfo::hasVarKey(PersistentSourceLoc &PSL) {
@@ -1176,6 +1167,9 @@ void AVarBoundsInfo::getBoundsNeededArrPointers(
 // predecessors have bounds.
 bool AVarBoundsInfo::performFlowAnalysis(ProgramInfo *PI) {
   bool RetVal = false;
+  auto &PStats = PI->getPerfStats();
+
+  PStats.startArrayBoundsInferenceTime();
   AvarBoundsInference ABI(this);
   // First get all the pointer vars which are ARRs
   std::set<BoundsKey> ArrPointers;
@@ -1257,6 +1251,7 @@ bool AVarBoundsInfo::performFlowAnalysis(ProgramInfo *PI) {
     ArrNeededBounds = ArrNeededBoundsNew;
   }
 
+  PStats.endArrayBoundsInferenceTime();
   return RetVal;
 }
 

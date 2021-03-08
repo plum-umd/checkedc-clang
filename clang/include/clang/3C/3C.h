@@ -104,7 +104,14 @@ public:
          const std::vector<std::string> &SourceFileList,
          clang::tooling::CompilationDatabase *CompDB);
 
+  virtual ~_3CInterface() {
+    GlobalProgramInfo.getPerfStats().printPerformanceStats(llvm::errs());
+  }
+
   // Constraint Building.
+
+  // Create ConstraintVariables to hold constraints
+  bool addVariables();
 
   // Build initial constraints.
   bool buildInitialConstraints();
