@@ -41,6 +41,7 @@ set( LLVM_LINK_COMPONENTS
           StructInit.cpp
           TypeVariableAnalysis.cpp
           Utils.cpp
+          Duplicate.cpp
           ${five_c_source}
           LINK_LIBS
           clangAST
