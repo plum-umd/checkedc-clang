@@ -1072,11 +1072,11 @@ void ProgramInfo::setTypeParamBinding(CallExpr *CE, unsigned int TypeVarIdx,
   auto PSL = PersistentSourceLoc::mkPSL(CE, *C);
   auto CallMap = TypeParamBindings[PSL];
   if (CallMap.find(TypeVarIdx) == CallMap.end()) {
+    TypeParamBindings[PSL][TypeVarIdx] = CV;
+  } else {
     // If this CE/idx is at the same location, it's in a macro,
     // so mark it as inconsistent.
     TypeParamBindings[PSL][TypeVarIdx] = nullptr;
-  } else {
-    TypeParamBindings[PSL][TypeVarIdx] = CV;
   }
 }
 
