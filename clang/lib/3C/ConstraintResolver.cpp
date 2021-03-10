@@ -241,6 +241,9 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
     if (CHKCBindTemporaryExpr *CE = dyn_cast<CHKCBindTemporaryExpr>(E)) {
       return getExprConstraintVars(CE->getSubExpr());
     }
+    if (auto *CE = dyn_cast<ImplicitCastExpr>(E))
+      if (CE->getCastKind() == CK_LValueToRValue)
+        return getExprConstraintVars(CE->getSubExpr());
 
     // Apart from the above expressions constraints for all the other
     // expressions can be cached.
@@ -557,10 +560,13 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
                                           NewCV->getBoundsKey());
           NewCV->setBoundsKey(CSensBKey);
         }
-        // Important: Do Safe_to_Wild from returnvar in this copy, which then
-        //   might be assigned otherwise (Same_to_Same) to LHS
-        if (NewCV != CV)
-          constrainConsVarGeq(NewCV, CV, CS, &PSL, Safe_to_Wild, false, &Info);
+        if (NewCV != CV) {
+          // If the call is in a macro, use Same_to_Same to force checked type
+          // equality and avoid ever needing to insert a cast inside a macro.
+          ConsAction CA = Rewriter::isRewritable(CE->getExprLoc())
+                          ? Safe_to_Wild : Same_to_Same;
+          constrainConsVarGeq(NewCV, CV, CS, &PSL, CA, false, &Info);
+        }
         TmpCVs.insert(NewCV);
         // If this is realloc, constrain the first arg to flow to the return
         if (!ReallocFlow.empty()) {

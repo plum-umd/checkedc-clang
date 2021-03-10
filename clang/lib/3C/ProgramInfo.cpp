@@ -840,7 +840,7 @@ void ProgramInfo::storePersistentConstraints(Expr *E, const CSetBkeyPair &Vars,
   // have been computed and cached when the expression has not in fact been
   // visited before. To avoid this, the expression is not cached and instead is
   // recomputed each time it's needed.
-  if (PSL.valid() && Rewriter::isRewritable(E->getBeginLoc())) {
+  if (PSL.valid()) {
     if (!canWrite(PSL.getFileName())) {
       for (ConstraintVariable *CVar : Vars.first)
         CVar->constrainToWild(CS, "Expression in non-writable file", &PSL);
