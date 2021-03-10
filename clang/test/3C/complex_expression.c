@@ -2,8 +2,8 @@
 //
 // Tests 3c tool for complex expressions
 // RUN: rm -rf %t*
-// RUN: 3c -base-dir=%S -addcr -alltypes %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_ALL","CHECK","CHECK_NEXT" %s
-// RUN: 3c -base-dir=%S -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK","CHECK_NEXT" %s
+// RUN: 3c -base-dir=%S -addcr -alltypes %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_ALL","CHECK" %s
+// RUN: 3c -base-dir=%S -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" %s
 // RUN: 3c -base-dir=%S -addcr %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -
 // RUN: 3c -base-dir=%S -addcr -output-dir=%t.checked %s --
 // RUN: 3c -base-dir=%t.checked -addcr %t.checked/complex_expression.c -- | diff %t.checked/complex_expression.c -
