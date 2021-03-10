@@ -13,7 +13,7 @@ extern int *y;
 
 int w = 4;
 int *z = &w;
-//CHECK: _Ptr<int> z =  &w;
+//CHECK: _Ptr<int> z = &w;
 
 void g(int *y) {}
-//CHECK: void g(_Ptr<int> y) {
+//CHECK: void g(_Ptr<int> y) {}

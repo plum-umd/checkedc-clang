@@ -31,7 +31,7 @@ _Itype_for_any(T) void vsf_sysutil_memclr(void *p_dest
                                           : itype(_Array_ptr<T>)
                                                 byte_count(size),
                                             unsigned int size)
-// CHECK_ALL: vsf_sysutil_memclr(_Array_ptr<T> p_dest : itype(_Array_ptr<T>) byte_count(size), unsigned int size)
+// CHECK_ALL: _Itype_for_any(T) void vsf_sysutil_memclr(_Array_ptr<T> p_dest : itype(_Array_ptr<T>) byte_count(size), unsigned int size)
 {
   /* Safety */
   if (size == 0) {
@@ -49,9 +49,9 @@ void *hash_lookup_entry(struct hash *p_hash, void *p_key);
 void hash_add_entry(struct hash *p_hash, void *p_key, void *p_value);
 void hash_free_entry(struct hash *p_hash, void *p_key);
 //CHECK_ALL: _Ptr<struct hash> hash_alloc(unsigned int buckets, unsigned int key_size, unsigned int value_size, hashfunc_t hash_func);
-//CHECK_ALL: void* hash_lookup_entry(_Ptr<struct hash> p_hash, void* p_key);
-//CHECK_ALL: void hash_add_entry(_Ptr<struct hash> p_hash, void* p_key, void* p_value);
-//CHECK_ALL: void hash_free_entry(_Ptr<struct hash> p_hash, void* p_key);
+//CHECK_ALL: void *hash_lookup_entry(_Ptr<struct hash> p_hash, void *p_key);
+//CHECK_ALL: void hash_add_entry(_Ptr<struct hash> p_hash, void *p_key, void *p_value);
+//CHECK_ALL: void hash_free_entry(_Ptr<struct hash> p_hash, void *p_key);
 
 #define bug(s)                                                                 \
   {}
@@ -61,8 +61,8 @@ struct hash_node {
   void *p_value;
   struct hash_node *p_prev;
   struct hash_node *p_next;
-  //CHECK_ALL:  _Ptr<struct hash_node> p_prev;
-  //CHECK_ALL:  _Ptr<struct hash_node> p_next;
+  //CHECK_ALL: _Ptr<struct hash_node> p_prev;
+  //CHECK_ALL: _Ptr<struct hash_node> p_next;
 };
 
 struct hash {
@@ -72,14 +72,14 @@ struct hash {
   hashfunc_t hash_func;
   struct hash_node **p_nodes;
   //CHECK_ALL: hashfunc_t hash_func;
-  //CHECK_ALL:  _Array_ptr<_Ptr<struct hash_node>> p_nodes : count(buckets);
+  //CHECK_ALL: _Array_ptr<_Ptr<struct hash_node>> p_nodes : count(buckets);
 };
 
 /* Internal functions */
 struct hash_node **hash_get_bucket(struct hash *p_hash, void *p_key);
 struct hash_node *hash_get_node_by_key(struct hash *p_hash, void *p_key);
-//CHECK_ALL: _Array_ptr<_Ptr<struct hash_node>> hash_get_bucket(_Ptr<struct hash> p_hash, void* p_key);
-//CHECK_ALL: _Ptr<struct hash_node> hash_get_node_by_key(_Ptr<struct hash> p_hash, void* p_key);
+//CHECK_ALL: _Array_ptr<_Ptr<struct hash_node>> hash_get_bucket(_Ptr<struct hash> p_hash, void *p_key);
+//CHECK_ALL: _Ptr<struct hash_node> hash_get_node_by_key(_Ptr<struct hash> p_hash, void *p_key);
 
 struct hash *hash_alloc(unsigned int buckets, unsigned int key_size,
                         unsigned int value_size, hashfunc_t hash_func)
@@ -87,7 +87,7 @@ struct hash *hash_alloc(unsigned int buckets, unsigned int key_size,
 {
   unsigned int size;
   struct hash *p_hash = malloc(sizeof(*p_hash));
-  //CHECK_ALL:  _Ptr<struct hash> p_hash =  malloc<struct hash>(sizeof(*p_hash));
+  //CHECK_ALL: _Ptr<struct hash> p_hash = malloc<struct hash>(sizeof(*p_hash));
   p_hash->buckets = buckets;
   p_hash->key_size = key_size;
   p_hash->value_size = value_size;
@@ -96,16 +96,16 @@ struct hash *hash_alloc(unsigned int buckets, unsigned int key_size,
   //FIX eventually:
   //p_hash->p_nodes = malloc(size);
   p_hash->p_nodes = malloc(sizeof(struct hash_node *) * buckets);
-  //CHECK_ALL: p_hash->p_nodes = malloc<_Ptr<struct hash_node>>(sizeof(struct hash_node*) * buckets);
+  //CHECK_ALL: p_hash->p_nodes = malloc<_Ptr<struct hash_node>>(sizeof(struct hash_node *) * buckets);
   vsf_sysutil_memclr(p_hash->p_nodes, size);
   return p_hash;
 }
 
 void *hash_lookup_entry(struct hash *p_hash, void *p_key)
-//CHECK_ALL: hash_lookup_entry(_Ptr<struct hash> p_hash, void* p_key)
+//CHECK_ALL: void *hash_lookup_entry(_Ptr<struct hash> p_hash, void *p_key)
 {
   struct hash_node *p_node = hash_get_node_by_key(p_hash, p_key);
-  //CHECK_ALL: _Ptr<struct hash_node> p_node =  hash_get_node_by_key(p_hash, p_key);
+  //CHECK_ALL: _Ptr<struct hash_node> p_node = hash_get_node_by_key(p_hash, p_key);
   if (!p_node) {
     //FIX maybe one day:
     //return p_node;
@@ -115,7 +115,7 @@ void *hash_lookup_entry(struct hash *p_hash, void *p_key)
 }
 
 void hash_add_entry(struct hash *p_hash, void *p_key, void *p_value)
-//CHECK_ALL: hash_add_entry(_Ptr<struct hash> p_hash, void* p_key, void* p_value)
+//CHECK_ALL: void hash_add_entry(_Ptr<struct hash> p_hash, void *p_key, void *p_value)
 {
   struct hash_node **p_bucket;
   struct hash_node *p_new_node;
@@ -144,10 +144,10 @@ void hash_add_entry(struct hash *p_hash, void *p_key, void *p_value)
 }
 
 void hash_free_entry(struct hash *p_hash, void *p_key)
-//CHECK_ALL: hash_free_entry(_Ptr<struct hash> p_hash, void* p_key)
+//CHECK_ALL: void hash_free_entry(_Ptr<struct hash> p_hash, void *p_key)
 {
   struct hash_node *p_node = hash_get_node_by_key(p_hash, p_key);
-  //CHECK_ALL:  _Ptr<struct hash_node> p_node =  hash_get_node_by_key(p_hash, p_key);
+  //CHECK_ALL: _Ptr<struct hash_node> p_node = hash_get_node_by_key(p_hash, p_key);
   if (!p_node) {
     bug("hash node not found");
   }
@@ -167,7 +167,7 @@ void hash_free_entry(struct hash *p_hash, void *p_key)
 }
 
 struct hash_node **hash_get_bucket(struct hash *p_hash, void *p_key)
-//CHECK_ALL: _Array_ptr<_Ptr<struct hash_node>> hash_get_bucket(_Ptr<struct hash> p_hash, void* p_key)
+//CHECK_ALL: _Array_ptr<_Ptr<struct hash_node>> hash_get_bucket(_Ptr<struct hash> p_hash, void *p_key)
 {
   unsigned int bucket = (*p_hash->hash_func)(p_hash->buckets, p_key);
   if (bucket >= p_hash->buckets) {
@@ -177,12 +177,12 @@ struct hash_node **hash_get_bucket(struct hash *p_hash, void *p_key)
 }
 
 struct hash_node *hash_get_node_by_key(struct hash *p_hash, void *p_key)
-//CHECK_ALL: _Ptr<struct hash_node> hash_get_node_by_key(_Ptr<struct hash> p_hash, void* p_key)
+//CHECK_ALL: _Ptr<struct hash_node> hash_get_node_by_key(_Ptr<struct hash> p_hash, void *p_key)
 {
   struct hash_node **p_bucket = hash_get_bucket(p_hash, p_key);
   struct hash_node *p_node = *p_bucket;
-  //CHECK_ALL:  _Ptr<_Ptr<struct hash_node>> p_bucket =  hash_get_bucket(p_hash, p_key);
-  //CHECK_ALL:  _Ptr<struct hash_node> p_node =  *p_bucket;
+  //CHECK_ALL: _Ptr<_Ptr<struct hash_node>> p_bucket = hash_get_bucket(p_hash, p_key);
+  //CHECK_ALL: _Ptr<struct hash_node> p_node = *p_bucket;
   if (!p_node) {
     return p_node;
   }

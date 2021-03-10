@@ -6,7 +6,7 @@
 // RUN: 3c -base-dir=%t.checked -alltypes %t.checked/liberal_itypes_ptr.c -- | diff %t.checked/liberal_itypes_ptr.c -
 
 void foo(int *a) {}
-// CHECK: void foo(_Ptr<int> a) _Checked { }
+// CHECK: void foo(_Ptr<int> a) _Checked {}
 
 void bar() {
   int *b = 1;
@@ -89,13 +89,13 @@ void caller() {
 }
 
 void checked(_Ptr<int> i) {}
-// CHECK: void checked(_Ptr<int> i)_Checked { }
+// CHECK: void checked(_Ptr<int> i) _Checked {}
 
 void itype_unsafe(int *i : itype(_Ptr<int>)) { i = 1; }
-// CHECK: void itype_unsafe(int *i : itype(_Ptr<int>)){ i = 1; }
+// CHECK: void itype_unsafe(int *i : itype(_Ptr<int>)) { i = 1; }
 
 void itype_safe(int *i : itype(_Ptr<int>)) { i = 0; }
-// CHECK: void itype_safe(int *i : itype(_Ptr<int>))_Checked { i = 0; }
+// CHECK: void itype_safe(int *i : itype(_Ptr<int>)) _Checked { i = 0; }
 
 void void_ptr(void *p, void *q) {
   // CHECK: void void_ptr(void *p, void *q) {
@@ -107,7 +107,7 @@ void int_ptr_arg(int *a) {}
 
 void char_ptr_param() {
   int_ptr_arg((char *)1);
-  // CHECK: int_ptr_arg(_Assume_bounds_cast<_Ptr<int>>((char*) 1));
+  // CHECK: int_ptr_arg(_Assume_bounds_cast<_Ptr<int>>((char *)1));
 
   int *c;
   // CHECK: _Ptr<int> c = ((void *)0);
@@ -127,7 +127,7 @@ void bounds_call(void *p) {
 #define macro_cast(x) macro_cast_fn(x)
 
 void macro_cast_fn(int *y) {}
-// CHECK: void macro_cast_fn(_Ptr<int> y) _Checked { }
+// CHECK: void macro_cast_fn(_Ptr<int> y) _Checked {}
 
 void macro_cast_caller() {
   int *z = 1;
@@ -141,8 +141,8 @@ char *unused_return_checked() { return 0; }
 char *unused_return_itype() { return 1; }
 char **unused_return_unchecked_ptrptr();
 //CHECK: char *unused_return_unchecked();
-//CHECK: _Ptr<char> unused_return_checked(void) _Checked {return 0;}
-//CHECK: char *unused_return_itype(void) : itype(_Ptr<char>) _Checked {return 1;}
+//CHECK: _Ptr<char> unused_return_checked(void) _Checked { return 0; }
+//CHECK: char *unused_return_itype(void) : itype(_Ptr<char>) _Checked { return 1; }
 //CHECK: char **unused_return_unchecked_ptrptr();
 
 void dont_cast_unused_return() {
@@ -151,26 +151,26 @@ void dont_cast_unused_return() {
   (void)unused_return_unchecked();
   //CHECK: unused_return_unchecked();
   //CHECK: *unused_return_unchecked();
-  //CHECK: (void) unused_return_unchecked();
+  //CHECK: (void)unused_return_unchecked();
 
   unused_return_checked();
   *unused_return_checked();
   (void)unused_return_checked();
   //CHECK: unused_return_checked();
   //CHECK: *unused_return_checked();
-  //CHECK: (void) unused_return_checked();
+  //CHECK: (void)unused_return_checked();
 
   unused_return_itype();
   *unused_return_itype();
   (void)unused_return_itype();
   //CHECK: unused_return_itype();
   //CHECK: *unused_return_itype();
-  //CHECK: (void) unused_return_itype();
+  //CHECK: (void)unused_return_itype();
 
   unused_return_unchecked_ptrptr();
   *unused_return_unchecked_ptrptr();
   (void)unused_return_unchecked_ptrptr();
   //CHECK: unused_return_unchecked_ptrptr();
   //CHECK: *unused_return_unchecked_ptrptr();
-  //CHECK: (void) unused_return_unchecked_ptrptr();
+  //CHECK: (void)unused_return_unchecked_ptrptr();
 }

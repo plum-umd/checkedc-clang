@@ -84,8 +84,8 @@ typedef int (*compl )[5];
 
 int example(void) {
   int local[5] = {0};
-  //CHECK_ALL: int local _Checked[5] = { 0 };
-  //CHECK_NOALL: int local[5] = { 0 };
+  //CHECK_ALL: int local _Checked[5] = {0};
+  //CHECK_NOALL: int local[5] = {0};
   compl t = &local;
   //CHECK_ALL: compl t = &local;
   // The following CHECK comment was malformed (missing the colon after

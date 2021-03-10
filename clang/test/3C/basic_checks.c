@@ -51,7 +51,7 @@ void pa_driver(void) {
 //CHECK-NEXT: _Ptr<struct _A> b = &a;
 
 int *id(int *a) { return a; }
-//CHECK: _Ptr<int> id(_Ptr<int> a) {
+//CHECK: _Ptr<int> id(_Ptr<int> a) { return a; }
 
 extern int *fry(void);
 //CHECK: extern int *fry(void);

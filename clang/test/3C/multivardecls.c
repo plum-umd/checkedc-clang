@@ -11,11 +11,11 @@ _Itype_for_any(T) void *malloc(size_t size)
 
 void test() {
   int *a = (int *)0, *b = (int *)0;
-  //CHECK: _Ptr<int> a = (_Ptr<int>) 0;
-  //CHECK: _Ptr<int> b = (_Ptr<int>) 0;
+  //CHECK: _Ptr<int> a = (_Ptr<int>)0;
+  //CHECK: _Ptr<int> b = (_Ptr<int>)0;
 
   int *c = (int *)1, *d = (int *){0};
-  //CHECK: int *c = (int*) 1 ;
+  //CHECK: int *c = (int *)1;
   //CHECK: _Ptr<int> d = (_Ptr<int>){0};
 
   int *e, *f = malloc(sizeof(int));
@@ -50,16 +50,16 @@ void test() {
   int *t[1], *u = malloc(2 * sizeof(int)), *v;
   //CHECK_ALL: _Ptr<int> t _Checked[1] = {((void *)0)};
   //CHECK_NOALL: int *t[1];
-  //CHECK_ALL: _Ptr<int> u = malloc<int>(2*sizeof(int));
-  //CHECK_NOALL: int *u = malloc<int>(2*sizeof(int));
+  //CHECK_ALL: _Ptr<int> u = malloc<int>(2 * sizeof(int));
+  //CHECK_NOALL: int *u = malloc<int>(2 * sizeof(int));
   //CHECK: _Ptr<int> v = ((void *)0);
 
   int *w = (int *)0, *x = (int *)0, *z = (int *)1;
-  //CHECK: _Ptr<int> w = (_Ptr<int>) 0;
-  //CHECK: int *x = (int*) 0;
-  //CHECK: int *z = (int *) 1;
+  //CHECK: _Ptr<int> w = (_Ptr<int>)0;
+  //CHECK: int *x = (int *)0;
+  //CHECK: int *z = (int *)1;
   x = (int *)1;
-  //CHECK: x = (int*) 1;
+  //CHECK: x = (int *)1;
 }
 
 void test2() {
@@ -73,8 +73,8 @@ void test2() {
   // CHECK_ALL: int e _Checked[1] _Checked[1];
   // CHECK_NOALL: int e[1][1];
   // CHECK: _Ptr<int> f = ((void *)0);
-  // CHECK_ALL: _Ptr<int> g _Checked[1] = {(_Ptr<int>) 0};
-  // CHECK_NOALL: int *g[1] = {(int*) 0};
+  // CHECK_ALL: _Ptr<int> g _Checked[1] = {(_Ptr<int>)0};
+  // CHECK_NOALL: int *g[1] = {(int *)0};
 
   int h, (*i)(int), *j, (*k)(int);
   // CHECK: int h;
@@ -95,19 +95,19 @@ void test3() {
   // CHECK: int d;
 
   int *e, f;
-  // CHECK:  _Ptr<int> e = ((void *)0) ;
+  // CHECK: _Ptr<int> e = ((void *)0);
   // CHECK: int f;
 
   int *h, g;
-  // CHECK:_Ptr<int> h = ((void *)0) ;
-  // CHECK:int g;
+  // CHECK: _Ptr<int> h = ((void *)0);
+  // CHECK: int g;
 }
 
 void test4() {
   struct foo {
     int *a, b;
-    // CHECK:_Ptr<int> a;
-    // CHECK:int b;
+    // CHECK: _Ptr<int> a;
+    // CHECK: int b;
 
     int c, *d;
     // CHECK: int c;
@@ -122,7 +122,9 @@ void test4() {
 int *a;
 int b;
 int **c;
-// CHECK: _Ptr<int> a = ((void *)0); int b; _Ptr<_Ptr<int>> c = ((void *)0);
+// CHECK: _Ptr<int> a = ((void *)0);
+// CHECK: int b;
+// CHECK: _Ptr<_Ptr<int>> c = ((void *)0);
 
 int *d, e, **f;
 // CHECK: _Ptr<int> d = ((void *)0);
@@ -141,7 +143,8 @@ void test5() {
 // CHECK: _Ptr<int> b = ((void *)0);
 // CHECK: _Ptr<int> c = ((void *)0);
 // CHECK: _Ptr<int> e = ((void *)0);
-// CHECK: struct foo{int a;
+// CHECK: struct foo {
+// CHECK: int a;
 // CHECK: _Ptr<int> b;
 // CHECK: _Ptr<int> c;
 // CHECK: _Ptr<int> d;

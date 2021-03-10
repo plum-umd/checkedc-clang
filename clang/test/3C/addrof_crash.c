@@ -36,10 +36,9 @@ void test3() {
   int *d[1] = {&b};
   // CHECK: _Ptr<int> d _Checked[1] =  {&b};
 
-  int **e = &(
-      (0 ? c : d)
-          [0]); // expected-error {{expression has unknown bounds, cast to ptr<T> expects source to have bounds}}
-  // CHECK: _Ptr<_Ptr<int>> e =  &((0?c:d)[0]);
+  // expected-error@+1 {{expression has unknown bounds, cast to ptr<T> expects source to have bounds}}
+  int **e = &((0 ? c : d)[0]);
+  // CHECK: _Ptr<_Ptr<int>> e =  &((0 ? c : d)[0]);
 }
 
 void test4() {

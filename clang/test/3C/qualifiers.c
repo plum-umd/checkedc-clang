@@ -17,7 +17,7 @@ void consts() {
 //CHECK: _Ptr<const int> b = ((void *)0);
 //CHECK: const _Ptr<int> c = ((void *)0);
 //CHECK: _Ptr<const _Ptr<int>> d = ((void *)0);
-//CHECK: const _Ptr<_Ptr<int>> e = ((void *)0) ;
+//CHECK: const _Ptr<_Ptr<int>> e = ((void *)0);
 //CHECK: const _Ptr<const _Ptr<int>> f = ((void *)0);
 
 void volatiles() {
@@ -32,7 +32,7 @@ void volatiles() {
 //CHECK: _Ptr<volatile int> b = ((void *)0);
 //CHECK: volatile _Ptr<int> c = ((void *)0);
 //CHECK: _Ptr<volatile _Ptr<int>> d = ((void *)0);
-//CHECK: volatile _Ptr<_Ptr<int>> e = ((void *)0) ;
+//CHECK: volatile _Ptr<_Ptr<int>> e = ((void *)0);
 //CHECK: volatile _Ptr<volatile _Ptr<int>> f = ((void *)0);
 
 void restricts() {
@@ -43,7 +43,7 @@ void restricts() {
 }
 //CHECK: restrict _Ptr<int> c = ((void *)0);
 //CHECK: _Ptr<restrict _Ptr<int>> d = ((void *)0);
-//CHECK: restrict _Ptr<_Ptr<int>> e = ((void *)0) ;
+//CHECK: restrict _Ptr<_Ptr<int>> e = ((void *)0);
 //CHECK: restrict _Ptr<restrict _Ptr<int>> f = ((void *)0);
 
 void mixed() {

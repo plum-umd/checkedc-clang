@@ -35,8 +35,8 @@ int foo(int *arr, unsigned len) {
 }
 
 //CHECK: int foo(_Array_ptr<int> arr : count(len), unsigned len) {
-//CHECK: _Array_ptr<int> arr1 : count(len) =  malloc<int>(sizeof(int)*len);
-//CHECK: _Array_ptr<int> arr2 : count(len) =  malloc<int>(sizeof(int)*len);
+//CHECK: _Array_ptr<int> arr1 : count(len) = malloc<int>(sizeof(int) * len);
+//CHECK: _Array_ptr<int> arr2 : count(len) = malloc<int>(sizeof(int) * len);
 //CHECK: _Array_ptr<int> arr3 : count(len) = ((void *)0);
 
 void baz() {

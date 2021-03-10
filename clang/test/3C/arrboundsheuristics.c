@@ -17,8 +17,8 @@ extern _Itype_for_any(T) void *malloc(size_t size)
 //CHECK_NOALL: int *glob;
 
 void foo(int *p, int idx) { p[idx] = 0; }
-//CHECK_ALL: void foo(_Array_ptr<int> p, int idx) {
-//CHECK_NOALL: void foo(int *p : itype(_Ptr<int>), int idx) {
+//CHECK_ALL: void foo(_Array_ptr<int> p, int idx) { p[idx] = 0; }
+//CHECK_NOALL: void foo(int *p : itype(_Ptr<int>), int idx) { p[idx] = 0; }
 
 void bar(int *p, int flag) {
   if (flag & 0x2) {
@@ -40,4 +40,4 @@ int deflen() {
   glob = malloc((lenplusone + 1) * sizeof(int));
   return 0;
 }
-//CHECK: glob = malloc<int>((lenplusone+1)*sizeof(int));
+//CHECK: glob = malloc<int>((lenplusone + 1) * sizeof(int));

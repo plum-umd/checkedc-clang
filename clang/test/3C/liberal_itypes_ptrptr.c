@@ -127,7 +127,7 @@ void nested_caller(void) {
 }
 
 void itype_defined_ptrptr(int **p : itype(_Ptr<_Ptr<int>>)) {}
-//CHECK: void itype_defined_ptrptr(int **p : itype(_Ptr<_Ptr<int>>)) _Checked { }
+//CHECK: void itype_defined_ptrptr(int **p : itype(_Ptr<_Ptr<int>>)) _Checked {}
 
 void itype_defined_caller() {
   int **c = 1;

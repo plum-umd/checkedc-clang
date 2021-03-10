@@ -2,7 +2,7 @@
 // RUN: 3c -base-dir=%S -addcr %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -
 
 int *a = (int *)1;
-//CHECK: int *a = (int*) 1;
+//CHECK: int *a = (int *)1;
 void b() {
   //CHECK: void b() {
   int c = *a;
@@ -11,7 +11,7 @@ void b() {
 void c() {
   //CHECK: void c() {
   int *b = (int *)1;
-  //CHECK: int *b = (int*)1;
+  //CHECK: int *b = (int *)1;
   { b; }
   //CHECK: { b; }
 }

@@ -27,25 +27,25 @@ void foo() {
   /* Explicit casts work fine also */
 
   int *d = (int *)malloc(sizeof(int));
-  //CHECK: _Ptr<int> d = (_Ptr<int>) malloc<int>(sizeof(int));
+  //CHECK: _Ptr<int> d = (_Ptr<int>)malloc<int>(sizeof(int));
   int *e = (int *)calloc(1, sizeof(int));
-  //CHECK: _Ptr<int> e = (_Ptr<int>) calloc<int>(1, sizeof(int));
+  //CHECK: _Ptr<int> e = (_Ptr<int>)calloc<int>(1, sizeof(int));
   int *f = (int *)realloc(d, sizeof(int));
-  //CHECK: _Ptr<int> f = (_Ptr<int>) realloc<int>(d, sizeof(int));
+  //CHECK: _Ptr<int> f = (_Ptr<int>)realloc<int>(d, sizeof(int));
 }
 
 /* Allocating pointers to pointers */
 void bar() {
   int **a = malloc(sizeof(int *));
-  //CHECK: _Ptr<_Ptr<int>> a = malloc<_Ptr<int>>(sizeof(int*));
+  //CHECK: _Ptr<_Ptr<int>> a = malloc<_Ptr<int>>(sizeof(int *));
   *a = malloc(sizeof(int));
   //CHECK: *a = malloc<int>(sizeof(int));
 
   /* It's also fine if the pointer is unchecked */
   int **b = malloc(sizeof(int *));
-  //CHECK: _Ptr<int *> b = malloc<int *>(sizeof(int*));
+  //CHECK: _Ptr<int *> b = malloc<int *>(sizeof(int *));
   *b = (int *)1;
-  //CHECK: *b = (int*) 1;
+  //CHECK: *b = (int *)1;
 }
 
 /* No conversion is done for void pointers, but this should just test that they
@@ -60,14 +60,18 @@ void buz() {
   struct {
     int a;
   } *b = malloc(10);
-  //CHECK: struct {int a;} *b = malloc(10);
+  //CHECK:      struct {
+  //CHECK-NEXT:   int a;
+  //CHECK-NEXT: } *b = malloc(10);
 
   /* Named inline structs can be separated and made checked */
   struct test {
     int a;
   } *c = malloc(sizeof(struct test));
-  //CHECK: struct test {int a;};
-  //CHECK: _Ptr<struct test> c = malloc<struct test>(sizeof(struct test));
+  //CHECK:      struct test {
+  //CHECK-NEXT:   int a;
+  //CHECK-NEXT: };
+  //CHECK-NEXT: _Ptr<struct test> c = malloc<struct test>(sizeof(struct test));
 
   /* typedefs are also OK. */
   typedef struct {

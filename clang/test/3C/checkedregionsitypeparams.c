@@ -14,7 +14,7 @@ int bar(struct A *a) {
   //CHECK: int bar(struct A *a : itype(_Ptr<struct A>)) {
   a = (struct A *)5;
   if (1) {
-    // CHECK:if(1) {
+    // CHECK: if (1) {
     return foo(a);
   } else {
     // CHECK: } else _Checked {

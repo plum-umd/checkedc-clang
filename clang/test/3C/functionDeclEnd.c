@@ -70,7 +70,8 @@ int *test3(int *a, int l)
     : itype(_Array_ptr<int>) count(l)
 #endif
 // CHECK: #else
-// CHECK: int *test3(int *a, int l) : itype(_Array_ptr<int>) count(l)
+// CHECK: int *test3(int *a, int l)
+// CHECK:     : itype(_Array_ptr<int>) count(l)
 // CHECK: #endif
 {
   // CHECK: {
@@ -87,7 +88,8 @@ int *test4(int *a)
     : itype(_Ptr<int>)
 #endif
 // CHECK: #else
-// CHECK: int *test4(int *a) : itype(_Ptr<int>)
+// CHECK: int *test4(int *a)
+// CHECK:     : itype(_Ptr<int>)
 // CHECK: #endif
 {
   // CHECK: {
@@ -104,7 +106,8 @@ _Array_ptr<int> test5(int *a, int l)
     : count(l)
 #endif
 // CHECK: #else
-// CHECK: _Array_ptr<int> test5(int *a, int l) : count(l)
+// CHECK: _Array_ptr<int> test5(int *a, int l)
+// CHECK:     : count(l)
 // CHECK: #endif
 {
   // CHECK: _Checked {
@@ -130,7 +133,8 @@ int *test7(int *a)
 #endif
           ;
 //CHECK: #else
-//CHECK: int *test7(int *a) : count(10)
+//CHECK: int *test7(int *a)
+//CHECK:     : count(10)
 //CHECK: #endif
 //CHECK: ;
 
@@ -153,7 +157,8 @@ int *test8(int *a, int l)
     : count(l) itype(_Array_ptr<int>)
 #endif
 // CHECK: #else
-// CHECK: int *test8(int *a, int l) : count(l) itype(_Array_ptr<int>)
+// CHECK: int *test8(int *a, int l)
+// CHECK:     : count(l) itype(_Array_ptr<int>)
 // CHECK: #endif
 {
   // CHECK: {

@@ -41,8 +41,8 @@ struct tree *new_node(int val, unsigned int num_childs, struct tree *parent) {
   if (!n)
     return NULL;
   children = malloc(num_childs * sizeof(struct tree *));
-  //CHECK_ALL: children = malloc<_Ptr<struct tree>>(num_childs*sizeof(struct tree *));
-  //CHECK_NOALL: children = malloc<struct tree *>(num_childs*sizeof(struct tree *));
+  //CHECK_ALL: children = malloc<_Ptr<struct tree>>(num_childs * sizeof(struct tree *));
+  //CHECK_NOALL: children = malloc<struct tree *>(num_childs * sizeof(struct tree *));
   n->val = val;
   n->parent = parent;
   n->len = num_childs;
@@ -57,13 +57,13 @@ int add_child(struct tree *p, struct tree *c) {
   if (p->child_count >= p->len) {
     unsigned int len = p->len * 2;
     struct tree **children = malloc(len * sizeof(struct tree *));
-    //CHECK_ALL: _Array_ptr<_Ptr<struct tree>> children : count(len) = malloc<_Ptr<struct tree>>(len*sizeof(struct tree *));
-    //CHECK_NOALL: struct tree **children = malloc<struct tree *>(len*sizeof(struct tree *));
+    //CHECK_ALL: _Array_ptr<_Ptr<struct tree>> children : count(len) = malloc<_Ptr<struct tree>>(len * sizeof(struct tree *));
+    //CHECK_NOALL: struct tree **children = malloc<struct tree *>(len * sizeof(struct tree *));
     if (!children)
       return -1;
     memcpy(children, p->children, sizeof(struct tree *) * p->len);
-    //CHECK_NOALL: memcpy<struct tree *>(children,p->children,sizeof(struct tree *)*p->len);
-    //CHECK_ALL: memcpy<_Ptr<struct tree>>(children,p->children,sizeof(struct tree *)*p->len);
+    //CHECK_NOALL: memcpy<struct tree *>(children, p->children, sizeof(struct tree *) * p->len);
+    //CHECK_ALL: memcpy<_Ptr<struct tree>>(children, p->children, sizeof(struct tree *) * p->len);
     free(p->children);
     //CHECK_NOALL: free<struct tree *>(p->children);
     //CHECK_ALL: free<_Ptr<struct tree>>(p->children);

@@ -13,7 +13,7 @@
 
 #define b struct c
 b { int *a; };
-//CHECK: b {_Ptr<int> a;};
+//CHECK: b { _Ptr<int> a; };
 void e(struct c x) {
   int *y = x.a;
   //CHECK: _Ptr<int> y = x.a;

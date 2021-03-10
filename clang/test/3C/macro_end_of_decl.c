@@ -20,7 +20,7 @@ alloc_func zalloc;
 typedef int(*a) ARGS;
 a b;
 int(*c) ARGS;
-//CHECK: typedef _Ptr<int (void)> a ;
+//CHECK: typedef _Ptr<int (void)> a;
 //CHECK: a b = ((void *)0);
 //CHECK: _Ptr<int (void)> c = ((void *)0);
 
@@ -28,7 +28,7 @@ int(*c) ARGS;
 int d SIZE;
 int e SIZE[1];
 //CHECK_NOALL: int d SIZE;
-//CHECK_NOALL: int e SIZE [1];
+//CHECK_NOALL: int e SIZE[1];
 //CHECK_ALL: int d _Checked[1];
 //CHECK_ALL: int e _Checked[1] _Checked[1];
 
@@ -58,6 +58,6 @@ void foo(int *a) {
   int *c = (int STAR){a};
 }
 //CHECK: void foo(_Ptr<int> a) {
-//CHECK:   _Ptr<int> b = (_Ptr<int>) a;
-//CHECK:   _Ptr<int> c = (_Ptr<int>) {a};
+//CHECK:   _Ptr<int> b = (_Ptr<int>)a;
+//CHECK:   _Ptr<int> c = (_Ptr<int>){a};
 //CHECK: }

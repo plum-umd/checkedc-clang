@@ -36,15 +36,11 @@ typedef struct _BarRec {
 } BarRec;
 
 void upd(BarRec *P, int a) { P->a = a; }
-//CHECK: void upd(_Ptr<BarRec> P, int a) _Checked {
-//CHECK-NEXT: P->a = a;
-//CHECK-NEXT: }
+//CHECK: void upd(_Ptr<BarRec> P, int a) _Checked { P->a = a; }
 
 void canthelp(int *a, int b, int c) { *(a + b) = c; }
-//CHECK_NOALL: void canthelp(int *a : itype(_Ptr<int>), int b, int c) {
-//CHECK_ALL: void canthelp(_Array_ptr<int> a : count(b), int b, int c) _Checked {
-//CHECK:  *(a + b) = c;
-//CHECK-NEXT: }
+//CHECK_NOALL: void canthelp(int *a : itype(_Ptr<int>), int b, int c) { *(a + b) = c; }
+//CHECK_ALL: void canthelp(_Array_ptr<int> a : count(b), int b, int c) _Checked { *(a + b) = c; }
 
 void partialhelp(int *a, int b, int c) {
   int *d = a;
@@ -106,9 +102,7 @@ int foo(int a, int b) {
 //CHECK-NEXT: }
 
 int bar(int a, int b) { return a + b; }
-//CHECK: int bar(int a, int b) _Checked {
-//CHECK-NEXT: return a + b;
-//CHECK-NEXT: }
+//CHECK: int bar(int a, int b) _Checked { return a + b; }
 
 int baz(int *a, int b, int c) {
   int tmp = b + c;
@@ -123,16 +117,12 @@ int baz(int *a, int b, int c) {
 //CHECK-NEXT: return tmp;
 
 int arrcheck(int *a, int b) { return a[b]; }
-//CHECK_ALL: int arrcheck(_Array_ptr<int> a : count(b), int b) _Checked {
-//CHECK_NOALL: int arrcheck(int *a : itype(_Ptr<int>), int b) {
-//CHECK: return a[b];
-//CHECK-NEXT: }
+//CHECK_ALL: int arrcheck(_Array_ptr<int> a : count(b), int b) _Checked { return a[b]; }
+//CHECK_NOALL: int arrcheck(int *a : itype(_Ptr<int>), int b) { return a[b]; }
 
 int badcall(int *a, int b) { return arrcheck(a, b); }
-//CHECK_ALL: int badcall(_Array_ptr<int> a : count(b), int b) _Checked {
-//CHECK_NOALL: int badcall(_Ptr<int> a, int b) _Checked {
-//CHECK: return arrcheck(a, b);
-//CHECK-NEXT: }
+//CHECK_ALL: int badcall(_Array_ptr<int> a : count(b), int b) _Checked { return arrcheck(a, b); }
+//CHECK_NOALL: int badcall(_Ptr<int> a, int b) _Checked { return arrcheck(a, b); }
 
 void pullit(char *base, char *out, int *index) {
   char tmp = base[*index];
@@ -254,5 +244,5 @@ void ptrarr(void) {
   return;
 }
 //CHECK_ALL: void ptrarr(void) _Checked {
-//CHECK_NOALL: int *vals[4] = { 0 };
-//CHECK_ALL: _Ptr<int> vals _Checked[4] =  { 0 };
+//CHECK_NOALL: int *vals[4] = {0};
+//CHECK_ALL: _Ptr<int> vals _Checked[4] = {0};

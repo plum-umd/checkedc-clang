@@ -15,7 +15,7 @@ int valuable;
 
 static struct foo {
   const char *name;
-  //CHECK_NOALL: const char* name;
+  //CHECK_NOALL: const char *name;
   //CHECK_ALL:   _Ptr<const char> name;
   int *p_valuable;
   //CHECK: _Ptr<int> p_valuable;
@@ -28,20 +28,26 @@ static struct foo {
 struct foo1 {
   int *x;
 } * a;
-//CHECK: struct foo1 { _Ptr<int> x; };
-//CHECK: _Ptr<struct foo1> a = ((void *)0);
+//CHECK:      struct foo1 {
+//CHECK-NEXT:   _Ptr<int> x;
+//CHECK-NEXT: };
+//CHECK-NEXT: _Ptr<struct foo1> a = ((void *)0);
 
 struct baz {
   int *z;
 };
-//CHECK: struct baz { _Ptr<int> z; };
+//CHECK:      struct baz {
+//CHECK-NEXT:   _Ptr<int> z;
+//CHECK-NEXT: };
 struct baz *d;
 //CHECK: _Ptr<struct baz> d = ((void *)0);
 
 struct bad {
   int *y;
 } * b, *c;
-//CHECK: struct bad { int* y; };
+//CHECK:      struct bad {
+//CHECK-NEXT:   int *y;
+//CHECK-NEXT: };
 //CHECK: _Ptr<struct bad> b = ((void *)0);
 //CHECK: _Ptr<struct bad> c = ((void *)0);
 
@@ -49,7 +55,9 @@ struct bad {
 struct bar {
   int *y;
 } * e, *f;
-//CHECK: struct bar { _Ptr<int> y; };
+//CHECK:      struct bar {
+//CHECK-NEXT:   _Ptr<int> y;
+//CHECK-NEXT: };
 //CHECK: _Ptr<struct bar> e = ((void *)0);
 //CHECK: _Ptr<struct bar> f = ((void *)0);
 
@@ -99,24 +107,32 @@ void foo2(int *x) {
   struct bar {
     int *x;
   } *y = 0;
-  //CHECK: struct bar { _Ptr<int> x; };
-  //CHECK: _Ptr<struct bar> y = 0;
+  //CHECK:      struct bar {
+  //CHECK-NEXT:   _Ptr<int> x;
+  //CHECK-NEXT: };
+  //CHECK-NEXT: _Ptr<struct bar> y = 0;
 
   /*A non-pointer struct without an init will be marked wild*/
   struct something {
     int *x;
   } z;
-  //CHECK: struct something { int *x; } z;
+  //CHECK:      struct something {
+  //CHECK-NEXT:   int *x;
+  //CHECK-NEXT: } z;
 
   /*so will ones that are anonymous*/
   struct {
     int *x;
   } a;
-  //CHECK: struct { int *x; } a;
+  //CHECK:      struct {
+  //CHECK-NEXT:   int *x;
+  //CHECK-NEXT: } a;
 
   /*if it have an initializer, the rewriter won't have trouble*/
   struct {
     int *c;
   } b = {};
-  //CHECK: struct { _Ptr<int> c; } b = {};
+  //CHECK:      struct {
+  //CHECK-NEXT:   _Ptr<int> c;
+  //CHECK-NEXT: } b = {};
 }

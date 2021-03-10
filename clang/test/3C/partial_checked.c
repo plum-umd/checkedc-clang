@@ -6,10 +6,10 @@
 // RUN: 3c -base-dir=%t.checked -alltypes %t.checked/partial_checked.c -- | diff %t.checked/partial_checked.c -
 
 void test0(_Ptr<int *> a) {}
-// CHECK: void test0(_Ptr<_Ptr<int>> a) _Checked { }
+// CHECK: void test0(_Ptr<_Ptr<int>> a) _Checked {}
 
 void test1(_Ptr<int **> a) {}
-// CHECK: void test1(_Ptr<_Ptr<_Ptr<int>>> a) _Checked { }
+// CHECK: void test1(_Ptr<_Ptr<_Ptr<int>>> a) _Checked {}
 
 void test2(_Ptr<int **> a) {
   // CHECK: void test2(_Ptr<int **> a : itype(_Ptr<_Ptr<_Ptr<int>>>)) {

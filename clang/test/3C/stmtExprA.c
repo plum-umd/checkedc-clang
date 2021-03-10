@@ -15,7 +15,15 @@ void foo2(int *x) {
     q[2] = 1;
     q;
   });
-  //CHECK_ALL: p = ({_Array_ptr<int> q : count(3) =  malloc<int>(3*sizeof(int)); q[2] = 1; q;});
-  //CHECK_NOALL: p = ({int *q = malloc<int>(3*sizeof(int)); q[2] = 1; q;});
+  //CHECK_ALL:      p = ({
+  //CHECK_ALL-NEXT:   _Array_ptr<int> q : count(3) = malloc<int>(3 * sizeof(int));
+  //CHECK_ALL-NEXT:   q[2] = 1;
+  //CHECK_ALL-NEXT:   q;
+  //CHECK_ALL-NEXT: });
+  //CHECK_NOALL:      p = ({
+  //CHECK_NOALL-NEXT:   int *q = malloc<int>(3 * sizeof(int));
+  //CHECK_NOALL-NEXT:   q[2] = 1;
+  //CHECK_NOALL-NEXT:   q;
+  //CHECK_NOALL-NEXT: });
   p[1] = 3;
 }

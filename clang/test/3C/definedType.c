@@ -14,15 +14,15 @@ _Itype_for_any(T) void *malloc(size_t size)
 #define ulong unsigned long
 
 ulong *TOP;
-// CHECK_NOALL: ulong *		TOP;
+// CHECK_NOALL: ulong *TOP;
 // CHECK_ALL: _Array_ptr<ulong> TOP = ((void *)0);
 ulong channelColumns;
 
 void DescribeChannel(void) {
   ulong col;
   TOP = (ulong *)malloc((channelColumns + 1) * sizeof(ulong));
-  // CHECK_ALL: TOP = (_Array_ptr<unsigned long>)malloc<unsigned long>((channelColumns+1) * sizeof(ulong));
-  // CHECK_NOALL: TOP = (ulong *)malloc<unsigned long>((channelColumns+1) * sizeof(ulong));
+  // CHECK_ALL: TOP = (_Array_ptr<unsigned long>)malloc<unsigned long>((channelColumns + 1) * sizeof(ulong));
+  // CHECK_NOALL: TOP = (ulong *)malloc<unsigned long>((channelColumns + 1) * sizeof(ulong));
   TOP[col] = 0;
 }
 
@@ -60,12 +60,12 @@ baz h[1][1];
 // CHECK_ALL: baz h _Checked[1] _Checked[1];
 
 baz *i() {
-  // CHECK: _Ptr<baz> i(void)_Checked {
+  // CHECK: _Ptr<baz> i(void) _Checked {
   return 0;
 }
 
 baz **j() {
-  // CHECK: _Ptr<_Ptr<baz>> j(void)_Checked {
+  // CHECK: _Ptr<_Ptr<baz>> j(void) _Checked {
   return 0;
 }
 
@@ -86,7 +86,7 @@ buz *m;
 // Macro should not change when wild
 
 buz n = (buz)1;
-// CHECK: buz n = (buz) 1;
+// CHECK: buz n = (buz)1;
 
 // This was a regression in lua. The function type is wrapped in a ParenType.
 int *(lua_test0)() {

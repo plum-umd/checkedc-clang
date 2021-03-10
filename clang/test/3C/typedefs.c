@@ -13,10 +13,10 @@ typedef intptr *PP;
 //CHECK: typedef _Ptr<intptr> PP;
 
 typedef int *bad;
-//CHECK: typedef int* bad;
+//CHECK: typedef int *bad;
 
 typedef intptr *badP;
-//CHECK: typedef intptr* badP;
+//CHECK: typedef intptr *badP;
 
 typedef struct A {
   int *x;
@@ -39,9 +39,9 @@ int foo(void) {
   PP pp = &p;
   //CHECK: PP pp = &p;
   A a = {&x, 3, pp};
-  //CHECK: A a = { &x, 3, pp };
+  //CHECK: A a = {&x, 3, pp};
   bad b = (int *)3;
-  //CHECK: bad b = (int*) 3;
+  //CHECK: bad b = (int *)3;
   badP b2 = (intptr *)3;
 
   return *p;

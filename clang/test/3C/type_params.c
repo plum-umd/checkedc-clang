@@ -10,13 +10,13 @@ _Itype_for_any(T) void *test_single(void *a
     : itype(_Ptr<T>);
 
 void t0(int *a, int *b) {
-  //CHECK: void t0(_Ptr<int> a, _Ptr<int> b){
+  //CHECK: void t0(_Ptr<int> a, _Ptr<int> b) {
   test_single(a, b);
   //CHECK: test_single<int>(a, b);
 }
 
 void t1(int *a, int *b) {
-  //CHECK: void t1(int *a : itype(_Ptr<int>), _Ptr<int> b){
+  //CHECK: void t1(int *a : itype(_Ptr<int>), _Ptr<int> b) {
   float c;
   test_single(a, &c);
   //CHECK: test_single(a, &c);
@@ -104,7 +104,7 @@ _Itype_for_any(T) void *memcpy(void *restrict dest
 
 void foo(int *p2) {
   int *p = malloc(2 * sizeof(int));
-  //CHECK_ALL: _Array_ptr<int> p : count(2) =  malloc<int>(2*sizeof(int));
+  //CHECK_ALL: _Array_ptr<int> p : count(2) = malloc<int>(2 * sizeof(int));
   memcpy(p, p2, sizeof(int));
   //CHECK: memcpy<int>(p, p2, sizeof(int));
 }
@@ -112,12 +112,12 @@ void foo(int *p2) {
 // Array types can be used to instantiate type params
 void arrs() {
   int *p = malloc(10 * sizeof(int));
-  // CHECK_ALL: _Array_ptr<int> p : count(10) =  malloc<int>(10*sizeof(int));
+  // CHECK_ALL: _Array_ptr<int> p : count(10) = malloc<int>(10 * sizeof(int));
   int q[10];
   // CHECK_ALL: int q _Checked[10];
 
   memcpy(p, q, 10 * sizeof(int));
-  // CHECK: memcpy<int>(p, q, 10*sizeof(int));
+  // CHECK: memcpy<int>(p, q, 10 * sizeof(int));
 }
 
 _Itype_for_any(T) void *test1(void *t : itype(_Ptr<T>)) : itype(_Ptr<T>);
@@ -153,7 +153,7 @@ void deep(int ****v, int ****w, int ****x, int ****y, int ****z) {
   ***w = (int *)1;
 
   int ******a = malloc(sizeof(int *****));
-  // CHECK: _Ptr<_Ptr<_Ptr<_Ptr<int **>>>> a =  malloc<_Ptr<_Ptr<_Ptr<int **>>>>(sizeof(int*****));
+  // CHECK: _Ptr<_Ptr<_Ptr<_Ptr<int **>>>> a = malloc<_Ptr<_Ptr<_Ptr<int **>>>>(sizeof(int *****));
   ****a = (int **)1;
 }
 
@@ -167,7 +167,7 @@ _Itype_for_any(T) void *realloc(void *pointer
 
 // void provided
 void *example0(void *ptr, unsigned int size) {
-  // CHECK: void *example0(void * ptr, unsigned int size) {
+  // CHECK: void *example0(void *ptr, unsigned int size) {
   void *ret;
   ret = realloc<void>(ptr, size);
   // CHECK: ret = realloc<void>(ptr, size);
@@ -176,7 +176,7 @@ void *example0(void *ptr, unsigned int size) {
 
 // nothing provided
 void *example1(void *ptr, unsigned int size) {
-  // CHECK: void *example1(void * ptr, unsigned int size) {
+  // CHECK: void *example1(void *ptr, unsigned int size) {
   void *ret;
   ret = realloc(ptr, size);
   // CHECK: ret = realloc<void>(ptr, size);
@@ -186,13 +186,13 @@ void *example1(void *ptr, unsigned int size) {
 // Issue #349. Check that the parameter doesn't inherit the double pointer
 // argument within do_doubleptr
 _Itype_for_any(T) void incoming_doubleptr(void *ptr : itype(_Array_ptr<T>)) {
-  // CHECK_ALL: void incoming_doubleptr(_Array_ptr<T> ptr : itype(_Array_ptr<T>)) {
+  // CHECK_ALL: _Itype_for_any(T) void incoming_doubleptr(_Array_ptr<T> ptr : itype(_Array_ptr<T>)) {
   return;
 }
 
 void do_doubleptr(int count) {
   int **arr = malloc(sizeof(int *) * count);
-  // CHECK_ALL: _Array_ptr<_Ptr<int>> arr : count(count) = malloc<_Ptr<int>>(sizeof(int*) * count);
+  // CHECK_ALL: _Array_ptr<_Ptr<int>> arr : count(count) = malloc<_Ptr<int>>(sizeof(int *) * count);
   incoming_doubleptr(arr);
   // CHECK_ALL: incoming_doubleptr<_Ptr<int>>(arr);
 }

@@ -14,4 +14,4 @@ extern int *y;
 
 /*trivial conversion guarantee*/
 void g(int *y) {}
-//CHECK: void g(_Ptr<int> y) {
+//CHECK: void g(_Ptr<int> y) {}

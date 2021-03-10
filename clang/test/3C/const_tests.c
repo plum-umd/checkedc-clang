@@ -10,14 +10,13 @@
 // expected-no-diagnostics
 
 void cst1(const int *a) { int b = *a; }
-//CHECK: void cst1(_Ptr<const int> a) _Checked {
+//CHECK: void cst1(_Ptr<const int> a) _Checked { int b = *a; }
 
 void cst2(int *const a) { *a = 0; }
-//CHECK: void cst2(const _Ptr<int> a) _Checked {
+//CHECK: void cst2(const _Ptr<int> a) _Checked { *a = 0; }
 
 void cst3(const int *a, int i) { int c = *(a + i); }
-//CHECK: void cst3(const int *a : itype(_Ptr<const int>), int i) {
-//CHECK-NEXT: int c = *(a+i);
+//CHECK: void cst3(const int *a : itype(_Ptr<const int>), int i) { int c = *(a + i); }
 
 void cst4(const int *b) {
   int c = *b;

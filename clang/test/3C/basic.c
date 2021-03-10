@@ -60,7 +60,7 @@ char *basic2(int temp) {
 }
 //CHECK: char *basic2(int temp) : itype(_Ptr<char>) {
 //CHECK_ALL: char data _Nt_checked[17] =  "abcdefghijklmnop";
-//CHECK_ALL: char data2 _Nt_checked[65] =  "abcdefghijklmnopabcdefghijklmnopabcdefghijklmnopabcdefghijklmnop";
+//CHECK_ALL: char data2 _Nt_checked[65] =
 //CHECK: char *buffer = malloc<char>(8);
 //CHECK: char *buffer = malloc<char>(1024);
 
@@ -95,7 +95,7 @@ void sum_numbers(int count) {
   }
   free(ptr);
 }
-//CHECK: int *ptr = (int*) malloc<int>(n * sizeof(int));
+//CHECK: int *ptr = (int *)malloc<int>(n * sizeof(int));
 
 void basic_calloc(int count) {
   int n, i, sum = 0;
@@ -119,7 +119,7 @@ void basic_calloc(int count) {
   printf("Sum = %d", sum);
   free(ptr);
 }
-//CHECK: int *ptr = (int*) calloc<int>(n, sizeof(int));
+//CHECK: int *ptr = (int *)calloc<int>(n, sizeof(int));
 
 void basic_realloc(int count) {
   int i, n1, n2;
@@ -144,7 +144,7 @@ void basic_realloc(int count) {
 
   free(ptr);
 }
-//CHECK: int *ptr = (int*) malloc<int>(n1 * sizeof(int));
+//CHECK: int *ptr = (int *)malloc<int>(n1 * sizeof(int));
 
 struct student {
   char name[30];
@@ -183,8 +183,8 @@ void basic_struct(int count) {
            (pstd + i)->perc);
   }
 }
-//CHECK_NOALL: struct student *pstd=(struct student*)malloc<struct student>(n*sizeof(struct student));
-//CHECK_ALL:  _Array_ptr<struct student> pstd : count(n) =(_Array_ptr<struct student>)malloc<struct student>(n*sizeof(struct student));
+//CHECK_NOALL: struct student *pstd = (struct student *)malloc<struct student>(n * sizeof(struct student));
+//CHECK_ALL:  _Array_ptr<struct student> pstd : count(n) = (_Array_ptr<struct student>)malloc<struct student>(n * sizeof(struct student));
 
 struct student *new_student() {
   char name[] = "Bilbo Baggins";

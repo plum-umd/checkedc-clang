@@ -37,38 +37,38 @@ int vsf_sysdep_has_capabilities_as_non_root(void) {
 }
 
 static void do_sanity_checks(void) {
-  //CHECK: _Checked {
+  //CHECK: static void do_sanity_checks(void) _Checked {
   {
     //CHECK: {
     struct vsf_sysutil_statbuf *p_statbuf = 0;
     //CHECK: _Ptr<struct vsf_sysutil_statbuf> p_statbuf = 0;
     vsf_sysutil_fstat(VSFTP_COMMAND_FD, &p_statbuf);
     if (!vsf_sysutil_statbuf_is_socket(p_statbuf)) {
-      //CHECK: {
+      //CHECK: if (!vsf_sysutil_statbuf_is_socket(p_statbuf)) {
       die("vsftpd: not configured for standalone, must be started from inetd");
     }
     vsf_sysutil_free(p_statbuf);
   }
   if (tunable_one_process_model) {
     if (tunable_local_enable) {
-      //CHECK: {
+      //CHECK: if (tunable_local_enable) {
       die("vsftpd: security: 'one_process_model' is anonymous only");
     }
     if (!vsf_sysdep_has_capabilities_as_non_root()) {
-      //CHECK: {
+      //CHECK: if (!vsf_sysdep_has_capabilities_as_non_root()) {
       die("vsftpd: security: 'one_process_model' needs a better OS");
     }
   }
   if (!tunable_local_enable && !tunable_anonymous_enable) {
-    //CHECK: {
+    //CHECK: if (!tunable_local_enable && !tunable_anonymous_enable) {
     die("vsftpd: both local and anonymous access disabled!");
   }
   if (!tunable_ftp_enable && !tunable_http_enable) {
-    //CHECK: {
+    //CHECK: if (!tunable_ftp_enable && !tunable_http_enable) {
     die("vsftpd: both FTP and HTTP disabled!");
   }
   if (tunable_http_enable && !tunable_one_process_model) {
-    //CHECK: {
+    //CHECK: if (tunable_http_enable && !tunable_one_process_model) {
     die("vsftpd: HTTP needs 'one_process_model' for now");
   }
 }

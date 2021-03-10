@@ -16,8 +16,8 @@ int *test() {
   // CHECK: free<int>(a);
 
   int *b = malloc(5 * sizeof(int));
-  // CHECK_NOALL: int *b = malloc<int>(5*sizeof(int));
-  // CHECK_ALL: _Array_ptr<int> b : count(5) =  malloc<int>(5*sizeof(int));
+  // CHECK_NOALL: int *b = malloc<int>(5 * sizeof(int));
+  // CHECK_ALL: _Array_ptr<int> b : count(5) =  malloc<int>(5 * sizeof(int));
   free(b);
   // CHECK: free<int>(b);
   return b;
@@ -35,8 +35,8 @@ int *test2() {
   // CHECK: my_free<int>(a);
 
   int *b = malloc(5 * sizeof(int));
-  // CHECK_NOALL: int *b = malloc<int>(5*sizeof(int));
-  // CHECK_ALL: _Array_ptr<int> b : count(5) =  malloc<int>(5*sizeof(int));
+  // CHECK_NOALL: int *b = malloc<int>(5 * sizeof(int));
+  // CHECK_ALL: _Array_ptr<int> b : count(5) =  malloc<int>(5 * sizeof(int));
   my_free(b);
   // CHECK: my_free<int>(b);
 

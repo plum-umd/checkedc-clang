@@ -6,7 +6,7 @@
 //
 
 void do_something(int *a, int b) { *a = b; }
-//CHECK: void do_something(_Ptr<int> a, int b) {
+//CHECK: void do_something(_Ptr<int> a, int b) { *a = b; }
 
 void test(_Array_ptr<int> p : count(len), int len) {
   _Array_ptr<int> r
