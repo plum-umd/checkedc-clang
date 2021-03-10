@@ -106,7 +106,7 @@ void ptrptr_other() {
   *b = 1;
 
   int **c = ptrptr_ret_bad();
-  //CHECK :_Ptr<int *> c = ptrptr_ret_bad();
+  //CHECK: _Ptr<int *> c = ptrptr_ret_bad();
 
   int *d = *ptrptr_ret_bad();
   //CHECK: int *d = *ptrptr_ret_bad();

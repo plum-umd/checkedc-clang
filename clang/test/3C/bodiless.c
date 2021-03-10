@@ -10,11 +10,11 @@
 
 static int *foo1(void) { return (void *)0; }
 void test1() { int *a = foo1(); }
-//CHECK _Ptr<int> a = foo1();
+//CHECK: _Ptr<int> a = foo1();
 
 static int *foo2(void);
 void test2() { int *a = foo2(); }
-//CHECK int *a = foo2();
+//CHECK: int *a = foo2();
 
 int *foo3(void) { return (void *)0; }
 void test3() { int *a = foo3(); }
