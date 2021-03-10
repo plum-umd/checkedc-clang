@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import fileinput 
+import fileinput
 import sys
 import os
 
@@ -24,28 +24,29 @@ struct r {
 };
 """
 
+
 # Let's clear all the existing annotations to get a clean fresh file with only code
-def strip_existing_annotations(filename): 
+def strip_existing_annotations(filename):
     for line in fileinput.input(filename, inplace=1):
-        if "// RUN" in line or "//CHECK" in line: 
-            line = "" 
+        if "// RUN" in line or "//CHECK" in line:
+            line = ""
         sys.stdout.write(line)
 
 
-def process_file_smart(name, cnameNOALL, cnameALL, diff): 
-    file = open(name, "r") 
-    noallfile = open(cnameNOALL, "r") 
-    allfile = open(cnameALL, "r") 
+def process_file_smart(name, cnameNOALL, cnameALL, diff):
+    file = open(name, "r")
+    noallfile = open(cnameNOALL, "r")
+    allfile = open(cnameALL, "r")
 
     # gather all the lines
-    lines = str(file.read()).split("\n") 
-    noall = str(noallfile.read()).split("\n") 
-    yeall = str(allfile.read()).split("\n") 
+    lines = str(file.read()).split("\n")
+    noall = str(noallfile.read()).split("\n")
+    yeall = str(allfile.read()).split("\n")
 
-    file.close() 
-    noallfile.close() 
-    allfile.close() 
-    
+    file.close()
+    noallfile.close()
+    allfile.close()
+
     # ensure all lines are the same length
     assert len(lines) == len(noall) == len(yeall), "fix file " + name
 
@@ -54,20 +55,25 @@ def process_file_smart(name, cnameNOALL, cnameALL, diff):
     os.system("rm -r tmp.checkedALL tmp.checkedNOALL")
 
     # our keywords that indicate we should add an annotation
-    keywords = "int char struct double float".split(" ") 
-    ckeywords = "_Ptr _Array_ptr _Nt_array_ptr _Checked _Unchecked".split(" ") 
+    keywords = "int char struct double float".split(" ")
+    ckeywords = "_Ptr _Array_ptr _Nt_array_ptr _Checked _Unchecked".split(" ")
 
-    for i in range(0, len(lines)): 
-        line = lines[i] 
-        noline = noall[i] 
+    for i in range(0, len(lines)):
+        line = lines[i]
+        noline = noall[i]
         yeline = yeall[i]
-        if ("/* GENERATE CHECK */" in line or (line.find("extern") == -1 and line.find("/*") == -1 and ((any(substr in line for substr in keywords) and (line.find("*") != -1 or line.find("[") != -1)) or any(substr in noline for substr in ckeywords) or any(substr in yeline for substr in ckeywords)))): 
-            if noline == yeline: 
+        if ("/* GENERATE CHECK */" in line or
+            (line.find("extern") == -1 and line.find("/*") == -1 and
+             ((any(substr in line for substr in keywords) and
+               (line.find("*") != -1 or line.find("[") != -1)) or
+              any(substr in noline for substr in ckeywords) or
+              any(substr in yeline for substr in ckeywords)))):
+            if noline == yeline:
                 lines[i] += "\n\t//CHECK: " + noline.lstrip()
-            else: 
+            else:
                 lines[i] += "\n\t//CHECK_NOALL: " + noline.lstrip()
                 lines[i] += "\n\t//CHECK_ALL: " + yeline
-    
+
     diff_opt = " -w" if diff else ""
     run = f"""\
 // RUN: rm -rf %t*
@@ -79,20 +85,23 @@ def process_file_smart(name, cnameNOALL, cnameALL, diff):
 """
 
     file = open(name, "w+")
-    file.write(run + "\n".join(lines)) 
+    file.write(run + "\n".join(lines))
     file.close()
-    return 
+    return
 
-def process_smart(filename, diff): 
-    strip_existing_annotations(filename) 
-    
+
+def process_smart(filename, diff):
+    strip_existing_annotations(filename)
+
     cnameNOALL = "tmp.checkedNOALL/" + filename
     cnameALL = "tmp.checkedALL/" + filename
 
-    os.system("{}3c -alltypes -addcr -output-dir=tmp.checkedALL {} --".format(bin_path, filename))
-    os.system("{}3c -addcr -output-dir=tmp.checkedNOALL {} --".format(bin_path, filename))
+    os.system("{}3c -alltypes -addcr -output-dir=tmp.checkedALL {} --".format(
+        bin_path, filename))
+    os.system("{}3c -addcr -output-dir=tmp.checkedNOALL {} --".format(
+        bin_path, filename))
 
-    process_file_smart(filename, cnameNOALL, cnameALL, diff) 
+    process_file_smart(filename, cnameNOALL, cnameALL, diff)
     return
 
 
@@ -140,7 +149,7 @@ manual_tests = [
 # No tests currently produce whitespace differences.
 need_diff = []
 
-for i in manual_tests: 
-    process_smart(i, False) 
-for i in need_diff: 
+for i in manual_tests:
+    process_smart(i, False)
+for i in need_diff:
     process_smart(i, True)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import fileinput 
+import fileinput
 import sys
 import os
 
@@ -24,87 +24,100 @@ struct r {
 };
 """
 
+
 # Let's clear all the existing annotations to get a clean fresh file with only code
-def strip_existing_annotations(filename): 
+def strip_existing_annotations(filename):
     for line in fileinput.input(filename, inplace=1):
-        if "//" in line: 
-            line = "" 
+        if "//" in line:
+            line = ""
         sys.stdout.write(line)
 
+
 # Now split the file into clear processing units
-def split_into_blocks(filename): 
-    susproto = sus = foo = bar = header = "" 
+def split_into_blocks(filename):
+    susproto = sus = foo = bar = header = ""
     file = open(filename, "r")
-    insus = infoo = inbar = strcpy = prot_encountered = False 
-    for line in file.readlines(): 
-        if (line.find("sus") != -1 and line.find(";") != -1 and (not (infoo or inbar or insus))):
+    insus = infoo = inbar = strcpy = prot_encountered = False
+    for line in file.readlines():
+        if (line.find("sus") != -1 and line.find(";") != -1 and
+            (not (infoo or inbar or insus))):
             prot_encountered = True
-            susproto = line 
-        elif line.find("sus") != -1 and line.find("{") != -1: 
+            susproto = line
+        elif line.find("sus") != -1 and line.find("{") != -1:
             prot_encountered = True
             insus = infoo = inbar = False
             insus = True
 
         # annotate the definition for foo
-        elif line.find("foo") != -1: 
+        elif line.find("foo") != -1:
             prot_encountered = True
             insus = infoo = inbar = False
-            infoo = True 
+            infoo = True
 
         # annotate the definition for bar
-        elif line.find("bar") != -1: 
-            prot_encountered = True  
+        elif line.find("bar") != -1:
+            prot_encountered = True
             insus = infoo = inbar = False
-            inbar = True 
-        elif not prot_encountered and "strcpy" in line: 
-            header += line 
-            strcpy = True
-        
-        elif not prot_encountered and not strcpy: 
+            inbar = True
+        elif not prot_encountered and "strcpy" in line:
             header += line
-        
-        if insus: 
-            sus += line 
-        elif infoo: 
-            foo += line 
-        elif inbar: 
+            strcpy = True
+
+        elif not prot_encountered and not strcpy:
+            header += line
+
+        if insus:
+            sus += line
+        elif infoo:
+            foo += line
+        elif inbar:
             bar += line
 
-    return [header.strip(), susproto.strip(), sus.strip(), foo.strip(), bar.strip()]  
+    return [
+        header.strip(),
+        susproto.strip(),
+        sus.strip(),
+        foo.strip(),
+        bar.strip()
+    ]
 
 
-def process_file_smart(name, cnameNOALL, cnameALL): 
-    file = open(name, "r") 
-    noallfile = open(cnameNOALL, "r") 
-    allfile = open(cnameALL, "r") 
+def process_file_smart(name, cnameNOALL, cnameALL):
+    file = open(name, "r")
+    noallfile = open(cnameNOALL, "r")
+    allfile = open(cnameALL, "r")
 
     # gather all the lines
-    lines = str(file.read()).split("\n") 
-    noall = str(noallfile.read()).split("\n") 
-    yeall = str(allfile.read()).split("\n") 
+    lines = str(file.read()).split("\n")
+    noall = str(noallfile.read()).split("\n")
+    yeall = str(allfile.read()).split("\n")
 
-    file.close() 
-    noallfile.close() 
-    allfile.close() 
+    file.close()
+    noallfile.close()
+    allfile.close()
     os.system("rm -r tmp.checkedALL tmp.checkedNOALL")
-    
+
     # ensure all lines are the same length
     assert len(lines) == len(noall) == len(yeall), "fix file " + name
     # our keywords that indicate we should add an annotation
-    keywords = "int char struct double float".split(" ") 
-    ckeywords = "_Ptr _Array_ptr _Nt_array_ptr _Checked _Unchecked".split(" ") 
+    keywords = "int char struct double float".split(" ")
+    ckeywords = "_Ptr _Array_ptr _Nt_array_ptr _Checked _Unchecked".split(" ")
 
-    for i in range(0, len(lines)): 
-        line = lines[i] 
-        noline = noall[i] 
+    for i in range(0, len(lines)):
+        line = lines[i]
+        noline = noall[i]
         yeline = yeall[i]
-        if (line.find("extern") == -1 and ((any(substr in line for substr in keywords) and line.find("*") != -1) or any(substr in noline for substr in ckeywords) or any(substr in yeline for substr in ckeywords))): 
-            if noline == yeline: 
+        if (line.find("extern") == -1 and
+            ((any(substr in line
+                  for substr in keywords) and line.find("*") != -1) or
+             any(substr in noline for substr in ckeywords) or
+             any(substr in yeline for substr in ckeywords))):
+            if noline == yeline:
                 lines[i] += "\n\t//CHECK: " + noline.lstrip()
-            else: 
+            else:
                 lines[i] += "\n\t//CHECK_NOALL: " + noline.lstrip()
                 lines[i] += "\n\t//CHECK_ALL: " + yeline
-    
+
     run = f"""\
 // RUN: rm -rf %t*
 // RUN: 3c -base-dir=%S -alltypes -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_ALL","CHECK" %s
@@ -115,34 +128,41 @@ def process_file_smart(name, cnameNOALL, cnameALL):
 """
 
     file = open(name, "w+")
-    file.write(run + "\n".join(lines)) 
+    file.write(run + "\n".join(lines))
     file.close()
-    return 
+    return
 
-def process_smart(filename): 
-    strip_existing_annotations(filename) 
-    [header, susproto, sus, foo, bar] = split_into_blocks(filename) 
 
-    struct_needed = False 
-    if ("struct" in susproto or "struct" in sus or "struct" in foo or "struct" in bar): 
+def process_smart(filename):
+    strip_existing_annotations(filename)
+    [header, susproto, sus, foo, bar] = split_into_blocks(filename)
+
+    struct_needed = False
+    if ("struct" in susproto or "struct" in sus or "struct" in foo or
+            "struct" in bar):
         struct_needed = True
-    
+
     cnameNOALL = "tmp.checkedNOALL/" + filename
     cnameALL = "tmp.checkedALL/" + filename
 
-    test = [header, sus, foo, bar] 
-    if susproto != "" and struct_needed: test = [header, structs, susproto, foo, bar, sus] 
-    elif struct_needed: test = [header, structs, sus, foo, bar] 
-    elif susproto != "": test = [header, susproto, foo, bar, sus]
+    test = [header, sus, foo, bar]
+    if susproto != "" and struct_needed:
+        test = [header, structs, susproto, foo, bar, sus]
+    elif struct_needed:
+        test = [header, structs, sus, foo, bar]
+    elif susproto != "":
+        test = [header, susproto, foo, bar, sus]
 
-    file = open(filename, "w+") 
-    file.write('\n\n'.join(test) + '\n') 
+    file = open(filename, "w+")
+    file.write('\n\n'.join(test) + '\n')
     file.close()
 
-    os.system("{}3c -alltypes -addcr -output-dir=tmp.checkedALL {} --".format(bin_path, filename))
-    os.system("{}3c -addcr -output-dir=tmp.checkedNOALL {} --".format(bin_path, filename))
+    os.system("{}3c -alltypes -addcr -output-dir=tmp.checkedALL {} --".format(
+        bin_path, filename))
+    os.system("{}3c -addcr -output-dir=tmp.checkedNOALL {} --".format(
+        bin_path, filename))
 
-    process_file_smart(filename, cnameNOALL, cnameALL) 
+    process_file_smart(filename, cnameNOALL, cnameALL)
     return
 
 
@@ -194,5 +214,5 @@ b_tests = [
 ]
 # yapf: enable
 
-for i in b_tests: 
+for i in b_tests:
     process_smart(i)
