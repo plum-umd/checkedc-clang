@@ -2,30 +2,30 @@
 import fileinput
 import sys
 import os
+import re
 
 import find_bin
 bin_path = find_bin.bin_path
 
-structs = """
+structs = """\
 struct np {
-    int x;
-    int y;
+  int x;
+  int y;
 };
 
 struct p {
-    int *x;
-    char *y;
+  int *x;
+  char *y;
 };
-
 
 struct r {
-    int data;
-    struct r *next;
-};
-"""
+  int data;
+  struct r *next;
+};"""
 
 
-# Let's clear all the existing annotations to get a clean fresh file with only code
+# Let's clear all the existing annotations to get a clean fresh file with only
+# code
 def strip_existing_annotations(filename):
     for line in fileinput.input(filename, inplace=1):
         if "//" in line:
@@ -37,7 +37,7 @@ def strip_existing_annotations(filename):
 def split_into_blocks(filename):
     susproto = sus = foo = bar = header = ""
     file = open(filename, "r")
-    insus = infoo = inbar = strcpy = prot_encountered = False
+    insus = infoo = inbar = prot_encountered = False
     for line in file.readlines():
         if (line.find("sus") != -1 and line.find(";") != -1 and
             (not (infoo or inbar or insus))):
@@ -59,11 +59,11 @@ def split_into_blocks(filename):
             prot_encountered = True
             insus = infoo = inbar = False
             inbar = True
-        elif not prot_encountered and "strcpy" in line:
-            header += line
-            strcpy = True
 
-        elif not prot_encountered and not strcpy:
+        elif line.find("struct np {") != -1:
+            prot_encountered = True
+
+        elif not prot_encountered:
             header += line
 
         if insus:
@@ -102,21 +102,34 @@ def process_file_smart(name, cnameNOALL, cnameALL):
     # our keywords that indicate we should add an annotation
     keywords = "int char struct double float".split(" ")
     ckeywords = "_Ptr _Array_ptr _Nt_array_ptr _Checked _Unchecked".split(" ")
+    keywords_re = re.compile("\\b(" + "|".join(keywords) + ")\\b")
+    ckeywords_re = re.compile("\\b(" + "|".join(ckeywords) + ")\\b")
 
+    in_extern = False
     for i in range(0, len(lines)):
         line = lines[i]
         noline = noall[i]
         yeline = yeall[i]
-        if (line.find("extern") == -1 and
-            ((any(substr in line
-                  for substr in keywords) and line.find("*") != -1) or
-             any(substr in noline for substr in ckeywords) or
-             any(substr in yeline for substr in ckeywords))):
+        if "extern" in line:
+            in_extern = True
+        if (not in_extern and
+            ((keywords_re.search(line) and line.find("*") != -1) or
+             ckeywords_re.search(noline) or ckeywords_re.search(yeline))):
+            indentation = re.search("^\s*", noline).group(0)
+            # Hack to match how clang-format will indent the CHECK comments,
+            # even though it would arguably be more logical to leave them at the
+            # same indentation as the code they refer to.
+            if noline.endswith("{"):
+                indentation += "  "
             if noline == yeline:
-                lines[i] += "\n\t//CHECK: " + noline.lstrip()
+                lines[i] += "\n" + indentation + "//CHECK: " + noline.lstrip()
             else:
-                lines[i] += "\n\t//CHECK_NOALL: " + noline.lstrip()
-                lines[i] += "\n\t//CHECK_ALL: " + yeline
+                lines[i] += ("\n" + indentation + "//CHECK_NOALL: " +
+                             noline.lstrip())
+                lines[i] += ("\n" + indentation + "//CHECK_ALL: " +
+                             yeline.lstrip())
+        if ";" in line:
+            in_extern = False
 
     run = f"""\
 // RUN: rm -rf %t*
