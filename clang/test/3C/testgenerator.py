@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Author: Shilpa Roy 
 # Last updated: June 16, 2020
 
@@ -620,44 +620,51 @@ def process_file_smart(prefix, proto, suffix, name, cnameNOALL, cnameALL, name2,
         line = lines[i] 
         noline = noall[i] 
         yeline = yeall[i]
-        if line.find("extern") == -1 and ((any(substr in line for substr in keywords) and line.find("*") != -1) or any(substr in noline for substr in ckeywords) or any(substr in yeline for substr in ckeywords)): 
+        if (line.find("extern") == -1 and ((any(substr in line for substr in keywords) and line.find("*") != -1) or any(substr in noline for substr in ckeywords) or any(substr in yeline for substr in ckeywords))): 
             if noline == yeline: 
-                lines[i] = line + "\n\t//CHECK: " + noline.lstrip()
+                lines[i] += "\n\t//CHECK: " + noline.lstrip()
             else: 
-                lines[i] = line + "\n\t//CHECK_NOALL: " + noline.lstrip() + "\n\t//CHECK_ALL: " + yeline.lstrip()
+                lines[i] += "\n\t//CHECK_NOALL: " + noline.lstrip()
+                lines[i] += "\n\t//CHECK_ALL: " + yeline.lstrip()
 
     if proto=="multi": 
         for i in range(0, len(lines2)): 
             line = lines2[i] 
             noline = noall2[i] 
             yeline = yeall2[i]
-            if line.find("extern") == -1 and ((any(substr in line for substr in keywords) and line.find("*") != -1) or any(substr in noline for substr in ckeywords) or any(substr in yeline for substr in ckeywords)): 
+            if (line.find("extern") == -1 and ((any(substr in line for substr in keywords) and line.find("*") != -1) or any(substr in noline for substr in ckeywords) or any(substr in yeline for substr in ckeywords))): 
                 if noline == yeline: 
-                    lines2[i] = line + "\n\t//CHECK: " + noline.lstrip()
+                    lines2[i] += "\n\t//CHECK: " + noline.lstrip()
                 else: 
-                    lines2[i] = line + "\n\t//CHECK_NOALL: " + noline.lstrip() + "\n\t//CHECK_ALL: " + yeline.lstrip()
+                    lines2[i] += "\n\t//CHECK_NOALL: " + noline.lstrip()
+                    lines2[i] += "\n\t//CHECK_ALL: " + yeline.lstrip()
     
-    run = "// RUN: rm -rf %t*"
-    run += "\n// RUN: 3c -base-dir=%S -alltypes -addcr %s -- | FileCheck -match-full-lines -check-prefixes=\"CHECK_ALL\",\"CHECK\" %s"
-    run += "\n// RUN: 3c -base-dir=%S -addcr %s -- | FileCheck -match-full-lines -check-prefixes=\"CHECK_NOALL\",\"CHECK\" %s"
-    run += "\n// RUN: 3c -base-dir=%S -addcr %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -\n"
-    run += "\n// RUN: 3c -base-dir=%S -alltypes -output-dir=%t.checked %s --"
-    run += "\n// RUN: 3c -base-dir=%t.checked -alltypes %t.checked/{} -- | diff %t.checked/{} -".format(name, name)
+    run = f"""\
+// RUN: rm -rf %t*
+// RUN: 3c -base-dir=%S -alltypes -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_ALL","CHECK" %s
+// RUN: 3c -base-dir=%S -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" %s
+// RUN: 3c -base-dir=%S -addcr %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -
+
+// RUN: 3c -base-dir=%S -alltypes -output-dir=%t.checked %s --
+// RUN: 3c -base-dir=%t.checked -alltypes %t.checked/{name} -- | diff %t.checked/{name} -\
+"""
     if proto=="multi": 
-        run = "// RUN: rm -rf %t*"
-        run += "\n// RUN: 3c -base-dir=%S -addcr -alltypes -output-dir=%t.checkedALL %s %S/{} --".format(name2)
-        run += "\n// RUN: 3c -base-dir=%S -addcr -output-dir=%t.checkedNOALL %s %S/{} --".format(name2)
-        run += "\n// RUN: %clang -working-directory=%t.checkedNOALL -c {} {}".format(name, name2)
-        run += "\n// RUN: FileCheck -match-full-lines -check-prefixes=\"CHECK_NOALL\",\"CHECK\" --input-file {} %s".format(cnameNOALL)
-        run += "\n// RUN: FileCheck -match-full-lines -check-prefixes=\"CHECK_ALL\",\"CHECK\" --input-file {} %s".format(cnameALL)
-        run += "\n// RUN: 3c -base-dir=%S -alltypes -output-dir=%t.checked %S/{} %s --".format(name2)
         cname = "%t.checked/" + name
         cname2 = "%t.checked/" + name2
-        run += "\n// RUN: 3c -base-dir=%t.checked -alltypes -output-dir=%t.convert_again {} {} --".format(cname, cname2)
         cnameALLtwice1 = "%t.convert_again/" + name
         cnameALLtwice2 = "%t.convert_again/" + name2
-        run += "\n// RUN: test ! -f {}".format(cnameALLtwice1)
-        run += "\n// RUN: test ! -f {}".format(cnameALLtwice2)
+        run = f"""\
+// RUN: rm -rf %t*
+// RUN: 3c -base-dir=%S -addcr -alltypes -output-dir=%t.checkedALL %s %S/{name2} --
+// RUN: 3c -base-dir=%S -addcr -output-dir=%t.checkedNOALL %s %S/{name2} --
+// RUN: %clang -working-directory=%t.checkedNOALL -c {name} {name2}
+// RUN: FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" --input-file {cnameNOALL} %s
+// RUN: FileCheck -match-full-lines -check-prefixes="CHECK_ALL","CHECK" --input-file {cnameALL} %s
+// RUN: 3c -base-dir=%S -alltypes -output-dir=%t.checked %S/{name2} %s --
+// RUN: 3c -base-dir=%t.checked -alltypes -output-dir=%t.convert_again {cname} {cname2} --
+// RUN: test ! -f {cnameALLtwice1}
+// RUN: test ! -f {cnameALLtwice2}\
+"""
         cnameNOALL2 = "%t.checkedNOALL2/" + name
         cnameALL2 = "%t.checkedALL2/" + name
         cname2NOALL2 = "%t.checkedNOALL2/" + name2
@@ -666,16 +673,18 @@ def process_file_smart(prefix, proto, suffix, name, cnameNOALL, cnameALL, name2,
         # if bug_generated: 
         #     cname21 = prefix + suffix + proto + "1_BUG.checked2.c" 
         #     cname22 = prefix + suffix + proto + "2_BUG.checked2.c"
-        run2 = "// RUN: rm -rf %t*"
-        run2 += "\n// RUN: 3c -base-dir=%S -addcr -alltypes -output-dir=%t.checkedALL2 %S/{} %s --".format(name)
-        run2 += "\n// RUN: 3c -base-dir=%S -addcr -output-dir=%t.checkedNOALL2 %S/{} %s --".format(name)
-        run2 += "\n// RUN: %clang -working-directory=%t.checkedNOALL2 -c {} {}".format(name, name2)
-        run2 += "\n// RUN: FileCheck -match-full-lines -check-prefixes=\"CHECK_NOALL\",\"CHECK\" --input-file {} %s".format(cname2NOALL2)
-        run2 += "\n// RUN: FileCheck -match-full-lines -check-prefixes=\"CHECK_ALL\",\"CHECK\" --input-file {} %s".format(cname2ALL2)
-        run2 += "\n// RUN: 3c -base-dir=%S -alltypes -output-dir=%t.checked %S/{} %s --".format(name)
-        run2 += "\n// RUN: 3c -base-dir=%t.checked -alltypes -output-dir=%t.convert_again {} {} --".format(cname, cname2)
-        run2 += "\n// RUN: test ! -f {}".format(cnameALLtwice1)
-        run2 += "\n// RUN: test ! -f {}".format(cnameALLtwice2)
+        run2 = f"""\
+// RUN: rm -rf %t*
+// RUN: 3c -base-dir=%S -addcr -alltypes -output-dir=%t.checkedALL2 %S/{name} %s --
+// RUN: 3c -base-dir=%S -addcr -output-dir=%t.checkedNOALL2 %S/{name} %s --
+// RUN: %clang -working-directory=%t.checkedNOALL2 -c {name} {name2}
+// RUN: FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" --input-file {cname2NOALL2} %s
+// RUN: FileCheck -match-full-lines -check-prefixes="CHECK_ALL","CHECK" --input-file {cname2ALL2} %s
+// RUN: 3c -base-dir=%S -alltypes -output-dir=%t.checked %S/{name} %s --
+// RUN: 3c -base-dir=%t.checked -alltypes -output-dir=%t.convert_again {cname} {cname2} --
+// RUN: test ! -f {cnameALLtwice1}
+// RUN: test ! -f {cnameALLtwice2}\
+"""
 
     file = open(name, "w+")
     file.write(run + comment + "\n".join(lines)) 

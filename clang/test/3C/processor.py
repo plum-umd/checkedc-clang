@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import fileinput 
 import sys
 import os
@@ -37,7 +37,7 @@ def split_into_blocks(filename):
     file = open(filename, "r")
     insus = infoo = inbar = strcpy = prot_encountered = False 
     for line in file.readlines(): 
-        if line.find("sus") != -1 and line.find(";") != -1 and (not (infoo or inbar or insus)):
+        if (line.find("sus") != -1 and line.find(";") != -1 and (not (infoo or inbar or insus))):
             prot_encountered = True
             susproto = line 
         elif line.find("sus") != -1 and line.find("{") != -1: 
@@ -98,18 +98,21 @@ def process_file_smart(name, cnameNOALL, cnameALL):
         line = lines[i] 
         noline = noall[i] 
         yeline = yeall[i]
-        if line.find("extern") == -1 and ((any(substr in line for substr in keywords) and line.find("*") != -1) or any(substr in noline for substr in ckeywords) or any(substr in yeline for substr in ckeywords)): 
+        if (line.find("extern") == -1 and ((any(substr in line for substr in keywords) and line.find("*") != -1) or any(substr in noline for substr in ckeywords) or any(substr in yeline for substr in ckeywords))): 
             if noline == yeline: 
-                lines[i] = line + "\n\t//CHECK: " + noline.lstrip()
+                lines[i] += "\n\t//CHECK: " + noline.lstrip()
             else: 
-                lines[i] = line + "\n\t//CHECK_NOALL: " + noline.lstrip() + "\n\t//CHECK_ALL: " + yeline
+                lines[i] += "\n\t//CHECK_NOALL: " + noline.lstrip()
+                lines[i] += "\n\t//CHECK_ALL: " + yeline
     
-    run = "// RUN: rm -rf %t*"
-    run += "\n// RUN: 3c -base-dir=%S -alltypes -addcr %s -- | FileCheck -match-full-lines -check-prefixes=\"CHECK_ALL\",\"CHECK\" %s"
-    run += "\n// RUN: 3c -base-dir=%S -addcr %s -- | FileCheck -match-full-lines -check-prefixes=\"CHECK_NOALL\",\"CHECK\" %s"
-    run += "\n// RUN: 3c -base-dir=%S -addcr %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -"
-    run += "\n// RUN: 3c -base-dir=%S -alltypes -output-dir=%t.checked %s --"
-    run += "\n// RUN: 3c -base-dir=%t.checked -alltypes %t.checked/{} -- | diff %t.checked/{} -\n".format(name, name)
+    run = f"""\
+// RUN: rm -rf %t*
+// RUN: 3c -base-dir=%S -alltypes -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_ALL","CHECK" %s
+// RUN: 3c -base-dir=%S -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" %s
+// RUN: 3c -base-dir=%S -addcr %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -
+// RUN: 3c -base-dir=%S -alltypes -output-dir=%t.checked %s --
+// RUN: 3c -base-dir=%t.checked -alltypes %t.checked/{name} -- | diff %t.checked/{name} -
+"""
 
     file = open(name, "w+")
     file.write(run + "\n".join(lines)) 
@@ -121,7 +124,7 @@ def process_smart(filename):
     [header, susproto, sus, foo, bar] = split_into_blocks(filename) 
 
     struct_needed = False 
-    if "struct" in susproto or "struct" in sus or "struct" in foo or "struct" in bar: 
+    if ("struct" in susproto or "struct" in sus or "struct" in foo or "struct" in bar): 
         struct_needed = True
     
     cnameNOALL = "tmp.checkedNOALL/" + filename
@@ -143,49 +146,53 @@ def process_smart(filename):
     return
 
 
-b_tests = ['b10_allsafepointerstruct.c',
- 'b11_calleestructnp.c',
- 'b12_callerstructnp.c',
- 'b13_calleestructp.c',
- 'b14_callerstructp.c',
- 'b15_calleepointerstruct.c',
- 'b16_callerpointerstruct.c',
- 'b17_bothstructnp.c',
- 'b18_bothstructp.c',
- 'b19_bothpointerstruct.c',
- 'b1_allsafe.c',
- 'b20_allsafepointerstructproto.c',
- 'b21_calleepointerstructproto.c',
- 'b22_callerpointerstructproto.c',
- 'b23_explicitunsafecast.c',
- 'b23_retswitchexplicit.c',
- 'b24_implicitunsafecast.c',
- 'b24_retswitchimplicit.c',
- 'b25_castprotosafe.c',
- 'b26_castprotounsafe.c',
- 'b26_castprotounsafeimplicit.c',
- 'b26_castprotounsafeimplicitretswitch.c',
- 'b27_structcastsafe.c',
- 'b28_structcastexplicit.c',
- 'b28_structcastimplicit.c',
- 'b28_structimplicitretcast.c',
- 'b29_structprotocastsafe.c',
- 'b29_structprotocastsafeuseunsafe.c',
- 'b2_calleeunsafe.c',
- 'b30_structprotocastexplicitunsafeuseunsafe.c',
- 'b30_structprotocastimplicitunsafeuseunsafe.c',
- 'b30_structprotocastunsafeexplicit.c',
- 'b30_structprotocastunsafeimplicit.c',
- 'b30_structprotocastunsafeimplicitretswitch.c',
- 'b30_structprotoconflict.c',
- 'b30_structprotoconflictbodyconvert.c',
- 'b3_onecallerunsafe.c',
- 'b4_bothunsafe.c',
- 'b5_calleeunsafeproto.c',
- 'b6_callerunsafeproto.c',
- 'b7_allsafeproto.c',
- 'b8_allsafestructnp.c',
- 'b9_allsafestructp.c'] 
+# yapf: disable
+b_tests = [
+    'b10_allsafepointerstruct.c',
+    'b11_calleestructnp.c',
+    'b12_callerstructnp.c',
+    'b13_calleestructp.c',
+    'b14_callerstructp.c',
+    'b15_calleepointerstruct.c',
+    'b16_callerpointerstruct.c',
+    'b17_bothstructnp.c',
+    'b18_bothstructp.c',
+    'b19_bothpointerstruct.c',
+    'b1_allsafe.c',
+    'b20_allsafepointerstructproto.c',
+    'b21_calleepointerstructproto.c',
+    'b22_callerpointerstructproto.c',
+    'b23_explicitunsafecast.c',
+    'b23_retswitchexplicit.c',
+    'b24_implicitunsafecast.c',
+    'b24_retswitchimplicit.c',
+    'b25_castprotosafe.c',
+    'b26_castprotounsafe.c',
+    'b26_castprotounsafeimplicit.c',
+    'b26_castprotounsafeimplicitretswitch.c',
+    'b27_structcastsafe.c',
+    'b28_structcastexplicit.c',
+    'b28_structcastimplicit.c',
+    'b28_structimplicitretcast.c',
+    'b29_structprotocastsafe.c',
+    'b29_structprotocastsafeuseunsafe.c',
+    'b2_calleeunsafe.c',
+    'b30_structprotocastexplicitunsafeuseunsafe.c',
+    'b30_structprotocastimplicitunsafeuseunsafe.c',
+    'b30_structprotocastunsafeexplicit.c',
+    'b30_structprotocastunsafeimplicit.c',
+    'b30_structprotocastunsafeimplicitretswitch.c',
+    'b30_structprotoconflict.c',
+    'b30_structprotoconflictbodyconvert.c',
+    'b3_onecallerunsafe.c',
+    'b4_bothunsafe.c',
+    'b5_calleeunsafeproto.c',
+    'b6_callerunsafeproto.c',
+    'b7_allsafeproto.c',
+    'b8_allsafestructnp.c',
+    'b9_allsafestructp.c',
+]
+# yapf: enable
 
 for i in b_tests: 
     process_smart(i)
