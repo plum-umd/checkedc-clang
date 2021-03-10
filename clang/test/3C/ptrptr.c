@@ -3,7 +3,7 @@
 // RUN: 3c -base-dir=%S -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" %s
 // RUN: 3c -base-dir=%S -addcr %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -
 // RUN: 3c -base-dir=%S -output-dir=%t.checked -alltypes %s --
-// RUN: 3c -base-dir=%t.checked -alltypes %t.checked/ptrptr.c -- | diff -w %t.checked/ptrptr.c -
+// RUN: 3c -base-dir=%t.checked -alltypes %t.checked/ptrptr.c -- | diff %t.checked/ptrptr.c -
 
 #include <stddef.h>
 #include <stddef.h>
@@ -16,6 +16,7 @@ extern _Unchecked char *strcpy(char * restrict dest, const char * restrict src :
 
 void f() {
   int x[5];
+	//CHECK: int x[5];
   int *pa = x;
 	//CHECK: int *pa = x;
   pa += 2;

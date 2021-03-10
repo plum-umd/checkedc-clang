@@ -12,7 +12,7 @@ void f(int *(*fp)(int *)) {
   int *z = (int *)5;
 	//CHECK: int *z = (int *)5;
   z = fp(x); /* GENERATE CHECK */
-	//CHECK: z = fp(x);
+	//CHECK: z = fp(x); /* GENERATE CHECK */
 }
 int *g2(int *x) {
 	//CHECK: int *g2(int *x : itype(_Ptr<int>)) : itype(_Ptr<int>) {
@@ -25,6 +25,7 @@ int *g(int *x) {
   return 0;
 }
 void h() {
+	//CHECK: void h() _Checked {
   f(g);
   f(g2);
 }

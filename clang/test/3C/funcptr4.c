@@ -18,6 +18,7 @@ int *g(int *x) {
   return 0;
 }
 void h() {
+	//CHECK: void h() _Checked {
   int *(*fp)(int *) = g;
 	//CHECK: _Ptr<_Ptr<int> (_Ptr<int> )> fp = g;
   f(g);
