@@ -97,7 +97,9 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
     if (FDef == nullptr)
       FDef = FD;
     if (auto *FVCon = Info.getFuncConstraint(FDef, Context)) {
-      bool isSafe = typeArgsProvided(CE);
+      // if we need to rewrite it but can't (macro, etc), it isn't safe
+      bool ForcedInconsistent = !typeArgsProvided(CE)
+                                && !canRewrite(*CE,*Context);
       // Visit each function argument, and if it use a type variable, insert it
       // into the type variable binding map.
       unsigned int I = 0;
@@ -106,8 +108,6 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
         if (I >= FVCon->numParams())
           break;
         const int TyIdx = FVCon->getExternalParam(I)->getGenericIndex();
-        // if we can't rewrite it (macro, etc), it isn't safe
-        bool ForcedInconsistent = !isSafe && !canRewrite(*CE,*Context);
         if (TyIdx >= 0) {
           Expr *Uncast = A->IgnoreImpCasts();
           std::set<ConstraintVariable *> CVs = CR.getExprConstraintVars(Uncast);
