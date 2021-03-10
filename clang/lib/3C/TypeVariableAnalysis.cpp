@@ -105,11 +105,13 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
         if (I >= FVCon->numParams())
           break;
         const int TyIdx = FVCon->getExternalParam(I)->getGenericIndex();
+        // if we can't rewrite it (macro, etc), it isn't safe
+        bool ForcedInconsistent = !canRewrite(*CE,*Context);
         if (TyIdx >= 0) {
           Expr *Uncast = A->IgnoreImpCasts();
           std::set<ConstraintVariable *> CVs = CR.getExprConstraintVars(Uncast);
           insertBinding(CE, TyIdx, Uncast->getType(),
-                        CVs, isInMacro(*CE,*Context));
+                        CVs, ForcedInconsistent);
         }
         ++I;
       }

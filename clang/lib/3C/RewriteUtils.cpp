@@ -132,9 +132,10 @@ bool canRewrite(Rewriter &R, const CharSourceRange &SR) {
   return SR.isValid() && (R.getRangeSize(SR) != -1);
 }
 
-bool isInMacro(clang::Expr &D, ASTContext &Context) {
+bool canRewrite(clang::Expr &D, ASTContext &Context) {
   Rewriter R(Context.getSourceManager(), Context.getLangOpts());
-  return !canRewrite(R,CharSourceRange::getCharRange(D.getSourceRange()));
+  CharSourceRange Range = CharSourceRange::getCharRange(D.getSourceRange());
+  return canRewrite(R,Range);
 }
 
 void rewriteSourceRange(Rewriter &R, const SourceRange &Range,
@@ -405,8 +406,10 @@ public:
         // Construct a string containing concatenation of all type arguments for
         // the function call.
         std::string TypeParamString;
+        bool AllInconsistent = true;
         for (auto Entry : Info.getTypeParamBindings(CE, Context))
           if (Entry.second != nullptr) {
+            AllInconsistent = false;
             std::string TyStr = Entry.second->mkString(
                 Info.getConstraints().getVariables(), false, false, true);
             if (TyStr.back() == ' ')
@@ -419,8 +422,11 @@ public:
           }
         TypeParamString.pop_back();
 
-        SourceLocation TypeParamLoc = getTypeArgLocation(CE);
-        Writer.InsertTextAfter(TypeParamLoc, "<" + TypeParamString + ">");
+        // don't rewrite to malloc<void>(...), etc, just do malloc(...)
+        if (!AllInconsistent) {
+          SourceLocation TypeParamLoc = getTypeArgLocation(CE);
+          Writer.InsertTextAfter(TypeParamLoc, "<" + TypeParamString + ">");
+        }
       }
     }
     return true;
