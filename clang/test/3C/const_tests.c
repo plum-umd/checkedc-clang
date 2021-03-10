@@ -9,19 +9,13 @@
 // RUN: 3c -base-dir=%t.checked -addcr %t.checked/const_tests.c -- | diff %t.checked/const_tests.c -
 // expected-no-diagnostics
 
-void cst1(const int *a) {
-  int b = *a;
-}
+void cst1(const int *a) { int b = *a; }
 //CHECK: void cst1(_Ptr<const int> a) _Checked {
 
-void cst2(int * const a) {
-  *a = 0;
-}
+void cst2(int *const a) { *a = 0; }
 //CHECK: void cst2(const _Ptr<int> a) _Checked {
 
-void cst3(const int *a, int i) {
-  int c = *(a+i);
-}
+void cst3(const int *a, int i) { int c = *(a + i); }
 //CHECK: void cst3(const int *a : itype(_Ptr<const int>), int i) {
 //CHECK-NEXT: int c = *(a+i);
 
@@ -35,15 +29,15 @@ void cst4(const int *b) {
 //CHECK-NEXT: _Ptr<const int> d = b;
 //CHECK-NEXT: int e = *d;
 
-typedef struct _A { 
-  const int * a;
+typedef struct _A {
+  const int *a;
   int b;
 } A;
 //CHECK: typedef struct _A {
 //CHECK-NEXT: _Ptr<const int> a;
 
 void cst5(void) {
-  A a = { 0 };
+  A a = {0};
   int b = 0;
   a.a = &b;
 }

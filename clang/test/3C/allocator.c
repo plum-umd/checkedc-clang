@@ -1,6 +1,6 @@
 // Tests for 3C.
 //
-// Tests for malloc and friends. 
+// Tests for malloc and friends.
 //
 // RUN: rm -rf %t*
 // RUN: 3c -base-dir=%S %s -- | FileCheck -match-full-lines %s
@@ -10,7 +10,8 @@
 // expected-no-diagnostics
 //
 #include <stddef.h>
-_Itype_for_any(T) void *malloc(size_t size) : itype(_Array_ptr<T>) byte_count(size);
+_Itype_for_any(T) void *malloc(size_t size)
+    : itype(_Array_ptr<T>) byte_count(size);
 _Itype_for_any(T) void free(void *pointer : itype(_Array_ptr<T>) byte_count(0));
 
 void dosomething(void) {
@@ -22,7 +23,7 @@ void dosomething(void) {
 //CHECK: _Ptr<int> b =  &a;
 
 void foo(void) {
-  int *a = (int *) malloc(sizeof(int));
+  int *a = (int *)malloc(sizeof(int));
   *a = 0;
   free(a);
   return;
@@ -40,7 +41,7 @@ typedef struct _listhead {
 } listhead;
 
 void add_some_stuff(listhead *hd) {
-  listelt *l1 = (listelt *) malloc(sizeof(listelt));
+  listelt *l1 = (listelt *)malloc(sizeof(listelt));
   l1->next = 0;
   l1->val = 0;
   listelt *cur = hd->hd;

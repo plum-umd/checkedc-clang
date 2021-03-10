@@ -10,9 +10,9 @@
 
 #include <stddef.h>
 
-int * func(int *a, int *b) {
-    // This is a checked pointer
-    return *a?(2+0):b;	
+int *func(int *a, int *b) {
+  // This is a checked pointer
+  return *a ? (2 + 0) : b;
 }
 //CHECK: int *func(_Ptr<int> a, int *b : itype(_Ptr<int>)) : itype(_Ptr<int>) {
 
@@ -20,14 +20,17 @@ int main() {
   int *arr;
   int *c;
   int *b;
-  b = (c = func(arr+3, 2+2)) ? 0: 2;
+  b = (c = func(arr + 3, 2 + 2)) ? 0 : 2;
   return 0;
 }
 //CHECK_ALL: _Array_ptr<int> arr = ((void *)0);
 //CHECK: _Ptr<int> c = ((void *)0);
 //CHECK-NEXT: int *b;
 
-int * bar(int *x) { x = (int*)5; return x; }
+int *bar(int *x) {
+  x = (int *)5;
+  return x;
+}
 int *foo(int *y, int *w) {
   int *z = 0;
   z = (w = bar(w), y);
@@ -40,7 +43,7 @@ int *foo(int *y, int *w) {
 //CHECK_NOALL: _Ptr<int> z =  0;
 
 void baz(int *p) {
-  int *q = 0 ? p : foo(0,0);
+  int *q = 0 ? p : foo(0, 0);
   q++;
 }
 //CHECK_ALL: void baz(_Array_ptr<int> p) _Checked {
@@ -49,8 +52,8 @@ void baz(int *p) {
 //CHECK_NOALL: int *q = 0 ? p : ((int *)foo(0,0));
 
 void test() {
-  int *a = (int*) 0;
-  int **b = (int**) 0;
+  int *a = (int *)0;
+  int **b = (int **)0;
 
   *b = (0, a);
 }

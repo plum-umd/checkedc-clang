@@ -13,15 +13,14 @@
 #include <signal.h>
 
 void vsf_sysutil_set_sighandler(int sig, void (*p_handlefunc)(int))
-	//CHECK: void vsf_sysutil_set_sighandler(int sig, void (*p_handlefunc)(int))
+//CHECK: void vsf_sysutil_set_sighandler(int sig, void (*p_handlefunc)(int))
 {
-    int retval;
-    struct sigaction sigact;
-    sigact.sa_handler = p_handlefunc;
-} 
+  int retval;
+  struct sigaction sigact;
+  sigact.sa_handler = p_handlefunc;
+}
 
 /*ensure trivial conversion*/
-void foo(int *x) { 
-	//CHECK: void foo(_Ptr<int> x) _Checked { 
-
+void foo(int *x) {
+  //CHECK: void foo(_Ptr<int> x) _Checked {
 }

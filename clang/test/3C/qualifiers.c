@@ -8,10 +8,10 @@
 void consts() {
   const int a;
   const int *b;
-  int * const c;
-  int * const * d;
-  int ** const e ;
-  int * const * const f;
+  int *const c;
+  int *const *d;
+  int **const e;
+  int *const *const f;
 }
 //CHECK: const int a;
 //CHECK: _Ptr<const int> b = ((void *)0);
@@ -23,10 +23,10 @@ void consts() {
 void volatiles() {
   volatile int a;
   volatile int *b;
-  int * volatile c;
-  int * volatile * d;
-  int ** volatile e ;
-  int * volatile * volatile f;
+  int *volatile c;
+  int *volatile *d;
+  int **volatile e;
+  int *volatile *volatile f;
 }
 //CHECK: volatile int a;
 //CHECK: _Ptr<volatile int> b = ((void *)0);
@@ -36,10 +36,10 @@ void volatiles() {
 //CHECK: volatile _Ptr<volatile _Ptr<int>> f = ((void *)0);
 
 void restricts() {
-  int * restrict c;
-  int * restrict * d;
-  int ** restrict e ;
-  int * restrict * restrict f;
+  int *restrict c;
+  int *restrict *d;
+  int **restrict e;
+  int *restrict *restrict f;
 }
 //CHECK: restrict _Ptr<int> c = ((void *)0);
 //CHECK: _Ptr<restrict _Ptr<int>> d = ((void *)0);
@@ -47,13 +47,15 @@ void restricts() {
 //CHECK: restrict _Ptr<restrict _Ptr<int>> f = ((void *)0);
 
 void mixed() {
-  int * const volatile restrict  a;
-  const volatile int * const * volatile const * restrict b;
+  int *const volatile restrict a;
+  const volatile int *const *volatile const *restrict b;
 }
 //CHECK: const volatile restrict _Ptr<int> a = ((void *)0);
 //CHECK: restrict _Ptr<const volatile _Ptr<const _Ptr<const volatile int>>> b = ((void *)0);
 
-struct qualifier_struct { int *a; };
+struct qualifier_struct {
+  int *a;
+};
 void structs() {
   struct qualifier_struct a0;
   static struct qualifier_struct a;
