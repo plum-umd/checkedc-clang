@@ -97,6 +97,7 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
     if (FDef == nullptr)
       FDef = FD;
     if (auto *FVCon = Info.getFuncConstraint(FDef, Context)) {
+      bool isSafe = typeArgsProvided(CE);
       // Visit each function argument, and if it use a type variable, insert it
       // into the type variable binding map.
       unsigned int I = 0;
@@ -106,7 +107,7 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
           break;
         const int TyIdx = FVCon->getExternalParam(I)->getGenericIndex();
         // if we can't rewrite it (macro, etc), it isn't safe
-        bool ForcedInconsistent = !canRewrite(*CE,*Context);
+        bool ForcedInconsistent = !isSafe && !canRewrite(*CE,*Context);
         if (TyIdx >= 0) {
           Expr *Uncast = A->IgnoreImpCasts();
           std::set<ConstraintVariable *> CVs = CR.getExprConstraintVars(Uncast);
@@ -190,4 +191,30 @@ void TypeVarVisitor::setProgramInfoTypeVars() {
         Info.setTypeParamBinding(TVEntry.first, TVCallEntry.first, nullptr,
                                  Context);
   }
+}
+
+// Check if type arguments have already been provided for this function
+// call so that we don't mess with anything already there.
+bool typeArgsProvided(CallExpr *Call) {
+  Expr *Callee = Call->getCallee()->IgnoreImpCasts();
+  if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(Callee)) {
+    // ArgInfo is null if there are no type arguments anywhere in the program
+    if (auto *ArgInfo = DRE->GetTypeArgumentInfo())
+      for (auto Arg : ArgInfo->typeArgumentss()) {
+        if (!Arg.typeName->isVoidType()) {
+          // Found a non-void type argument. No doubt type args are provided.
+          return true;
+        }
+        if (Arg.sourceInfo->getTypeLoc().getSourceRange().isValid()) {
+          // The type argument is void, but with a valid source range. This
+          // means an explict void type argument was provided.
+          return true;
+        }
+        // A void type argument without a source location. The type argument
+        // is implicit so, we're good to insert a new one.
+      }
+    return false;
+  }
+  // We only handle direct calls, so there must be a DeclRefExpr.
+  llvm_unreachable("Callee of function call is not DeclRefExpr.");
 }

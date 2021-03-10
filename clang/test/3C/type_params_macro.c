@@ -6,6 +6,7 @@
 // Test for invalid type arguments from a macro,
 // recognized also my checked regions
 
+#define baz foo<int>(i);
 #define buz foo(i);
 #define buzzy foo(i); foo(j);
 
@@ -18,6 +19,13 @@ void test_none() {
 // CHECK: void test_none() _Checked {
 // CHECK: _Ptr<int> i = 0;
 // CHECK: foo<int>(i);
+
+void test_one_given() {
+  int *i = 0;
+  baz
+}
+// CHECK: void test_one_given() _Checked {
+// CHECK: _Ptr<int> i = 0;
 
 void test_one() {
   int *i = 0;

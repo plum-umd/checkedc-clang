@@ -14,6 +14,7 @@
 #include "clang/3C/CastPlacement.h"
 #include "clang/3C/CheckedRegions.h"
 #include "clang/3C/DeclRewriter.h"
+#include "clang/3C/TypeVariableAnalysis.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Tooling/Transformer/SourceCode.h"
 
@@ -446,32 +447,6 @@ private:
       return Call->getBeginLoc().getLocWithOffset(NameLength);
     }
     llvm_unreachable("Could find SourceLocation for type arguments!");
-  }
-
-  // Check if type arguments have already been provided for this function
-  // call so that we don't mess with anything already there.
-  bool typeArgsProvided(CallExpr *Call) {
-    Expr *Callee = Call->getCallee()->IgnoreImpCasts();
-    if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(Callee)) {
-      // ArgInfo is null if there are no type arguments anywhere in the program
-      if (auto *ArgInfo = DRE->GetTypeArgumentInfo())
-        for (auto Arg : ArgInfo->typeArgumentss()) {
-          if (!Arg.typeName->isVoidType()) {
-            // Found a non-void type argument. No doubt type args are provided.
-            return true;
-          }
-          if (Arg.sourceInfo->getTypeLoc().getSourceRange().isValid()) {
-            // The type argument is void, but with a valid source range. This
-            // means an explict void type argument was provided.
-            return true;
-          }
-          // A void type argument without a source location. The type argument
-          // is implicit so, we're good to insert a new one.
-        }
-      return false;
-    }
-    // We only handle direct calls, so there must be a DeclRefExpr.
-    llvm_unreachable("Callee of function call is not DeclRefExpr.");
   }
 };
 

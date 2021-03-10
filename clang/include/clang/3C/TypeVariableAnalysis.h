@@ -98,4 +98,7 @@ private:
   void insertBinding(CallExpr *CE, const int TyIdx, QualType Ty,
                      CVarSet &CVs, bool ForceInconsistent = false);
 };
+
+bool typeArgsProvided(CallExpr *Call);
+
 #endif
