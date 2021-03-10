@@ -4,8 +4,8 @@
 
 // Apparently `count 0` passes if the input contains a single line without a
 // trailing newline character, as it did in the issue linked above. (This
-// behavior seems surprising. TODO: File a bug against LLVM?) So we compare the
-// stderr to a manually created empty file instead.
+// behavior may be considered a bug in `count`.) So we compare the stderr to a
+// manually created empty file instead.
 
 // RUN: rm -rf %t*
 // RUN: 3c -base-dir=%S %s -- 2>%t.stderr
