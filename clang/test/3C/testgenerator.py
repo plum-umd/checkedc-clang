@@ -743,8 +743,10 @@ def annot_gen_smart(prefix, proto, suffix):
             # name = prefix + proto + suffix + "_BUG.c" 
     else: 
         # In this case, since there are two source files, clang will give an error if we try to
-        # specify a single output file with -o. -working-directory seems to be the easiest solution.
-        out = subprocess.Popen(['{}clang'.format(bin_path), '-working-directory=tmp.checkedNOALL', '-c', name, name2], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        # specify a single output file with -o. -working-directory seems to be the easiest solution,
+        # but we need to make the path absolute (https://bugs.llvm.org/show_bug.cgi?id=24586).
+        cwd = os.getcwd()
+        out = subprocess.Popen(['{}clang'.format(bin_path), '-working-directory={}/tmp.checkedNOALL'.format(cwd), '-c', name, name2], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         stdout, stderr = out.communicate()
         stdout = str(stdout) 
         if "error:" in stdout: 
