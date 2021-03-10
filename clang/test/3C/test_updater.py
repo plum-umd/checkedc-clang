@@ -27,7 +27,7 @@ struct r {
 # Let's clear all the existing annotations to get a clean fresh file with only code
 def strip_existing_annotations(filename): 
     for line in fileinput.input(filename, inplace=1):
-        if "//" in line: 
+        if "// RUN" in line or "//CHECK" in line: 
             line = "" 
         sys.stdout.write(line)
 
@@ -45,10 +45,14 @@ def process_file_smart(name, cnameNOALL, cnameALL, diff):
     file.close() 
     noallfile.close() 
     allfile.close() 
-    os.system("rm -r tmp.checkedALL tmp.checkedNOALL")
     
     # ensure all lines are the same length
     assert len(lines) == len(noall) == len(yeall), "fix file " + name
+
+    # If the assertion fails, it's helpful to keep these files for
+    # troubleshooting, so don't delete them until after it passes.
+    os.system("rm -r tmp.checkedALL tmp.checkedNOALL")
+
     # our keywords that indicate we should add an annotation
     keywords = "int char struct double float".split(" ") 
     ckeywords = "_Ptr _Array_ptr _Nt_array_ptr _Checked _Unchecked".split(" ") 
@@ -57,7 +61,7 @@ def process_file_smart(name, cnameNOALL, cnameALL, diff):
         line = lines[i] 
         noline = noall[i] 
         yeline = yeall[i]
-        if line.find("extern") == -1 and line.find("/*") == -1 and ((any(substr in line for substr in keywords) and line.find("*") != -1) or any(substr in noline for substr in ckeywords) or any(substr in yeline for substr in ckeywords)): 
+        if "/* GENERATE CHECK */" in line or (line.find("extern") == -1 and line.find("/*") == -1 and ((any(substr in line for substr in keywords) and (line.find("*") != -1 or line.find("[") != -1)) or any(substr in noline for substr in ckeywords) or any(substr in yeline for substr in ckeywords))): 
             if noline == yeline: 
                 lines[i] = line + "\n\t//CHECK: " + noline.lstrip()
             else: 
@@ -90,7 +94,6 @@ def process_smart(filename, diff):
 
 
 manual_tests = ['3d-allocation.c',
- 'alloc_type_param.c',
  'amper.c',
  'calloc.c',
  'canonical_type_cast.c',

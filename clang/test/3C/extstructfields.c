@@ -1,8 +1,3 @@
-// This regression test is for a 3C bug that affected vsftpd, which only builds
-// on Linux. Windows does not have `struct sigaction`, and we couldn't find a
-// reasonable way to write an analogous test that works on Windows.
-// UNSUPPORTED: system-windows
-
 // RUN: rm -rf %t*
 // RUN: 3c -base-dir=%S -alltypes -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_ALL","CHECK" %s
 // RUN: 3c -base-dir=%S -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" %s
@@ -10,6 +5,10 @@
 // RUN: 3c -base-dir=%S -output-dir=%t.checked -alltypes %s --
 // RUN: 3c -base-dir=%t.checked -alltypes %t.checked/extstructfields.c -- | diff %t.checked/extstructfields.c -
 
+// This regression test is for a 3C bug that affected vsftpd, which only builds
+// on Linux. Windows does not have `struct sigaction`, and we couldn't find a
+// reasonable way to write an analogous test that works on Windows.
+// UNSUPPORTED: system-windows
 
 #include <signal.h>
 

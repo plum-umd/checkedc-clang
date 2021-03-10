@@ -11,7 +11,7 @@ void f(int *(*fp)(int *)) {
 	//CHECK: int *x = (int *)5;
   int *z = (int *)5;
 	//CHECK: int *z = (int *)5;
-  z = fp(x);
+  z = fp(x); /* GENERATE CHECK */
 	//CHECK: z = fp(x);
 }
 int *g2(int *x) {
