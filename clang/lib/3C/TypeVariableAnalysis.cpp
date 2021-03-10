@@ -179,21 +179,15 @@ void TypeVarVisitor::getConsistentTypeParams(CallExpr *CE,
 // during rewriting.
 void TypeVarVisitor::setProgramInfoTypeVars() {
   for (const auto &TVEntry : TVMap) {
-//    bool AllInconsistent = true;
-//    for (auto TVCallEntry : TVEntry.second)
-//      AllInconsistent &= !TVCallEntry.second.getIsConsistent();
-//    // If they're all inconsistent type variables, ignore the call expression
-//    if (!AllInconsistent) {
-      // Add each type variable into the map in ProgramInfo. Inconsistent
-      // variables are mapped to null.
-      for (auto TVCallEntry : TVEntry.second)
-        if (TVCallEntry.second.getIsConsistent())
-          Info.setTypeParamBinding(TVEntry.first, TVCallEntry.first,
-                                   TVCallEntry.second.getTypeParamConsVar(),
-                                   Context);
-        else
-          Info.setTypeParamBinding(TVEntry.first, TVCallEntry.first, nullptr,
-                                   Context);
-//    }
+    // Add each type variable into the map in ProgramInfo. Inconsistent
+    // variables are mapped to null.
+    for (auto TVCallEntry : TVEntry.second)
+      if (TVCallEntry.second.getIsConsistent())
+        Info.setTypeParamBinding(TVEntry.first, TVCallEntry.first,
+                                 TVCallEntry.second.getTypeParamConsVar(),
+                                 Context);
+      else
+        Info.setTypeParamBinding(TVEntry.first, TVCallEntry.first, nullptr,
+                                 Context);
   }
 }
