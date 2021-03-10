@@ -34,4 +34,4 @@ void bif(void) {
   int *x = (int *)5;
   foo(x);
 }
-//CHECK:     int *x = (int *)5;
+//CHECK: int *x = (int *)5;

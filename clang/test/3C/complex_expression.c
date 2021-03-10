@@ -48,7 +48,7 @@ void baz(int *p) {
 }
 //CHECK_ALL: void baz(_Array_ptr<int> p) _Checked {
 //CHECK_NOALL: void baz(int *p : itype(_Ptr<int>)) {
-//CHECK_ALL:  _Array_ptr<int> q =  0 ? p : foo(0,0);
+//CHECK_ALL: _Array_ptr<int> q =  0 ? p : foo(0,0);
 //CHECK_NOALL: int *q = 0 ? p : ((int *)foo(0,0));
 
 void test() {

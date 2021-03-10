@@ -28,7 +28,7 @@ _Itype_for_any(T) void my_free(void *pointer
 
 int *test2() {
   // CHECK_NOALL: int *test2(void) : itype(_Ptr<int>) {
-  // CHECK_ALL:_Array_ptr<int> test2(void) : count(5) {
+  // CHECK_ALL: _Array_ptr<int> test2(void) : count(5) {
   int *a = malloc(sizeof(int));
   // CHECK: _Ptr<int> a = malloc<int>(sizeof(int));
   my_free(a);

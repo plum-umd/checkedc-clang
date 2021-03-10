@@ -8,7 +8,7 @@
 
 struct foo {
   int (*fp)(int *p);
-  // CHECK:  _Ptr<int (int *)> fp;
+  // CHECK: _Ptr<int (int *)> fp;
 };
 
 extern int xfunc(int *arg);

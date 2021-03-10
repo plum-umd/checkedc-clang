@@ -9,7 +9,7 @@ Advanced array-bounds inference (based on control-dependencies).
 struct foo {
   void *data;
 };
-//CHECK:     void *data;
+//CHECK: void *data;
 struct foo1 {
   int *x;
   // This is to make sure that length heuristic will not
@@ -17,7 +17,7 @@ struct foo1 {
   unsigned x_len;
   unsigned ml;
 };
-//CHECK:     _Array_ptr<int> x : count(ml);
+//CHECK: _Array_ptr<int> x : count(ml);
 unsigned FooLenD;
 unsigned FooLen;
 struct foo **FL;
@@ -62,5 +62,5 @@ int main(int argc, char **argv) {
   return 0;
 }
 //CHECK: int main(int argc, _Array_ptr<_Ptr<char>> argv : count(argc)) {
-//CHECK:    _Ptr<char> PN =  argv[0];
-//CHECK:    struct foo1 po = {};
+//CHECK:   _Ptr<char> PN = argv[0];
+//CHECK:   struct foo1 po = {};

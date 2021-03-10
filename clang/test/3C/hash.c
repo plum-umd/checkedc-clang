@@ -96,7 +96,7 @@ struct hash *hash_alloc(unsigned int buckets, unsigned int key_size,
   //FIX eventually:
   //p_hash->p_nodes = malloc(size);
   p_hash->p_nodes = malloc(sizeof(struct hash_node *) * buckets);
-  //CHECK_ALL:  p_hash->p_nodes = malloc<_Ptr<struct hash_node>>(sizeof(struct hash_node*) * buckets);
+  //CHECK_ALL: p_hash->p_nodes = malloc<_Ptr<struct hash_node>>(sizeof(struct hash_node*) * buckets);
   vsf_sysutil_memclr(p_hash->p_nodes, size);
   return p_hash;
 }
@@ -105,7 +105,7 @@ void *hash_lookup_entry(struct hash *p_hash, void *p_key)
 //CHECK_ALL: hash_lookup_entry(_Ptr<struct hash> p_hash, void* p_key)
 {
   struct hash_node *p_node = hash_get_node_by_key(p_hash, p_key);
-  //CHECK_ALL:  _Ptr<struct hash_node> p_node =  hash_get_node_by_key(p_hash, p_key);
+  //CHECK_ALL: _Ptr<struct hash_node> p_node =  hash_get_node_by_key(p_hash, p_key);
   if (!p_node) {
     //FIX maybe one day:
     //return p_node;
@@ -119,14 +119,14 @@ void hash_add_entry(struct hash *p_hash, void *p_key, void *p_value)
 {
   struct hash_node **p_bucket;
   struct hash_node *p_new_node;
-  //CHECK_ALL:  _Ptr<_Ptr<struct hash_node>> p_bucket = ((void *)0);
-  //CHECK_ALL:  _Ptr<struct hash_node> p_new_node = ((void *)0);
+  //CHECK_ALL: _Ptr<_Ptr<struct hash_node>> p_bucket = ((void *)0);
+  //CHECK_ALL: _Ptr<struct hash_node> p_new_node = ((void *)0);
   if (hash_lookup_entry(p_hash, p_key)) {
     bug("duplicate hash key");
   }
   p_bucket = hash_get_bucket(p_hash, p_key);
   p_new_node = malloc(sizeof(*p_new_node));
-  //CHECK_ALL:  p_new_node = malloc<struct hash_node>(sizeof(*p_new_node));
+  //CHECK_ALL: p_new_node = malloc<struct hash_node>(sizeof(*p_new_node));
   p_new_node->p_prev = 0;
   p_new_node->p_next = 0;
 
