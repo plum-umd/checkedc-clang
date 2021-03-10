@@ -19,7 +19,8 @@ unsigned char *yoo = 0;
 char *yar = 0;
 //CHECK: char *yar = 0;
 
-/*C does not support unsigned floats, so we don't have to worry about that case*/
+/*C does not support unsigned floats, so we don't have to worry about that
+  case*/
 
 /*ensure trivial conversion with parameter*/
 void test(int *x) {

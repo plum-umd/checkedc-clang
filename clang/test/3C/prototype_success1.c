@@ -3,7 +3,8 @@
 //RUN: FileCheck -match-full-lines --input-file %t.checked/prototype_success1.c %s
 //RUN: %clang -c %t.checked/prototype_success1.c %t.checked/prototype_success2.c
 
-/*Note: this file is part of a multi-file regression test in tandem with prototype_success2.c*/
+/*Note: this file is part of a multi-file regression test in tandem with
+  prototype_success2.c*/
 
 /*prototypes that type-check with each other are fine*/
 int *foo(_Ptr<int>, char);
@@ -14,7 +15,8 @@ int *bar(int *x, float *y) { return x; }
 /*a C-style prototype combined with an enumerated prototype is also fine*/
 int *baz(int);
 
-/*another consideration is that if two things are different types but have the same general pointer structure, we're OK with it!*/
+/*another consideration is that if two things are different types but have the
+  same general pointer structure, we're OK with it!*/
 int *yoo(int *x, char y, float **z);
 
 void trivial_conversion(int *x) {

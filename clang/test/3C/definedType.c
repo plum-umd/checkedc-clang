@@ -108,7 +108,8 @@ typedef int *StkId;
 void lua_test4(StkId *x) {}
 //CHECK: void lua_test4(_Ptr<StkId> x) _Checked {}
 
-// Things declared inside macros should be WILD unless we start doing something extremely clever
+// Things declared inside macros should be WILD unless we start doing something
+// extremely clever
 
 #define declare_function(x)                                                    \
   int *foo##x(int *a) { return a; }                                            \

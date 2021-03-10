@@ -157,7 +157,8 @@ void deep(int ****v, int ****w, int ****x, int ****y, int ****z) {
   ****a = (int **)1;
 }
 
-// Issue #233. Void type paramters were not being detect hy typeArgsProvidedCheck
+// Issue #233. Void type paramters were not being detected by
+// typeArgsProvidedCheck
 
 _Itype_for_any(T) void *realloc(void *pointer
                                 : itype(_Array_ptr<T>) byte_count(1),
@@ -182,7 +183,8 @@ void *example1(void *ptr, unsigned int size) {
   return ret;
 }
 
-// Issue #349. Check that the parameter doesn't inherit the double pointer argument within do_doubleptr
+// Issue #349. Check that the parameter doesn't inherit the double pointer
+// argument within do_doubleptr
 _Itype_for_any(T) void incoming_doubleptr(void *ptr : itype(_Array_ptr<T>)) {
   // CHECK_ALL: void incoming_doubleptr(_Array_ptr<T> ptr : itype(_Array_ptr<T>)) {
   return;

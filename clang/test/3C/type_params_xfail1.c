@@ -2,8 +2,9 @@
 
 // XFAIL: *
 
-// This fails because the type variable is used to constrain both calls to `incoming_doubleptr`.
-// To be correct, the usage of a type variable should be independent at each call site.
+// This fails because the type variable is used to constrain both calls to
+// `incoming_doubleptr`. To be correct, the usage of a type variable should be
+// independent at each call site.
 
 // adapted from type_params.c
 #include <stddef.h>
@@ -21,7 +22,8 @@ void do_doubleptr(int count) {
   incoming_doubleptr(arr);
 }
 
-// adding this function changes the infered type of the previous one unnecessarily
+// adding this function changes the infered type of the previous one
+// unnecessarily
 void interfere_doubleptr(void) {
   float fl _Checked[5][5] = {};
   incoming_doubleptr(fl);

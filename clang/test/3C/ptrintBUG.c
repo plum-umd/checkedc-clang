@@ -18,7 +18,7 @@ void bar(int *x) { baz(2, 0, x); }
 void foo(void) {
   int *p;
   int q = 0;
-  p = q; // OK          <----- NOT OK, causes compilation error, please refer to iss160
+  p = q; // OK   <----- NOT OK, causes compilation error, please refer to iss160
   int *d = (int *)q;
 }
 //CHECK: int *p;

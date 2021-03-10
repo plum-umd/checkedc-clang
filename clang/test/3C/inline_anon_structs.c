@@ -9,7 +9,7 @@
 extern _Itype_for_any(T) void *malloc(size_t size)
     : itype(_Array_ptr<T>) byte_count(size);
 
-/*This code ensures conversion happens as expected when 
+/*This code ensures conversion happens as expected when
 an inlinestruct and its associated VarDecl have different locations*/
 int valuable;
 
@@ -66,7 +66,7 @@ struct {
   //CHECK_NOALL: int *data;
 
   /* but the actual pointer can't be when alltypes is disabled */
-  /* when alltypes is enabled, this whole structure is rewritten 
+  /* when alltypes is enabled, this whole structure is rewritten
    improperly, but that's OK, because we signal a warning to the user*/
 } * x;
 //CHECK_ALL: _Ptr<struct> x = ((void *)0);

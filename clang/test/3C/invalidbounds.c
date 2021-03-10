@@ -3,7 +3,8 @@
 // RUN: 3c -base-dir=%S -addcr %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -
 
 /*
-Regression test for the issue: https://github.com/plum-umd/checkedc-clang/issues/239
+Regression test for the issue:
+https://github.com/plum-umd/checkedc-clang/issues/239
 Here, array bounds should be invalidated when conflicting bounds are assigned.
 */
 

@@ -52,7 +52,8 @@ struct Graph
   //CHECK_NOALL: int* visited;
   //CHECK_ALL:     _Array_ptr<int> visited : count(numVertices);
 
-  /* we need int** to store a two dimensional array. Similary, we need struct node** to store an array of Linked lists */
+  /* we need int** to store a two dimensional array. Similary, we need struct
+     node** to store an array of Linked lists */
   struct node **adjLists;
   //CHECK_NOALL: struct node** adjLists;
   //CHECK_ALL:     _Array_ptr<_Ptr<struct node>> adjLists : count(numVertices);

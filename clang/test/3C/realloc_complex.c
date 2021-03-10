@@ -38,7 +38,7 @@ void foo(int *count) {
   //CHECK: b = realloc<int>(b, sizeof(int)*(*count));
   b[2] = 2;
 
-  /*  what follows are variations of the above, but instead 
+  /*  what follows are variations of the above, but instead
         using two separate pointers for the malloc and realloc */
   //CHECK: using two separate pointers for the malloc and realloc */
   int *y = malloc(2 * sizeof(int));
