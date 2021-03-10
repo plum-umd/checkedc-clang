@@ -35,7 +35,7 @@ void f() {
 
 void g() {
   int *x = malloc(sizeof(int) * 1);
-  //CHECK: int *x = malloc<int>(sizeof(int)*1);
+  //CHECK: int *x = malloc<int>(sizeof(int) * 1);
   int y[5];
   //CHECK: int y[5];
   int **p = &x;

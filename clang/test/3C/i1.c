@@ -16,7 +16,7 @@ int *foo(int *w) {
   for (int i = 0; i < 4; i++) {
     //CHECK: for (int i = 0; i < 4; i++) _Checked {
     switch (i) {
-      //CHECK: switch(i) _Unchecked {
+      //CHECK: switch (i) _Unchecked {
     case 0:
       ret = &x;
       break;

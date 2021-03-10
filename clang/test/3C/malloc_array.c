@@ -25,13 +25,13 @@ int *foo(int *x) {
 }
 void bar(void) {
   int *y = malloc(sizeof(int) * 2);
-  //CHECK: int *y = malloc<int>(sizeof(int)*2);
+  //CHECK: int *y = malloc<int>(sizeof(int) * 2);
   y = (int *)5;
   //CHECK: y = (int *)5;
   int *z = foo(y);
   //CHECK_NOALL: _Ptr<int> z = foo(y);
-  //CHECK_ALL:   _Ptr<int> z = foo(_Assume_bounds_cast<_Array_ptr<int>>(y, byte_count(0)));
+  //CHECK_ALL: _Ptr<int> z = foo(_Assume_bounds_cast<_Array_ptr<int>>(y, byte_count(0)));
 }
 
 void force(int *x) {}
-//CHECK: void force(_Ptr<int> x)_Checked {}
+//CHECK: void force(_Ptr<int> x) _Checked {}

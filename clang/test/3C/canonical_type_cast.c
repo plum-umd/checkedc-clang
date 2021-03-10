@@ -18,13 +18,13 @@ void g(int p[]) {
   //CHECK_ALL: void g(_Ptr<int> p) {
   int *x = (int *)p;
   //CHECK_NOALL: int *x = (int *)p;
-  //CHECK_ALL:   _Ptr<int> x = (_Ptr<int>)p;
+  //CHECK_ALL: _Ptr<int> x = (_Ptr<int>)p;
 }
 
 /* A very similar issue with function pointers */
 
 int add1(int a) {
-  //CHECK: int add1(int a)_Checked {
+  //CHECK: int add1(int a) _Checked {
   return a + 1;
 }
 

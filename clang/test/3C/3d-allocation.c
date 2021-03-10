@@ -19,17 +19,17 @@ int ***malloc3d(int y, int x, int z) {
 
   int ***t;
   //CHECK_NOALL: int ***t;
-  //CHECK_ALL: 	_Array_ptr<_Array_ptr<_Array_ptr<int>>> t : count(y) = ((void *)0);
+  //CHECK_ALL: _Array_ptr<_Array_ptr<_Array_ptr<int>>> t : count(y) = ((void *)0);
 
   t = malloc(y * sizeof(int *));
   //CHECK_NOALL: t = malloc<int **>(y * sizeof(int *));
-  //CHECK_ALL: 	t = malloc<_Array_ptr<_Array_ptr<int>>>(y * sizeof(int *));
+  //CHECK_ALL: t = malloc<_Array_ptr<_Array_ptr<int>>>(y * sizeof(int *));
 
   for (i = 0; i < y; ++i) {
 
     t[i] = malloc(x * sizeof(int *));
     //CHECK_NOALL: t[i] = malloc<int *>(x * sizeof(int *));
-    //CHECK_ALL: 		t[i] = malloc<_Array_ptr<int>>(x * sizeof(int *));
+    //CHECK_ALL: t[i] = malloc<_Array_ptr<int>>(x * sizeof(int *));
 
     for (j = 0; j < x; ++j) {
 
@@ -55,17 +55,17 @@ int main(void) {
 
   int ***t2 = malloc3d(y, x, z);
   //CHECK_NOALL: int ***t2 = malloc3d(y, x, z);
-  //CHECK_ALL: 	_Array_ptr<_Array_ptr<_Array_ptr<int>>> t2 : count(y) = malloc3d(y, x, z);
+  //CHECK_ALL: _Array_ptr<_Array_ptr<_Array_ptr<int>>> t2 : count(y) = malloc3d(y, x, z);
 
   for (i = 0; i < y; ++i) {
     //CHECK_NOALL: for (i = 0; i < y; ++i) _Checked {
-    //CHECK_ALL: 	for (i = 0; i < y; ++i) {
+    //CHECK_ALL: for (i = 0; i < y; ++i) {
 
     for (j = 0; j < x; ++j) {
 
       for (k = 0; k < x; ++k) {
         //CHECK_NOALL: for (k = 0; k < x; ++k) _Unchecked {
-        //CHECK_ALL: 			for (k = 0; k < x; ++k) {
+        //CHECK_ALL: for (k = 0; k < x; ++k) {
 
         t2[i][j][k] = 1;
       }
@@ -74,7 +74,7 @@ int main(void) {
 
   printf("3d Success\n");
   //CHECK_NOALL: printf("3d Success\n");
-  //CHECK_ALL: 	_Unchecked { printf("3d Success\n"); };
+  //CHECK_ALL: _Unchecked { printf("3d Success\n"); };
 
   return 0;
 }

@@ -25,16 +25,16 @@ int bar(int *x) {
 int gar(int *x) {
   //CHECK: int gar(int *x : itype(_Ptr<int>)) {
   x = (int *)4;
-  //CHECK: x = (int*) 4;
+  //CHECK: x = (int *)4;
   return *x;
 }
 
 int f(void) {
   char *u = (char *)3;
-  //CHECK: char* u = (char*) 3;
+  //CHECK: char *u = (char *)3;
 
   if (1) {
-    //CHECK: if(1) _Checked {
+    //CHECK: if (1) _Checked {
     return 1;
   } else {
     //CHECK: } else _Checked {
@@ -45,15 +45,15 @@ int f(void) {
 int faz(void) {
   //CHECK: int faz(void) _Checked {
   if (1) {
-    //CHECK: if(1) _Unchecked {
+    //CHECK: if (1) _Unchecked {
     int *x = (int *)3;
-    //CHECK: int *x = (int*) 3;
+    //CHECK: int *x = (int *)3;
     return *x;
   }
   if (1) {
-    //CHECK: if(1) _Unchecked {
+    //CHECK: if (1) _Unchecked {
     int *x = (int *)3;
-    //CHECK: int *x = (int*) 3;
+    //CHECK: int *x = (int *)3;
     return *x;
   }
 }
@@ -61,7 +61,7 @@ int faz(void) {
 char *bad(void) {
   //CHECK: char *bad(void) : itype(_Ptr<char>) {
   return (char *)3;
-  //CHECK: return (char*) 3;
+  //CHECK: return (char *)3;
 }
 
 void baz(void) {

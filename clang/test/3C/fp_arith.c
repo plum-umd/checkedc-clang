@@ -25,26 +25,26 @@ void basic_fn_ptr() {
  alltypes is active. */
 void bad_ptr_arith() {
   int (*x0)(int, int) = add;
-  //CHECK: int (*x0) (int, int) = add;
+  //CHECK: int (*x0)(int, int) = add;
   x0++;
 
   int (*x1)(int, int) = add;
-  //CHECK: int (*x1) (int, int) = add;
+  //CHECK: int (*x1)(int, int) = add;
   x1--;
 
   int (*x2)(int, int) = add;
-  //CHECK: int (*x2) (int, int) = add;
+  //CHECK: int (*x2)(int, int) = add;
   ++x2;
 
   int (*x3)(int, int) = add;
-  //CHECK: int (*x3) (int, int) = add;
+  //CHECK: int (*x3)(int, int) = add;
   --x3;
 
   int (*x4)(int, int) = add;
-  //CHECK: int (*x4) (int, int) = add;
+  //CHECK: int (*x4)(int, int) = add;
   x4 += 1;
 
   int (*x5)(int, int) = add;
-  //CHECK: int (*x5) (int, int) = add;
+  //CHECK: int (*x5)(int, int) = add;
   x5 -= 1;
 }

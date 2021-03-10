@@ -19,6 +19,6 @@ int *y;
 int *bar(void) {
   //CHECK: _Ptr<int> bar(void) {
   y = (int *)5;
-  //CHECK: y = (int*)5;
+  //CHECK: y = (int *)5;
   return x;
 }

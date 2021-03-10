@@ -12,7 +12,7 @@ void f(int *(*fp)(int *)) {
   int *z = (int *)5;
   //CHECK: int *z = (int *)5;
   z = fp(x); /* GENERATE CHECK */
-             //CHECK: z = ((int *)fp(x)); /* GENERATE CHECK */
+  //CHECK: z = ((int *)fp(x)); /* GENERATE CHECK */
 }
 
 int *g(int *x) {

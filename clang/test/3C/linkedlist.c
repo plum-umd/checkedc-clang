@@ -20,7 +20,7 @@ List *makelist();
 void add(int data, List *list);
 //CHECK: void add(int data, _Ptr<List> list);
 void delete (int data, List *list);
-//CHECK: void delete(int data, _Ptr<List> list);
+//CHECK: void delete (int data, _Ptr<List> list);
 void display(List *list);
 //CHECK: void display(_Ptr<List> list);
 void reverse(List *list);
@@ -33,7 +33,7 @@ struct node {
   int data;
 
   struct node *next;
-  //CHECK: struct node * next;
+  //CHECK: struct node *next;
 };
 
 struct list {
@@ -42,10 +42,10 @@ struct list {
 };
 
 Node *createnode(int data);
-//CHECK: _Ptr<Node>  createnode(int data);
+//CHECK: _Ptr<Node> createnode(int data);
 
 Node *createnode(int data) {
-  //CHECK: _Ptr<Node>  createnode(int data){
+  //CHECK: _Ptr<Node> createnode(int data) {
 
   Node *newNode = malloc(sizeof(Node));
   //CHECK: _Ptr<Node> newNode = malloc<Node>(sizeof(Node));
@@ -63,7 +63,7 @@ Node *createnode(int data) {
 }
 
 List *makelist() {
-  //CHECK: _Ptr<List> makelist(void){
+  //CHECK: _Ptr<List> makelist(void) {
 
   List *list = malloc(sizeof(List));
   //CHECK: _Ptr<List> list = malloc<List>(sizeof(List));
@@ -94,7 +94,7 @@ void display(List *list) {
 }
 
 void add(int data, List *list) {
-  //CHECK: void add(int data, _Ptr<List> list){
+  //CHECK: void add(int data, _Ptr<List> list) {
 
   Node *current = NULL;
 
@@ -118,7 +118,7 @@ void add(int data, List *list) {
 }
 
 void delete (int data, List *list) {
-  //CHECK: void delete(int data, _Ptr<List> list){
+  //CHECK: void delete (int data, _Ptr<List> list) {
 
   Node *current = list->head;
 
@@ -146,7 +146,7 @@ void delete (int data, List *list) {
 }
 
 void reverse(List *list) {
-  //CHECK: void reverse(_Ptr<List> list){
+  //CHECK: void reverse(_Ptr<List> list) {
 
   Node *reversed = NULL;
 
@@ -169,7 +169,7 @@ void reverse(List *list) {
 }
 
 void destroy(List *list) {
-  //CHECK: void destroy(List *list : itype(_Ptr<List>)){
+  //CHECK: void destroy(List *list : itype(_Ptr<List>)) {
 
   Node *current = list->head;
 

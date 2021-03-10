@@ -17,7 +17,7 @@ int *f(int *x) {
 int *g(int *y) {
   //CHECK: int *g(int *y : itype(_Ptr<int>)) : itype(_Ptr<int>) {
   y = (int *)5;
-  //CHECK: y = (int*)5;
+  //CHECK: y = (int *)5;
   return 0;
 }
 
@@ -67,7 +67,7 @@ int *d() {
 int *e() {
   //CHECK: int *e(void) : itype(_Ptr<int>) {
   return (int *)1;
-  //CHECK: return (int*) 1;
+  //CHECK: return (int *)1;
 }
 int *i() {
   //CHECK: _Ptr<int> i(void) _Checked {

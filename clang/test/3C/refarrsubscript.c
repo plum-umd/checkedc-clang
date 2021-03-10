@@ -13,10 +13,10 @@ int **func(int **p, int *x) {
 
 struct foo {
   int **b;
+  //CHECK_NOALL: int **b;
+  //CHECK_ALL: _Array_ptr<_Ptr<int>> b;
   int n;
 };
-//CHECK_NOALL: struct foo { int **b; int n; };
-//CHECK_ALL: struct foo { _Array_ptr<_Ptr<int>> b; int n; };
 int **bar(struct foo *p) {
   //CHECK_NOALL: int **bar(_Ptr<struct foo> p) : itype(_Ptr<int *>) {
   //CHECK_ALL: _Array_ptr<_Ptr<int>> bar(_Ptr<struct foo> p) _Checked {
@@ -27,8 +27,8 @@ int **bar(struct foo *p) {
 
 struct s {
   int *c;
+  //CHECK: _Ptr<int> c;
 };
-//CHECK: struct s { _Ptr<int> c; };
 int **getarr(struct s *q) {
   //CHECK: _Ptr<_Ptr<int>> getarr(_Ptr<struct s> q) _Checked {
   return &q->c;
