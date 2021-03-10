@@ -9,6 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "clang/3C/TypeVariableAnalysis.h"
+#include "clang/3C/RewriteUtils.h"
 
 using namespace llvm;
 using namespace clang;
@@ -107,7 +108,8 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
         if (TyIdx >= 0) {
           Expr *Uncast = A->IgnoreImpCasts();
           std::set<ConstraintVariable *> CVs = CR.getExprConstraintVars(Uncast);
-          insertBinding(CE, TyIdx, Uncast->getType(), CVs);
+          insertBinding(CE, TyIdx, Uncast->getType(),
+                        CVs, isInMacro(*CE,*Context));
         }
         ++I;
       }
@@ -144,13 +146,14 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
 // the exact type variable is identified by the call expression where it is
 // used and the index of the type variable type in the function declaration.
 void TypeVarVisitor::insertBinding(CallExpr *CE, const int TyIdx,
-                                   clang::QualType Ty, CVarSet &CVs) {
+                                   clang::QualType Ty, CVarSet &CVs,
+                                   bool ForceInconsistent) {
   assert(TyIdx >= 0 &&
          "Creating a type variable binding without a type variable.");
   auto &CallTypeVarMap = TVMap[CE];
   if (CallTypeVarMap.find(TyIdx) == CallTypeVarMap.end()) {
     // If the type variable hasn't been seen before, add it to the map.
-    TypeVariableEntry TVEntry = TypeVariableEntry(Ty, CVs);
+    TypeVariableEntry TVEntry = TypeVariableEntry(Ty, CVs, ForceInconsistent);
     CallTypeVarMap[TyIdx] = TVEntry;
   } else {
     // Otherwise, update entry with new type and constraints.
@@ -174,11 +177,11 @@ void TypeVarVisitor::getConsistentTypeParams(CallExpr *CE,
 // during rewriting.
 void TypeVarVisitor::setProgramInfoTypeVars() {
   for (const auto &TVEntry : TVMap) {
-    bool AllInconsistent = true;
-    for (auto TVCallEntry : TVEntry.second)
-      AllInconsistent &= !TVCallEntry.second.getIsConsistent();
-    // If they're all inconsistent type variables, ignore the call expression
-    if (!AllInconsistent) {
+//    bool AllInconsistent = true;
+//    for (auto TVCallEntry : TVEntry.second)
+//      AllInconsistent &= !TVCallEntry.second.getIsConsistent();
+//    // If they're all inconsistent type variables, ignore the call expression
+//    if (!AllInconsistent) {
       // Add each type variable into the map in ProgramInfo. Inconsistent
       // variables are mapped to null.
       for (auto TVCallEntry : TVEntry.second)
@@ -189,6 +192,6 @@ void TypeVarVisitor::setProgramInfoTypeVars() {
         else
           Info.setTypeParamBinding(TVEntry.first, TVCallEntry.first, nullptr,
                                    Context);
-    }
+//    }
   }
 }
