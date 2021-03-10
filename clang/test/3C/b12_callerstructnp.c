@@ -43,7 +43,7 @@ struct np *sus(struct p x, struct p y) {
   //CHECK_ALL: struct np *sus(struct p x, struct p y) : itype(_Array_ptr<struct np>) {
   struct np *z = malloc(sizeof(struct np));
   //CHECK_NOALL: _Ptr<struct np> z = malloc<struct np>(sizeof(struct np));
-  //CHECK_ALL:   struct np *z = malloc<struct np>(sizeof(struct np));
+  //CHECK_ALL: struct np *z = malloc<struct np>(sizeof(struct np));
   z->x = 1;
   z->x = 2;
   return z;
@@ -71,7 +71,7 @@ struct np *bar() {
   y.y = 4;
   struct np *z = sus(x, y);
   //CHECK_NOALL: struct np *z = ((struct np *)sus(x, y));
-  //CHECK_ALL:   _Array_ptr<struct np> z = sus(x, y);
+  //CHECK_ALL: _Array_ptr<struct np> z = sus(x, y);
   z += 2;
   return z;
 }

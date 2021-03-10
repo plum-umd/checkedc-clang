@@ -52,7 +52,7 @@ struct r *foo() {
   x->next = &y;
   y->next = &x;
   struct r *z = (struct r *)sus(x, y);
-  //CHECK: _Ptr<struct r> z = (_Ptr<struct r>) sus(_Assume_bounds_cast<_Ptr<struct r>>(x), _Assume_bounds_cast<_Ptr<struct r>>(y));
+  //CHECK: _Ptr<struct r> z = (_Ptr<struct r>)sus(_Assume_bounds_cast<_Ptr<struct r>>(x), _Assume_bounds_cast<_Ptr<struct r>>(y));
   return z;
 }
 

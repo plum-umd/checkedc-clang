@@ -29,12 +29,12 @@ int *foo() {
   int sx = 3, sy = 4;
   int *x = &sx;
   //CHECK_NOALL: _Ptr<int> x = &sx;
-  //CHECK_ALL:   int *x = &sx;
+  //CHECK_ALL: int *x = &sx;
   int *y = &sy;
   //CHECK: _Ptr<int> y = &sy;
   int *z = (int *)sus(x, y);
-  //CHECK_NOALL: _Ptr<int> z = (_Ptr<int>) sus(x, y);
-  //CHECK_ALL:   _Ptr<int> z = (_Ptr<int>) sus(_Assume_bounds_cast<_Array_ptr<int>>(x, byte_count(0)), y);
+  //CHECK_NOALL: _Ptr<int> z = (_Ptr<int>)sus(x, y);
+  //CHECK_ALL: _Ptr<int> z = (_Ptr<int>)sus(_Assume_bounds_cast<_Array_ptr<int>>(x, byte_count(0)), y);
   *z = *z + 1;
   return z;
 }
@@ -44,12 +44,12 @@ char *bar() {
   int sx = 3, sy = 4;
   int *x = &sx;
   //CHECK_NOALL: _Ptr<int> x = &sx;
-  //CHECK_ALL:   int *x = &sx;
+  //CHECK_ALL: int *x = &sx;
   int *y = &sy;
   //CHECK: _Ptr<int> y = &sy;
   char *z = (sus(x, y));
   //CHECK_NOALL: char *z = (((int *)sus(x, y)));
-  //CHECK_ALL:   char *z = (((int *)sus(_Assume_bounds_cast<_Array_ptr<int>>(x, byte_count(0)), y)));
+  //CHECK_ALL: char *z = (((int *)sus(_Assume_bounds_cast<_Array_ptr<int>>(x, byte_count(0)), y)));
   return z;
 }
 

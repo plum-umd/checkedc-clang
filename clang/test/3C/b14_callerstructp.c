@@ -28,7 +28,7 @@ struct np {
 struct p {
   int *x;
   //CHECK_NOALL: int *x;
-  //CHECK_ALL:     _Array_ptr<int> x;
+  //CHECK_ALL: _Array_ptr<int> x;
   char *y;
   //CHECK: _Ptr<char> y;
 };

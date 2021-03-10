@@ -36,7 +36,7 @@ struct r {
   int data;
   struct r *next;
   //CHECK_NOALL: struct r *next;
-  //CHECK_ALL:     _Array_ptr<struct r> next;
+  //CHECK_ALL: _Array_ptr<struct r> next;
 };
 
 struct np *sus(struct r *, struct r *);
@@ -46,17 +46,17 @@ struct r *foo() {
   //CHECK: struct r *foo(void) : itype(_Ptr<struct r>) {
   struct r *x;
   //CHECK_NOALL: struct r *x;
-  //CHECK_ALL:   _Array_ptr<struct r> x = ((void *)0);
+  //CHECK_ALL: _Array_ptr<struct r> x = ((void *)0);
   struct r *y;
   //CHECK_NOALL: struct r *y;
-  //CHECK_ALL:   _Array_ptr<struct r> y = ((void *)0);
+  //CHECK_ALL: _Array_ptr<struct r> y = ((void *)0);
   x->data = 2;
   y->data = 1;
   x->next = y;
   y->next = x;
   struct r *z = (struct r *)sus(x, y);
-  //CHECK_NOALL: struct r *z = (struct r *) sus(_Assume_bounds_cast<_Ptr<struct r>>(x), _Assume_bounds_cast<_Ptr<struct r>>(y));
-  //CHECK_ALL:   struct r *z = (struct r *) sus(x, y);
+  //CHECK_NOALL: struct r *z = (struct r *)sus(_Assume_bounds_cast<_Ptr<struct r>>(x), _Assume_bounds_cast<_Ptr<struct r>>(y));
+  //CHECK_ALL: struct r *z = (struct r *)sus(x, y);
   return z;
 }
 
@@ -65,17 +65,17 @@ struct np *bar() {
   //CHECK_ALL: _Ptr<struct np> bar(void) _Checked {
   struct r *x;
   //CHECK_NOALL: struct r *x;
-  //CHECK_ALL:   _Array_ptr<struct r> x = ((void *)0);
+  //CHECK_ALL: _Array_ptr<struct r> x = ((void *)0);
   struct r *y;
   //CHECK_NOALL: struct r *y;
-  //CHECK_ALL:   _Array_ptr<struct r> y = ((void *)0);
+  //CHECK_ALL: _Array_ptr<struct r> y = ((void *)0);
   x->data = 2;
   y->data = 1;
   x->next = y;
   y->next = x;
   struct np *z = sus(x, y);
   //CHECK_NOALL: _Ptr<struct np> z = sus(_Assume_bounds_cast<_Ptr<struct r>>(x), _Assume_bounds_cast<_Ptr<struct r>>(y));
-  //CHECK_ALL:   _Ptr<struct np> z = sus(x, y);
+  //CHECK_ALL: _Ptr<struct np> z = sus(x, y);
   return z;
 }
 

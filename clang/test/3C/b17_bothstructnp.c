@@ -71,7 +71,7 @@ struct np *bar() {
   y.y = 4;
   struct np *z = sus(x, y);
   //CHECK_NOALL: struct np *z = sus(x, y);
-  //CHECK_ALL:   _Array_ptr<struct np> z = sus(x, y);
+  //CHECK_ALL: _Array_ptr<struct np> z = sus(x, y);
   z += 2;
   return z;
 }

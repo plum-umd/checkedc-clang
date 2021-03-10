@@ -54,7 +54,7 @@ struct p *foo() {
   x->y = &ex2;
   y->y = &ex1;
   struct p *z = (struct p *)sus(x, y);
-  //CHECK: _Ptr<struct p> z = (_Ptr<struct p>) sus(x, y);
+  //CHECK: _Ptr<struct p> z = (_Ptr<struct p>)sus(x, y);
   return z;
 }
 
@@ -71,8 +71,8 @@ struct p *bar() {
   x->y = &ex2;
   y->y = &ex1;
   struct p *z = (struct p *)sus(x, y);
-  //CHECK_NOALL: struct p *z = (struct p *) sus(x, y);
-  //CHECK_ALL:   _Array_ptr<struct p> z = (_Array_ptr<struct p>) sus(x, y);
+  //CHECK_NOALL: struct p *z = (struct p *)sus(x, y);
+  //CHECK_ALL: _Array_ptr<struct p> z = (_Array_ptr<struct p>)sus(x, y);
   z += 2;
   return z;
 }
@@ -83,6 +83,6 @@ struct p *sus(struct p *x, struct p *y) {
   x->y += 1;
   struct p *z = malloc(sizeof(struct p));
   //CHECK_NOALL: _Ptr<struct p> z = malloc<struct p>(sizeof(struct p));
-  //CHECK_ALL:   struct p *z = malloc<struct p>(sizeof(struct p));
+  //CHECK_ALL: struct p *z = malloc<struct p>(sizeof(struct p));
   return z;
 }

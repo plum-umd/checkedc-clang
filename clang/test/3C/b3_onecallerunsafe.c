@@ -25,7 +25,7 @@ int *sus(int *x, int *y) {
   //CHECK_ALL: int *sus(_Array_ptr<int> x, _Ptr<int> y) : itype(_Array_ptr<int>) {
   int *z = malloc(sizeof(int));
   //CHECK_NOALL: _Ptr<int> z = malloc<int>(sizeof(int));
-  //CHECK_ALL:   int *z = malloc<int>(sizeof(int));
+  //CHECK_ALL: int *z = malloc<int>(sizeof(int));
   *z = 1;
   x++;
   *x = 2;
@@ -39,12 +39,12 @@ int *foo() {
   int sy = 4;
   int *x = &sx;
   //CHECK_NOALL: _Ptr<int> x = &sx;
-  //CHECK_ALL:   int *x = &sx;
+  //CHECK_ALL: int *x = &sx;
   int *y = &sy;
   //CHECK: _Ptr<int> y = &sy;
   int *z = sus(x, y);
   //CHECK_NOALL: _Ptr<int> z = sus(x, y);
-  //CHECK_ALL:   _Ptr<int> z = sus(_Assume_bounds_cast<_Array_ptr<int>>(x, byte_count(0)), y);
+  //CHECK_ALL: _Ptr<int> z = sus(_Assume_bounds_cast<_Array_ptr<int>>(x, byte_count(0)), y);
   *z = *z + 1;
   return z;
 }
@@ -56,12 +56,12 @@ int *bar() {
   int sy = 4;
   int *x = &sx;
   //CHECK_NOALL: _Ptr<int> x = &sx;
-  //CHECK_ALL:   int *x = &sx;
+  //CHECK_ALL: int *x = &sx;
   int *y = &sy;
   //CHECK: _Ptr<int> y = &sy;
   int *z = sus(x, y);
   //CHECK_NOALL: int *z = ((int *)sus(x, y));
-  //CHECK_ALL:   _Array_ptr<int> z = sus(_Assume_bounds_cast<_Array_ptr<int>>(x, byte_count(0)), y);
+  //CHECK_ALL: _Array_ptr<int> z = sus(_Assume_bounds_cast<_Array_ptr<int>>(x, byte_count(0)), y);
   z += 2;
   *z = -17;
   return z;

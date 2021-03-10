@@ -53,7 +53,7 @@ struct r *foo() {
   x->next = &y;
   y->next = &x;
   struct r *z = (struct r *)sus(x, y);
-  //CHECK: _Ptr<struct r> z = (_Ptr<struct r>) sus(_Assume_bounds_cast<_Ptr<struct r>>(x), _Assume_bounds_cast<_Ptr<struct r>>(y));
+  //CHECK: _Ptr<struct r> z = (_Ptr<struct r>)sus(_Assume_bounds_cast<_Ptr<struct r>>(x), _Assume_bounds_cast<_Ptr<struct r>>(y));
   return z;
 }
 
@@ -70,7 +70,7 @@ struct r *bar() {
   y->next = &x;
   struct r *z = sus(x, y);
   //CHECK_NOALL: struct r *z = ((struct r *)sus(_Assume_bounds_cast<_Ptr<struct r>>(x), _Assume_bounds_cast<_Ptr<struct r>>(y)));
-  //CHECK_ALL:   _Array_ptr<struct r> z = sus(_Assume_bounds_cast<_Ptr<struct r>>(x), _Assume_bounds_cast<_Ptr<struct r>>(y));
+  //CHECK_ALL: _Array_ptr<struct r> z = sus(_Assume_bounds_cast<_Ptr<struct r>>(x), _Assume_bounds_cast<_Ptr<struct r>>(y));
   z += 2;
   return z;
 }
@@ -81,7 +81,7 @@ struct r *sus(struct r *x, struct r *y) {
   x->next += 1;
   struct r *z = malloc(sizeof(struct r));
   //CHECK_NOALL: _Ptr<struct r> z = malloc<struct r>(sizeof(struct r));
-  //CHECK_ALL:   struct r *z = malloc<struct r>(sizeof(struct r));
+  //CHECK_ALL: struct r *z = malloc<struct r>(sizeof(struct r));
   z->data = 1;
   z->next = 0;
   return z;
