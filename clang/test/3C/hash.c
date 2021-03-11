@@ -53,8 +53,9 @@ void hash_free_entry(struct hash *p_hash, void *p_key);
 //CHECK_ALL: void hash_add_entry(_Ptr<struct hash> p_hash, void *p_key, void *p_value);
 //CHECK_ALL: void hash_free_entry(_Ptr<struct hash> p_hash, void *p_key);
 
-#define bug(s)                                                                 \
-  {}
+// clang-format off
+#define bug(s) {  }
+// clang-format on
 
 struct hash_node {
   void *p_key;

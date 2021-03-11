@@ -19,6 +19,10 @@ void e(struct c x) {
   //CHECK: _Ptr<int> y = x.a;
 }
 
+// clang-format messes up this part of the file because it mistakes macro
+// references for other syntactic constructs.
+// clang-format off
+
 // Fields is in macro, so it can't be checked.
 // A constraint variable still must be created.
 #define foo                                                                    \
@@ -27,8 +31,9 @@ void e(struct c x) {
   };
 foo
 
-    void
-    baz(struct bar buz) {
+void baz(struct bar buz) {
   int *x = buz.x;
   //CHECK: int *x = buz.x;
 }
+
+// clang-format on

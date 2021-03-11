@@ -111,6 +111,10 @@ void lua_test4(StkId *x) {}
 // Things declared inside macros should be WILD unless we start doing something
 // extremely clever
 
+// clang-format messes up this part of the file because it mistakes macro
+// references for other syntactic constructs.
+// clang-format off
+
 #define declare_function(x)                                                    \
   int *foo##x(int *a) { return a; }                                            \
   int *bar##x(int *a) { return a; }
@@ -122,9 +126,9 @@ declare_function(1)
   int **x##2;                                                                  \
   int ***x##3;
 
-    declare_var(y)
+declare_var(y)
 
-        void test() {
+void test() {
   int *x = 0;
   int *y = 0;
   int *a = foo1(x);
@@ -151,8 +155,10 @@ void parm_test(parm_decl) {}
 int *another_test(void) {
   // CHECK: int *another_test(void) : itype(_Ptr<int>) {
   declare_single_var(z)
-      // CHECK: declare_single_var(z)
-      declare_single_var(y)
-      // CHECK: declare_single_var(y)
-      return z;
+  // CHECK: declare_single_var(z)
+  declare_single_var(y)
+  // CHECK: declare_single_var(y)
+  return z;
 }
+
+// clang-format on
