@@ -90,6 +90,9 @@ public:
   // Mutex for this interface.
   std::mutex InterfaceMutex;
 
+  // saved ASTs
+  std::vector< std::unique_ptr< ASTUnit >> ASTs;
+
   // If the parameters are invalid, this function prints an error message to
   // stderr and returns null.
   //

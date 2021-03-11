@@ -351,18 +351,25 @@ bool _3CInterface::addVariables() {
 
   std::lock_guard<std::mutex> Lock(InterfaceMutex);
 
+  // first step, so load the ASTs
   ClangTool &Tool = getGlobalClangTool();
+  Tool.buildASTs(ASTs);
 
-  // 1a. Add Variables.
-  std::unique_ptr<ToolAction> AdderTool = newFrontendActionFactoryA<
-      GenericAction<VariableAdderConsumer, ProgramInfo>>(GlobalProgramInfo);
+  VariableAdderConsumer VA = VariableAdderConsumer(GlobalProgramInfo, nullptr);
+  for (auto &TU : ASTs) {
+    VA.HandleTranslationUnit(TU->getASTContext());
+  }
 
-  if (AdderTool) {
-    int ToolExitCode = Tool.run(AdderTool.get());
-    if (ToolExitCode != 0)
-      return false;
-  } else
-    llvm_unreachable("No action");
+//  // 1a. Add Variables.
+//  std::unique_ptr<ToolAction> AdderTool = newFrontendActionFactoryA<
+//      GenericAction<VariableAdderConsumer, ProgramInfo>>(GlobalProgramInfo);
+//
+//  if (AdderTool) {
+//    int ToolExitCode = Tool.run(AdderTool.get());
+//    if (ToolExitCode != 0)
+//      return false;
+//  } else
+//    llvm_unreachable("No action");
 
   return true;
 }
@@ -371,18 +378,23 @@ bool _3CInterface::buildInitialConstraints() {
 
   std::lock_guard<std::mutex> Lock(InterfaceMutex);
 
-  ClangTool &Tool = getGlobalClangTool();
+//  ClangTool &Tool = getGlobalClangTool();
 
-  // 1b. Gather constraints.
-  std::unique_ptr<ToolAction> ConstraintTool = newFrontendActionFactoryA<
-      GenericAction<ConstraintBuilderConsumer, ProgramInfo>>(GlobalProgramInfo);
+  ConstraintBuilderConsumer CB = ConstraintBuilderConsumer(GlobalProgramInfo, nullptr);
+  for (auto &TU : ASTs) {
+    CB.HandleTranslationUnit(TU->getASTContext());
+  }
 
-  if (ConstraintTool) {
-    int ToolExitCode = Tool.run(ConstraintTool.get());
-    if (ToolExitCode != 0)
-      return false;
-  } else
-    llvm_unreachable("No action");
+//  // 1b. Gather constraints.
+//  std::unique_ptr<ToolAction> ConstraintTool = newFrontendActionFactoryA<
+//      GenericAction<ConstraintBuilderConsumer, ProgramInfo>>(GlobalProgramInfo);
+//
+//  if (ConstraintTool) {
+//    int ToolExitCode = Tool.run(ConstraintTool.get());
+//    if (ToolExitCode != 0)
+//      return false;
+//  } else
+//    llvm_unreachable("No action");
 
   if (!GlobalProgramInfo.link()) {
     errs() << "Linking failed!\n";
@@ -420,7 +432,8 @@ bool _3CInterface::solveConstraints() {
   if (DumpIntermediate)
     dumpConstraintOutputJson(FINAL_OUTPUT_SUFFIX, GlobalProgramInfo);
 
-  ClangTool &Tool = getGlobalClangTool();
+  // ClangTool &Tool = getGlobalClangTool();
+
   if (AllTypes) {
     if (DebugArrSolver)
       GlobalProgramInfo.getABoundsInfo().dumpAVarGraph(
@@ -430,31 +443,42 @@ bool _3CInterface::solveConstraints() {
     // bounds declarations.
     GlobalProgramInfo.getABoundsInfo().performFlowAnalysis(&GlobalProgramInfo);
 
-    // 3. Infer the bounds based on calls to malloc and calloc
-    std::unique_ptr<ToolAction> ABInfTool = newFrontendActionFactoryA<
-        GenericAction<AllocBasedBoundsInference, ProgramInfo>>(
-        GlobalProgramInfo);
-    if (ABInfTool) {
-      int ToolExitCode = Tool.run(ABInfTool.get());
-      if (ToolExitCode != 0)
-        return false;
-    } else
-      llvm_unreachable("No Action");
+    AllocBasedBoundsInference ABBI = AllocBasedBoundsInference(GlobalProgramInfo, nullptr);
+    for (auto &TU : ASTs) {
+      ABBI.HandleTranslationUnit(TU->getASTContext());
+    }
+
+
+//    // 3. Infer the bounds based on calls to malloc and calloc
+//    std::unique_ptr<ToolAction> ABInfTool = newFrontendActionFactoryA<
+//        GenericAction<AllocBasedBoundsInference, ProgramInfo>>(
+//        GlobalProgramInfo);
+//    if (ABInfTool) {
+//      int ToolExitCode = Tool.run(ABInfTool.get());
+//      if (ToolExitCode != 0)
+//        return false;
+//    } else
+//      llvm_unreachable("No Action");
 
     // Propagate the information from allocator bounds.
     GlobalProgramInfo.getABoundsInfo().performFlowAnalysis(&GlobalProgramInfo);
   }
 
-  // 4. Run intermediate tool hook to run visitors that need to be executed
-  // after constraint solving but before rewriting.
-  std::unique_ptr<ToolAction> IMTool = newFrontendActionFactoryA<
-      GenericAction<IntermediateToolHook, ProgramInfo>>(GlobalProgramInfo);
-  if (IMTool) {
-    int ToolExitCode = Tool.run(IMTool.get());
-    if (ToolExitCode != 0)
-      return false;
-  } else
-    llvm_unreachable("No Action");
+  IntermediateToolHook ITH = IntermediateToolHook(GlobalProgramInfo, nullptr);
+  for (auto &TU : ASTs) {
+    ITH.HandleTranslationUnit(TU->getASTContext());
+  }
+
+//  // 4. Run intermediate tool hook to run visitors that need to be executed
+//  // after constraint solving but before rewriting.
+//  std::unique_ptr<ToolAction> IMTool = newFrontendActionFactoryA<
+//      GenericAction<IntermediateToolHook, ProgramInfo>>(GlobalProgramInfo);
+//  if (IMTool) {
+//    int ToolExitCode = Tool.run(IMTool.get());
+//    if (ToolExitCode != 0)
+//      return false;
+//  } else
+//    llvm_unreachable("No Action");
 
   if (AllTypes) {
     // Propagate data-flow information for Array pointers.
@@ -491,48 +515,61 @@ bool _3CInterface::solveConstraints() {
   return true;
 }
 
-bool _3CInterface::writeConvertedFileToDisk(const std::string &FilePath) {
-  std::lock_guard<std::mutex> Lock(InterfaceMutex);
-  bool RetVal = false;
-  if (std::find(SourceFiles.begin(), SourceFiles.end(), FilePath) !=
-      SourceFiles.end()) {
-    RetVal = true;
-    std::vector<std::string> SourceFiles;
-    SourceFiles.clear();
-    SourceFiles.push_back(FilePath);
-    // Don't use global tool. Create a new tool for give single file.
-    ClangTool Tool(*CurrCompDB, SourceFiles);
-    Tool.appendArgumentsAdjuster(getIgnoreCheckedPointerAdjuster());
-    std::unique_ptr<ToolAction> RewriteTool =
-        newFrontendActionFactoryA<RewriteAction<RewriteConsumer, ProgramInfo>>(
-            GlobalProgramInfo, VerifyDiagnosticOutput);
-
-    if (RewriteTool) {
-      int ToolExitCode = Tool.run(RewriteTool.get());
-      if (ToolExitCode != 0)
-        RetVal = false;
-    }
-  }
-  GlobalProgramInfo.getPerfStats().endTotalTime();
-  GlobalProgramInfo.getPerfStats().startTotalTime();
-  return RetVal;
-}
+//bool _3CInterface::writeConvertedFileToDisk(const std::string &FilePath) {
+//  std::lock_guard<std::mutex> Lock(InterfaceMutex);
+//  bool RetVal = false;
+//  if (std::find(SourceFiles.begin(), SourceFiles.end(), FilePath) !=
+//      SourceFiles.end()) {
+//    RetVal = true;
+//    std::vector<std::string> SourceFiles;
+//    SourceFiles.clear();
+//    SourceFiles.push_back(FilePath);
+//    // Don't use global tool. Create a new tool for give single file.
+//    ClangTool Tool(*CurrCompDB, SourceFiles);
+//    Tool.appendArgumentsAdjuster(getIgnoreCheckedPointerAdjuster());
+//
+//    RewriteConsumer RC = RewriteConsumer(GlobalProgramInfo);
+//    for (auto &TU : ASTs) {
+//      RC.HandleTranslationUnit(TU->getASTContext());
+//    }
+//
+//
+////    std::unique_ptr<ToolAction> RewriteTool =
+////        newFrontendActionFactoryA<RewriteAction<RewriteConsumer, ProgramInfo>>(
+////            GlobalProgramInfo, VerifyDiagnosticOutput);
+////
+////    if (RewriteTool) {
+////      int ToolExitCode = Tool.run(RewriteTool.get());
+////      if (ToolExitCode != 0)
+////        RetVal = false;
+////    }
+//
+//  }
+//  GlobalProgramInfo.getPerfStats().endTotalTime();
+//  GlobalProgramInfo.getPerfStats().startTotalTime();
+//  return RetVal;
+//}
 
 bool _3CInterface::writeAllConvertedFilesToDisk() {
   std::lock_guard<std::mutex> Lock(InterfaceMutex);
 
-  ClangTool &Tool = getGlobalClangTool();
+//  ClangTool &Tool = getGlobalClangTool();
 
-  // Rewrite the input files.
-  std::unique_ptr<ToolAction> RewriteTool =
-      newFrontendActionFactoryA<RewriteAction<RewriteConsumer, ProgramInfo>>(
-          GlobalProgramInfo, VerifyDiagnosticOutput);
-  if (RewriteTool) {
-    int ToolExitCode = Tool.run(RewriteTool.get());
-    if (ToolExitCode != 0)
-      return false;
-  } else
-    llvm_unreachable("No action");
+  RewriteConsumer RC = RewriteConsumer(GlobalProgramInfo);
+  for (auto &TU : ASTs) {
+    RC.HandleTranslationUnit(TU->getASTContext());
+  }
+
+  //  // Rewrite the input files.
+//  std::unique_ptr<ToolAction> RewriteTool =
+//      newFrontendActionFactoryA<RewriteAction<RewriteConsumer, ProgramInfo>>(
+//          GlobalProgramInfo, VerifyDiagnosticOutput);
+//  if (RewriteTool) {
+//    int ToolExitCode = Tool.run(RewriteTool.get());
+//    if (ToolExitCode != 0)
+//      return false;
+//  } else
+//    llvm_unreachable("No action");
 
   GlobalProgramInfo.getPerfStats().endTotalTime();
   GlobalProgramInfo.getPerfStats().startTotalTime();
