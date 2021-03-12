@@ -9,6 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "clang/3C/TypeVariableAnalysis.h"
+#include "clang/3C/RewriteUtils.h"
 
 using namespace llvm;
 using namespace clang;

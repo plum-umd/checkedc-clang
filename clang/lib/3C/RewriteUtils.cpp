@@ -133,6 +133,12 @@ bool canRewrite(Rewriter &R, const CharSourceRange &SR) {
   return SR.isValid() && (R.getRangeSize(SR) != -1);
 }
 
+bool canRewrite(clang::Expr &D, ASTContext &Context) {
+  Rewriter R(Context.getSourceManager(), Context.getLangOpts());
+  CharSourceRange Range = CharSourceRange::getCharRange(D.getSourceRange());
+  return canRewrite(R,Range);
+}
+
 void rewriteSourceRange(Rewriter &R, const SourceRange &Range,
                         const std::string &NewText, bool ErrFail) {
   rewriteSourceRange(R, CharSourceRange::getTokenRange(Range), NewText,
