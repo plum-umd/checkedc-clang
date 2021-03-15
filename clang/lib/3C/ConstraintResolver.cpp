@@ -241,9 +241,6 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
     if (CHKCBindTemporaryExpr *CE = dyn_cast<CHKCBindTemporaryExpr>(E)) {
       return getExprConstraintVars(CE->getSubExpr());
     }
-    if (auto *CE = dyn_cast<ImplicitCastExpr>(E))
-      if (CE->getCastKind() == CK_LValueToRValue)
-        return getExprConstraintVars(CE->getSubExpr());
 
     // Apart from the above expressions constraints for all the other
     // expressions can be cached.
