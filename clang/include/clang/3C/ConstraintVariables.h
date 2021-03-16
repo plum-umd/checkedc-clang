@@ -446,9 +446,12 @@ private:
   PVConstraint *InternalConstraint;
   PVConstraint *ExternalConstraint;
 
+  std::string SourceDeclaration;
+
 public:
   FVComponentVariable()
-      : InternalConstraint(nullptr), ExternalConstraint(nullptr) {}
+    : InternalConstraint(nullptr), ExternalConstraint(nullptr),
+      SourceDeclaration("") {}
 
   FVComponentVariable(FVComponentVariable *Ot, Constraints &CS);
   FVComponentVariable(const clang::QualType &QT, clang::DeclaratorDecl *D,
@@ -458,7 +461,7 @@ public:
   void mergeDeclaration(FVComponentVariable *From, ProgramInfo &I,
                         std::string &ReasonFailed);
   std::string mkItypeStr(const EnvironmentMap &E) const;
-  std::string mkTypeStr(const EnvironmentMap &E) const;
+  std::string mkTypeStr(const EnvironmentMap &E, bool EmitName) const;
   std::string mkString(const EnvironmentMap &E) const;
 };
 

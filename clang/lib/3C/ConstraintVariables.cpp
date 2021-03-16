@@ -962,6 +962,12 @@ FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
     else
       RT = FT->getReturnType();
 
+    FunctionTypeLoc FTL;
+    if (D != nullptr)
+      if (TypeSourceInfo *TSInfo = D->getTypeSourceInfo())
+        if (TypeLoc TL = TSInfo->getTypeLoc())
+          FTL = getBaseTypeLoc(TL).getAs<FunctionTypeLoc>();
+
     // Extract the types for the parameters to this function. If the parameter
     // has a bounds expression associated with it, substitute the type of that
     // bounds expression for the other type.
@@ -976,15 +982,13 @@ FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
       else
         QT = FT->getParamType(J);
 
-      std::string PName = "";
       DeclaratorDecl *ParmVD = nullptr;
-      if (FD && J < FD->getNumParams()) {
-        ParmVarDecl *PVD = FD->getParamDecl(J);
-        if (PVD) {
-          ParmVD = PVD;
-          PName = std::string(PVD->getName());
-        }
-      }
+      if (FD && J < FD->getNumParams())
+        ParmVD = FD->getParamDecl(J);
+      if (ParmVD == nullptr && FTL && J < FTL.getNumParams())
+        ParmVD = FTL.getParam(J);
+      std::string PName = ParmVD ? ParmVD->getName().str() : "";
+
       auto ParamVar =
           FVComponentVariable(QT, ParmVD, PName, I, Ctx, &N, ParamHasItype);
       int GenericIdx = ParamVar.ExternalConstraint->getGenericIndex();
@@ -1413,7 +1417,7 @@ std::string FunctionVariableConstraint::mkString(const EnvironmentMap &E,
                                                  bool EmitName, bool ForItype,
                                                  bool EmitPointee,
                                                  bool UnmaskTypedef) const {
-  std::string Ret = ReturnVar.mkTypeStr(E);
+  std::string Ret = ReturnVar.mkTypeStr(E, false);
   std::string Itype = ReturnVar.mkItypeStr(E);
   // This is done to rewrite the typedef of a function proto
   if (UnmaskTypedef && EmitName)
@@ -1875,21 +1879,15 @@ void FVComponentVariable::mergeDeclaration(FVComponentVariable *From,
 
 std::string
 FVComponentVariable::mkString(const EnvironmentMap &E) const {
-  std::string Str;
-  if (ExternalConstraint->anyChanges(E) && InternalConstraint->anyChanges(E))
-    Str = ExternalConstraint->mkString(E);
-  else {
-    Str = ExternalConstraint->getRewritableOriginalTy() +
-          ExternalConstraint->getName();
-    if (ExternalConstraint->anyChanges(E))
-      Str += " : itype(" + ExternalConstraint->mkString(E, false, true) + ")";
-  }
-  return Str;
+  return mkTypeStr(E, true) + mkItypeStr(E);
 }
 
-std::string FVComponentVariable::mkTypeStr(const EnvironmentMap &E) const {
+std::string
+FVComponentVariable::mkTypeStr(const EnvironmentMap &E, bool EmitName) const {
   if (ExternalConstraint->anyChanges(E) && InternalConstraint->anyChanges(E))
-    return ExternalConstraint->mkString(E, false);
+    return ExternalConstraint->mkString(E, EmitName);
+  if (!SourceDeclaration.empty())
+    return SourceDeclaration;
   return ExternalConstraint->getRewritableOriginalTy();
 }
 
@@ -1935,6 +1933,15 @@ FVComponentVariable::FVComponentVariable(const QualType &QT,
           CS.addConstraint(CS.createGeq(ExternalA, InternalA, true));
       }
     }
+  }
+
+  // Save the original source for the declaration if this is a param
+  // declaration. This lets us avoid macro expansion in function pointer
+  // parameters similarly to how we do it for pointers in regular function
+  // declarations.
+  if (D && D->getType() == QT) {
+    SourceRange SR = D->getSourceRange();
+    SourceDeclaration = SR.isValid() ? getSourceText(SR, C) : "";
   }
 }
 
