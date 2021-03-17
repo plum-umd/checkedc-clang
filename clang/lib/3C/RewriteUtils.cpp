@@ -473,34 +473,40 @@ SourceLocation FunctionDeclReplacement::getReturnEnd(SourceManager &SM) const {
 }
 
 SourceLocation FunctionDeclReplacement::getDeclEnd(SourceManager &SM) const {
-  FunctionTypeLoc FTypeLoc = getFunctionTypeLoc(Decl);
-
   SourceLocation End;
-  if (FTypeLoc.isNull()) {
-    // Without a FunctionTypeLocation, we have to approximate the end of the
-    // declaration as the location of the first r-paren before the start of the
-    // function body. This is messed up by comments and ifdef blocks containing
-    // r-paren, but works correctly most of the time.
-    End = getFunctionDeclRParen(Decl, SM);
-  } else if (Decl->getReturnType()->isFunctionPointerType()) {
-    // If a function returns a function pointer type, the paramter list for the
-    // returned function type comes after the top-level functions parameter
-    // list. Of course, this FunctionTypeLoc can also be null, so we have
-    // another fall back to the r-paren approximation.
-    FunctionTypeLoc T = getFunctionTypeLoc(FTypeLoc.getReturnLoc());
-    if (!T.isNull())
-      End = T.getRParenLoc();
-    else
-      End = getFunctionDeclRParen(Decl, SM);
-  } else {
-    End = FTypeLoc.getRParenLoc();
-  }
+   if (isKAndRFunctionDecl(Decl)) {
+     // For K&R style function declaration, use the beginning of the function
+     // body as the end of the declaration. K&R declarations must have a body.
+     End = locationPrecedingChar(Decl->getBody()->getBeginLoc(), SM, ';');
+   } else {
+     FunctionTypeLoc FTypeLoc = getFunctionTypeLoc(Decl);
+     if (FTypeLoc.isNull()) {
+       // Without a FunctionTypeLocation, we have to approximate the end of the
+       // declaration as the location of the first r-paren before the start of the
+       // function body. This is messed up by comments and ifdef blocks containing
+       // r-paren, but works correctly most of the time.
+       End = getFunctionDeclRParen(Decl, SM);
+     } else if (Decl->getReturnType()->isFunctionPointerType()) {
+       // If a function returns a function pointer type, the paramter list for the
+       // returned function type comes after the top-level functions parameter
+       // list. Of course, this FunctionTypeLoc can also be null, so we have
+       // another fall back to the r-paren approximation.
+       FunctionTypeLoc T = getFunctionTypeLoc(FTypeLoc.getReturnLoc());
+       if (!T.isNull())
+         End = T.getRParenLoc();
+       else
+         End = getFunctionDeclRParen(Decl, SM);
+     } else {
+       End = FTypeLoc.getRParenLoc();
+     }
+   }
 
   // If there's a bounds expression, this comes after the right paren of the
   // function declaration parameter list.
   if (auto *BoundsE = Decl->getBoundsExpr()) {
     SourceLocation BoundsEnd = BoundsE->getEndLoc();
-    if (BoundsEnd.isValid())
+    if (BoundsEnd.isValid() &&
+        (!End.isValid() || SM.isBeforeInTranslationUnit(End, BoundsEnd)))
       End = BoundsEnd;
   }
 

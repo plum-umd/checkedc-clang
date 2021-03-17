@@ -153,6 +153,10 @@ std::string qtyToStr(clang::QualType QT, const std::string &Name = "");
 clang::SourceLocation getFunctionDeclRParen(clang::FunctionDecl *FD,
                                             clang::SourceManager &S);
 
+clang::SourceLocation locationPrecedingChar(clang::SourceLocation SL,
+                                            clang::SourceManager &S,
+                                            char C);
+
 // Remove auxillary casts from the provided expression.
 clang::Expr *removeAuxillaryCasts(clang::Expr *SrcExpr);
 
@@ -211,5 +215,7 @@ clang::Expr *ignoreCheckedCImplicit(clang::Expr *E);
 // parenthesised types and function attributes.
 clang::FunctionTypeLoc getFunctionTypeLoc(clang::TypeLoc TLoc);
 clang::FunctionTypeLoc getFunctionTypeLoc(clang::DeclaratorDecl *Decl);
+
+bool isKAndRFunctionDecl(clang::FunctionDecl *FD);
 
 #endif
