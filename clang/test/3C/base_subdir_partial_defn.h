@@ -7,6 +7,11 @@
 // base_subdir (see
 // https://github.com/correctcomputation/checkedc-clang/issues/327).
 
-// The lack of a return type here is intentional. The return type is in the file
+// This incomplete function definition is intentional. The rest is in the file
 // that includes base_subdir_partial_defn.h.
-foo(int *x) {}
+
+{
+  {
+    int *x = (int *)1;
+  }
+}

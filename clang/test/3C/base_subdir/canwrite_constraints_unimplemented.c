@@ -26,16 +26,13 @@
 // the latter in order to keep all the "weird" stuff in this test file and leave
 // canwrite_constraints.c sane.
 
-// Since the declaration of foo begins with the "void" in this (writable) file,
-// 3C currently assumes the whole declaration is writable. Then 3C rewrites the
-// declaration of the parameter "x", which is wholly within
-// ../base_subdir_partial_defn.h; the rewriter seems to handle this with no
-// trouble. But then the proposed change to an unwritable file trips the error
-// we are testing.
+// Since the declaration of foo begins in this (writable) file, -addcr currently
+// assumes the whole body is writable and tries to insert an _Unchecked
+// annotation on the inner block in ../base_subdir_partial_defn.h.
 //
 // Changing 3C to handle such contrived preprocessor nonsense correctly is a low
 // priority, so this test hopefully won't have to be changed for a while, if
 // ever.
 
-void
+void foo()
 #include "../base_subdir_partial_defn.h"
