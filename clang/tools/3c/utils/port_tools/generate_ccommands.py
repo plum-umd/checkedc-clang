@@ -63,7 +63,10 @@ def getCheckedCArgs(argument_list, checkedc_include_dir, work_dir):
     new_arg_list = []
     new_arg_list.extend(argument_list)
     new_arg_list.append("-I" + checkedc_include_dir)
-    for curr_arg in new_arg_list:
+    curr_arg_index = 0
+    while curr_arg_index < len(new_arg_list):
+        curr_arg = new_arg_list[curr_arg_index]
+        curr_arg_index += 1
         if curr_arg.startswith("-D") or curr_arg.startswith("-I"):
             if curr_arg.startswith("-I"):
                 # if this is relative path,
@@ -71,6 +74,15 @@ def getCheckedCArgs(argument_list, checkedc_include_dir, work_dir):
                 if not os.path.isabs(curr_arg[2:]):
                     curr_arg = "-I" + os.path.abspath(os.path.join(work_dir, curr_arg[2:]))
             clang_x_args.append('-extra-arg-before=' + curr_arg)
+        elif curr_arg == '-idirafter':  # vsftpd
+            path = new_arg_list[curr_arg_index]
+            curr_arg_index += 1
+            # if this is relative path,
+            # convert into absolute path
+            if not os.path.isabs(path):
+                path = os.path.abspath(os.path.join(work_dir, path))
+            clang_x_args.append('-extra-arg-before=-idirafter')
+            clang_x_args.append('-extra-arg-before=' + path)
     # disable all warnings.
     clang_x_args.append('-extra-arg-before=-w')
     return clang_x_args
@@ -92,6 +104,7 @@ def tryFixUp(s):
 def run3C(checkedc_bin, extra_3c_args,
           compilation_base_dir, compile_commands_json,
           checkedc_include_dir, skip_paths,
+          preprocess_before_conversion,
           skip_running=False, run_individual=False):
     global INDIVIDUAL_COMMANDS_FILE
     global TOTAL_COMMANDS_FILE
@@ -112,11 +125,11 @@ def run3C(checkedc_bin, extra_3c_args,
         logging.error("failed to get commands from compile commands json:" + compile_commands_json)
         return
 
-    s = set()
-    total_x_args = []
+    s = list()  # Nothing seems to care whether this is a set.
     all_files = []
     for i in cmds:
         file_to_add = i['file']
+        compiler_path = None  # FIXME
         compiler_x_args = []
         target_directory = ""
         if file_to_add.endswith(".cpp"):
@@ -128,9 +141,9 @@ def run3C(checkedc_bin, extra_3c_args,
         if 'arguments' in i and not 'command' in i:
             # BEAR. Need to add directory.
             file_to_add = i['directory'] + SLASH + file_to_add
+            compiler_path = i['arguments'][0]
             # get the 3c and compiler arguments
             compiler_x_args = getCheckedCArgs(i["arguments"], checkedc_include_dir, i['directory'])
-            total_x_args.extend(compiler_x_args)
             # get the directory used during compilation.
             target_directory = i['directory']
         file_to_add = os.path.realpath(file_to_add)
@@ -140,12 +153,17 @@ def run3C(checkedc_bin, extra_3c_args,
                 matched = True
         if not matched:
             all_files.append(file_to_add)
-            s.add((frozenset(compiler_x_args), target_directory, file_to_add))
+            # We can't use frozenset any more because it affects the order of
+            # multi-argument sequences such as `-idirafter foo`. Here we can
+            # just remove it, but for the total_x_args, we are left without a
+            # good way to deduplicate arguments. So just stop using total_x_args
+            # in favor of the compilation database.
+            s.append((compiler_path, compiler_x_args, target_directory, file_to_add))
 
     prog_name = checkedc_bin
     f = open(INDIVIDUAL_COMMANDS_FILE, 'w')
     f.write("#!/bin/bash\n")
-    for compiler_args, target_directory, src_file in s:
+    for compiler_path, compiler_args, target_directory, src_file in s:
         args = []
         # get the command to change the working directory
         change_dir_cmd = ""
@@ -154,6 +172,17 @@ def run3C(checkedc_bin, extra_3c_args,
         else:
             # default working directory
             target_directory = os.getcwd()
+        if preprocess_before_conversion:
+            preprocess_args = []
+            preprocess_args.append(compiler_path)
+            preprocess_args.append('-E')
+            # XXX Clean this up.
+            preprocess_args.extend(arg[len('-extra-arg-before='):] for arg in compiler_args)
+            preprocess_args.append(src_file)
+            preprocess_args.append('-o')
+            preprocess_args.append(src_file)
+            logging.debug("Running:" + ' '.join(preprocess_args))
+            subprocess.check_call(' '.join(preprocess_args), cwd=target_directory, shell=True)
         args.append(prog_name)
         if len(compiler_args) > 0:
             args.extend(list(compiler_args))
@@ -185,7 +214,8 @@ def run3C(checkedc_bin, extra_3c_args,
     args.append(prog_name)
     args.extend(DEFAULT_ARGS)
     args.extend(extra_3c_args)
-    args.extend(list(set(total_x_args)))
+    args.append('-p')
+    args.append(compile_commands_json)
     vcodewriter.addClangdArg("-log=verbose")
     vcodewriter.addClangdArg(args[1:])
     args.append('-base-dir="' + compilation_base_dir + '"')

@@ -68,6 +68,16 @@ def parseTheArg():
     parser.add_argument("--skip", dest='skip_paths', action='append', type=str, default=[],
                         help='Relative path to source files that should be skipped.')
 
+    parser.add_argument("--preprocess_before_conversion",
+                        dest='preprocess_before_conversion', action='store_true',
+                        default=False,
+                        help=('Before running 3c, replace each translation '
+                              'unit with the result of preprocessing it with '
+                              'the compiler options in compile_commands.json. '
+                              'Will not work if there are multiple '
+                              'compile_commands.json entries for the same '
+                              'source file.'))
+
     parser.add_argument("-dr", dest='skip_exec', action='store_true', default=False,
                         help='Do not run the conversion. Just create the conversion script.')
 
@@ -115,7 +125,7 @@ if __name__ == "__main__":
     logging.info("Trying to convert all the source files to header files")
     run3C(progArgs.prog_name, progArgs.extra_3c_args,
           progArgs.project_path, compileCmdsJson, progArgs.includeDir,
-          progArgs.skip_paths, progArgs.skip_exec)
+          progArgs.skip_paths, progArgs.preprocess_before_conversion, progArgs.skip_exec)
     logging.info("Finished converting all the files to checkedc files.")
 
 
