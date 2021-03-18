@@ -41,6 +41,15 @@ void test4(a)
 //CHECK_ALL: void test4(_Array_ptr<int> a : count(10))
 //CHECK_ALL: _Checked {
 
+void test5(a, b, c, d, e, f, g, h)
+  int *a;
+  char *b, c;
+  char d, *e;
+  int f, *g, h;
+{}
+//CHECK: void test5(_Ptr<int> a, _Ptr<char> b, char c, char d, _Ptr<char> e, int f, _Ptr<int> g, int h)
+//CHECK: _Checked {}
+
 // bc test case
 
 struct yy_buffer_state {};
