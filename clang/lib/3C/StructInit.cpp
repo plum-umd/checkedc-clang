@@ -16,10 +16,15 @@
 
 using namespace clang;
 
-bool StructVariableInitializer::variableNeedsInitializer(VarDecl *VD) {
-  if (VD->getStorageClass() == StorageClass::SC_Extern)
+bool StructVariableInitializer::variableNeedsInitializer(DeclaratorDecl *DD) {
+  assert("Struct variable initializer should only look at records!" &&
+         isStructOrUnionType(DD));
+
+  if (isa<VarDecl>(DD) &&
+      cast<VarDecl>(DD)->getStorageClass() == StorageClass::SC_Extern)
     return false;
-  RecordDecl *RD = VD->getType().getTypePtr()->getAsRecordDecl();
+
+  RecordDecl *RD = DD->getType()->getAsRecordDecl();
   if (RecordDecl *Definition = RD->getDefinition()) {
     // See if we already know that this structure has a checked pointer.
     if (RecordsWithCPointers.find(Definition) != RecordsWithCPointers.end())
@@ -36,6 +41,10 @@ bool StructVariableInitializer::variableNeedsInitializer(VarDecl *VD) {
             return true;
           }
         }
+      } else if (isStructOrUnionType(D) && variableNeedsInitializer(D)) {
+        // A field of a structure can be another structure. If the inner
+        // structure would need an initializer, we have to put it on the outer.
+        return true;
       }
     }
   }
