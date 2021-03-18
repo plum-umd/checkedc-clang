@@ -78,7 +78,7 @@ PersistentSourceLoc PersistentSourceLoc::mkPSL(clang::SourceRange SR,
     Fn = std::string(sys::path::remove_leading_dotslash(FeAbsS));
   }
 #endif
-  PersistentSourceLoc PSL(Fn, FESL.getExpansionLineNumber(),
+  PersistentSourceLoc PSL(Fn, PL.getLine() /*FESL.getExpansionLineNumber()*/,
                           FESL.getExpansionColumnNumber(), EndCol);
 
   return PSL;
