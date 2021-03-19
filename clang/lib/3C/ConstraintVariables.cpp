@@ -1906,7 +1906,7 @@ FVComponentVariable::FVComponentVariable(const QualType &QT,
                                          std::string N, ProgramInfo &I,
                                          const ASTContext &C,
                                          std::string *InFunc, bool HasItype) {
-  ExternalConstraint = new PVConstraint(QT, D, N, I, C, InFunc, -1);
+  ExternalConstraint = new PVConstraint(QT, D, N, I, C, InFunc);
   if ((QT->isVoidPointerType() || QT->isFunctionPointerType()) && !HasItype) {
     // For void pointers and function pointers, internal and external would need
     // to be equated, so can we avoid allocating extra constraints.
