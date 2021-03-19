@@ -557,10 +557,13 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
                                           NewCV->getBoundsKey());
           NewCV->setBoundsKey(CSensBKey);
         }
-        // Important: Do Safe_to_Wild from returnvar in this copy, which then
-        //   might be assigned otherwise (Same_to_Same) to LHS
-        if (NewCV != CV)
-          constrainConsVarGeq(NewCV, CV, CS, &PSL, Safe_to_Wild, false, &Info);
+        if (NewCV != CV) {
+          // If the call is in a macro, use Same_to_Same to force checked type
+          // equality and avoid ever needing to insert a cast inside a macro.
+          ConsAction CA = Rewriter::isRewritable(CE->getExprLoc())
+                          ? Safe_to_Wild : Same_to_Same;
+          constrainConsVarGeq(NewCV, CV, CS, &PSL, CA, false, &Info);
+        }
         TmpCVs.insert(NewCV);
         // If this is realloc, constrain the first arg to flow to the return
         if (!ReallocFlow.empty()) {
@@ -636,6 +639,18 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
       if (Expr *ESE = dyn_cast<Expr>(Res)) {
         return getExprConstraintVars(ESE);
       }
+    } else if (VAArgExpr *VarArg = dyn_cast<VAArgExpr>(E)) {
+      // Use of VarArg parameters are assumed to be unsafe even though CheckedC
+      // will accept them with checked pointer types. If we want to support
+      // VarArgs with checked pointer types, we can remove the constraint to
+      // WILD here. We would then need to update TypeExprRewriter to rewrite the
+      // type in these expression.
+      auto *P = new PVConstraint(VarArg->getType(), nullptr, "VAArgExpr", Info,
+                                 *Context);
+      PersistentSourceLoc PL = PersistentSourceLoc::mkPSL(E, *Context);
+      std::string Rsn = "Accessing VarArg parameter";
+      P->constrainToWild(Info.getConstraints(), Rsn, &PL);
+      Ret = pairWithEmptyBkey({P});
     } else {
       if (Verbose) {
         llvm::errs() << "WARNING! Initialization expression ignored: ";
