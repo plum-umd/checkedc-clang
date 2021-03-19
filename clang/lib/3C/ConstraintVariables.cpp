@@ -122,6 +122,13 @@ PointerVariableConstraint::PointerVariableConstraint(DeclaratorDecl *D,
   : PointerVariableConstraint(D->getType(), D, std::string(D->getName()), I, C,
                               nullptr, -1, false, D->getTypeSourceInfo()) {}
 
+PointerVariableConstraint::PointerVariableConstraint(TypedefDecl *D,
+                                                     ProgramInfo &I,
+                                                     const ASTContext &C)
+  : PointerVariableConstraint(D->getUnderlyingType(), nullptr,
+                              D->getNameAsString(), I, C, nullptr, -1,
+                              false, D->getTypeSourceInfo()) {}
+
 // Simple recursive visitor for determining if a type contains a typedef
 // entrypoint is find().
 class TypedefLevelFinder : public RecursiveASTVisitor<TypedefLevelFinder> {
@@ -912,6 +919,13 @@ FunctionVariableConstraint::FunctionVariableConstraint(DeclaratorDecl *D,
           D->getType().getTypePtr(), D,
           D->getDeclName().isIdentifier() ? std::string(D->getName()) : "", I,
           C, D->getTypeSourceInfo()) {}
+
+FunctionVariableConstraint::FunctionVariableConstraint(TypedefDecl *D,
+                                                       ProgramInfo &I,
+                                                       const ASTContext &C)
+  : FunctionVariableConstraint(D->getUnderlyingType().getTypePtr(), nullptr,
+                               D->getNameAsString(), I, C,
+                               D->getTypeSourceInfo()) {}
 
 FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
                                                        DeclaratorDecl *D,

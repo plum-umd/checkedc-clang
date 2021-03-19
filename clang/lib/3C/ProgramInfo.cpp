@@ -1195,16 +1195,12 @@ bool ProgramInfo::seenTypedef(PersistentSourceLoc PSL) {
 
 void ProgramInfo::addTypedef(PersistentSourceLoc PSL, bool CanRewriteDef,
                              TypedefDecl* TD, ASTContext &C) {
-  auto Name = TD->getNameAsString();
   ConstraintVariable* V = nullptr;
-  const auto T = TD->getUnderlyingType();
-  TypeSourceInfo *TSInfo = TD->getTypeSourceInfo();
-  if (isa<clang::FunctionProtoType>(T) || isa<clang::FunctionNoProtoType>(T))
-    V = new FunctionVariableConstraint(T.getTypePtr(), nullptr, Name, *this, C,
-                                       TSInfo);
+  if (isa<clang::FunctionType>(TD->getUnderlyingType()))
+    V = new FunctionVariableConstraint(TD, *this, C);
   else
-    V = new PointerVariableConstraint(T, nullptr, Name, *this, C, nullptr, -1,
-                                      false, TSInfo);
+    V = new PointerVariableConstraint(TD, *this, C);
+
   auto *const Rsn =
       !CanRewriteDef ?
            "Unable to rewrite a typedef with multiple names"
