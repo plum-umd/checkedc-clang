@@ -13,6 +13,7 @@ struct fiz { int *a; };
 struct buz { struct bar a; };
 struct baz { struct buz a; };
 struct fuz { struct baz a; struct fiz b; };
+struct biz { struct fiz b; };
 
 void test() {
   struct foo a;
@@ -21,12 +22,14 @@ void test() {
   struct buz d;
   struct baz e;
   struct fuz f;
+  struct biz g;
   //CHECK: struct foo a;
   //CHECK: struct bar b = {};
   //CHECK: struct fiz c;
   //CHECK: struct buz d = {};
   //CHECK: struct baz e = {};
   //CHECK: struct fuz f = {};
+  //CHECK: struct biz g;
 
   c.a = 1;
 }
