@@ -1,0 +1,18 @@
+// RUN: rm -rf %t*
+// RUN: 3c -base-dir=%S -addcr -alltypes -output-dir=%t.checkedALL %s %S/multidef1a-ok.c --
+// RUN: 3c -base-dir=%S -addcr -output-dir=%t.checkedNOALL %s %S/multidef1a-ok.c --
+// RUN: %clang -working-directory=%t.checkedNOALL -c multidef1a-ok.c multidef1b-ok.c
+// RUN: FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" --input-file %t.checkedNOALL/multidef1b-ok.c %s
+// RUN: FileCheck -match-full-lines -check-prefixes="CHECK_ALL","CHECK" --input-file %t.checkedALL/multidef1b-ok.c %s
+
+extern _Unchecked unsigned long strlen(const char * restrict src : itype(restrict _Nt_array_ptr<const char>));
+
+int main(int argc, char **argv) {
+//CHECK_NOALL: int main(int argc, char **argv : itype(_Ptr<_Ptr<char>>)) {
+//CHECK_ALL: int main(int argc, _Array_ptr<_Nt_array_ptr<char>> argv : count(argc)) _Checked {
+  if (argc > 1) {
+    int x = strlen(argv[1]);
+    return x;
+  }
+  return 0;
+}

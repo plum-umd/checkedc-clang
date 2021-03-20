@@ -1820,16 +1820,21 @@ void FunctionVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
     return;
   }
 
-  if (From->numParams() == 0) {
+  if (From->numParams() == 0 && !From->hasBody()) {
     // From is an untyped declaration, and adds no information.
     return;
   }
-  if (this->numParams() == 0) {
+  if (this->numParams() == 0 && !this->hasBody()) {
     // This is an untyped declaration, we need to switch to the other
     assert(false && "This merge should happen in reverse");
     From->mergeDeclaration(this, I, ReasonFailed);
   } else {
     // Standard merge.
+    // TODO: Treat function `main` specially here
+    //   To kick things off, we should create a fake FVConstraint for it with
+    //   the right checked types and call ProgramInfo::insertNewFVConstraint
+    //   with a fake PSL. Then real versions of main() will "link" against
+    //   this initial one.
     if (this->numParams() != From->numParams()) {
       ReasonFailed = "differing number of arguments";
       return;
