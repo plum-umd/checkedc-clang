@@ -1123,12 +1123,12 @@ void PointerVariableConstraint::constrainToWild(Constraints &CS,
     FV->constrainToWild(CS, Rsn, PL);
 }
 
-void PointerVariableConstraint::constrainOuterTo(Constraints &CS, ConstAtom *C,
-                                                 bool DoLB) {
+void PointerVariableConstraint::constrainIdxTo(Constraints &CS, ConstAtom *C,
+                                               unsigned int Idx, bool DoLB) {
   assert(C == CS.getPtr() || C == CS.getArr() || C == CS.getNTArr());
 
-  if (Vars.size() > 0) {
-    Atom *A = *Vars.begin();
+  if (Vars.size() > Idx) {
+    Atom *A = Vars[Idx];
     if (VarAtom *VA = dyn_cast<VarAtom>(A)) {
       if (DoLB)
         CS.addConstraint(CS.createGeq(VA, C, false));
@@ -1148,6 +1148,11 @@ void PointerVariableConstraint::constrainOuterTo(Constraints &CS, ConstAtom *C,
       }
     }
   }
+}
+
+void PointerVariableConstraint::constrainOuterTo(Constraints &CS, ConstAtom *C,
+                                                 bool DoLB) {
+  constrainIdxTo(CS,C,0,DoLB);
 }
 
 bool PointerVariableConstraint::anyArgumentIsWild(const EnvironmentMap &E) {

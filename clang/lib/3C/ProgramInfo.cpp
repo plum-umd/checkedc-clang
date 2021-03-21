@@ -669,6 +669,7 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
 
   if (FunctionDecl *FD = dyn_cast<FunctionDecl>(D)) {
     // Function Decls have FVConstraints.
+    std::string FuncName = FD->getNameAsString();
     FVConstraint *F = new FVConstraint(D, *this, *AstContext);
     F->setValidDecl();
 
@@ -718,8 +719,12 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
       // constrain to WILD even if we don't end up storing this in the map.
       constrainWildIfMacro(PVExternal, PVD->getLocation());
       specialCaseVarIntros(PVD, AstContext);
-      // It is possible to have a parameter decl in a macro when the function is
-      // not.
+      // If this is "main", constrain its argv parameter to a nested arr
+      if (AllTypes && FuncName == "main" && FD->isGlobal() && I == 1) {
+        PVInternal->constrainOuterTo(CS, CS.getArr());
+        PVInternal->constrainIdxTo(CS, CS.getNTArr(), 1);
+      }
+      // It is possible to have a param decl in a macro when the function is not.
       if (Variables.find(PSL) != Variables.end())
         continue;
       Variables[PSL] = PVInternal;
