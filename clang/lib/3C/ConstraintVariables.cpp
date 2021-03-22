@@ -1835,12 +1835,14 @@ void FunctionVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
     From->mergeDeclaration(this, I, ReasonFailed);
   } else {
     // Standard merge.
-    // TODO: Treat function `main` specially here
-    //   To kick things off, we should create a fake FVConstraint for it with
-    //   the right checked types and call ProgramInfo::insertNewFVConstraint
-    //   with a fake PSL. Then real versions of main() will "link" against
-    //   this initial one.
     if (this->numParams() != From->numParams()) {
+      // TODO: This merges main() and main(argc,argv)
+      //   but will fail at line 578 of DeclRewriter.cpp due to trying
+      //   to rewrite main()'s parameter, which is not there
+      if ((From->getName() == "main" && From->numParams() == 0) ||
+          (this->getName() == "main" && this->numParams() == 0)) {
+        return;
+      }
       ReasonFailed = "differing number of arguments";
       return;
     }
