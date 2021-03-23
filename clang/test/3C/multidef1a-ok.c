@@ -13,3 +13,11 @@ int main(int argc, char **argv) {
   else
     return 0;
 }
+
+int foo(int argc, char **argv) {
+//CHECK_ALL: int foo(int argc, _Array_ptr<_Nt_array_ptr<char>> argv) _Checked {
+//CHECK_NOALL: int foo(int argc, char **argv : itype(_Ptr<_Ptr<char>>)) {
+  char p = argv[0][0];
+  return 0;
+}
+

@@ -16,3 +16,14 @@ int main(int argc, char **argv) {
   }
   return 0;
 }
+
+int foo(int argc, char **argv) {
+//CHECK_NOALL: int foo(int argc, char **argv : itype(_Ptr<_Ptr<char>>)) {
+//CHECK_ALL: int foo(int argc, _Array_ptr<_Nt_array_ptr<char>> argv) _Checked {
+  if (argc > 1) {
+    int x = strlen(argv[1]);
+    return x;
+  }
+  return 0;
+}
+
