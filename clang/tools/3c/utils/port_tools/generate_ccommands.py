@@ -49,42 +49,25 @@ class VSCodeJsonWriter():
         fp.write("}")
         fp.close()
 
-def getCheckedCArgs(argument_list, checkedc_include_dir, work_dir):
+def getCheckedCArgs(argument_list):
     """
-      Convert the compilation arguments (include folder and #defines)
-      to checked C format.
+      Adjust the compilation arguments. This is now used only by
+      preprocess_before_conversion since 3c takes the arguments directly from
+      the compilation database. Thus, we no longer use -extra-arg-before here.
+
     :param argument_list: list of compiler argument.
-    :param checkedc_include_dir: Directory in which Checked C header files are located.
-    :param work_dir: Path to the working directory from which
-                     the compilation command was run.
     :return: checked c args
     """
-    clang_x_args = []
-    new_arg_list = []
-    new_arg_list.extend(argument_list)
-    new_arg_list.append("-I" + checkedc_include_dir)
-    curr_arg_index = 0
-    while curr_arg_index < len(new_arg_list):
-        curr_arg = new_arg_list[curr_arg_index]
-        curr_arg_index += 1
-        if curr_arg.startswith("-D") or curr_arg.startswith("-I"):
-            if curr_arg.startswith("-I"):
-                # if this is relative path,
-                # convert into absolute path
-                if not os.path.isabs(curr_arg[2:]):
-                    curr_arg = "-I" + os.path.abspath(os.path.join(work_dir, curr_arg[2:]))
-            clang_x_args.append('-extra-arg-before=' + curr_arg)
-        elif curr_arg == '-idirafter':  # vsftpd
-            path = new_arg_list[curr_arg_index]
-            curr_arg_index += 1
-            # if this is relative path,
-            # convert into absolute path
-            if not os.path.isabs(path):
-                path = os.path.abspath(os.path.join(work_dir, path))
-            clang_x_args.append('-extra-arg-before=-idirafter')
-            clang_x_args.append('-extra-arg-before=' + path)
+    # New approach: Rather than keeping only specific flags, try keeping
+    # everything except `-c` (because we will add `-E` if we preprocess the
+    # translation unit) and the source file name (assumed to be the last
+    # argument) because it's hard to know what flags different benchmarks might
+    # be using that might affect the default preprocessor state. We rely on
+    # setting the working directory instead of trying to recognize all paths
+    # that might need to be made absolute here.
+    clang_x_args = [arg for arg in argument_list[:-1] if arg != '-c']
     # disable all warnings.
-    clang_x_args.append('-extra-arg-before=-w')
+    clang_x_args.append('-w')
     return clang_x_args
 
 
@@ -101,9 +84,11 @@ def tryFixUp(s):
     return
 
 
+# We no longer take the checkedc_include_dir here because we assume the working
+# tree is set up so that the Checked C headers get used automatically by 3c.
 def run3C(checkedc_bin, extra_3c_args,
           compilation_base_dir, compile_commands_json,
-          checkedc_include_dir, skip_paths,
+          skip_paths,
           preprocess_before_conversion,
           skip_running=False, run_individual=False):
     global INDIVIDUAL_COMMANDS_FILE
@@ -142,8 +127,8 @@ def run3C(checkedc_bin, extra_3c_args,
             # BEAR. Need to add directory.
             file_to_add = i['directory'] + SLASH + file_to_add
             compiler_path = i['arguments'][0]
-            # get the 3c and compiler arguments
-            compiler_x_args = getCheckedCArgs(i["arguments"], checkedc_include_dir, i['directory'])
+            # get the compiler arguments
+            compiler_x_args = getCheckedCArgs(i["arguments"][1:])
             # get the directory used during compilation.
             target_directory = i['directory']
         file_to_add = os.path.realpath(file_to_add)
@@ -176,19 +161,21 @@ def run3C(checkedc_bin, extra_3c_args,
             preprocess_args = []
             preprocess_args.append(compiler_path)
             preprocess_args.append('-E')
-            # XXX Clean this up.
-            preprocess_args.extend(arg[len('-extra-arg-before='):] for arg in compiler_args)
+            preprocess_args.extend(compiler_args)
             preprocess_args.append(src_file)
             preprocess_args.append('-o')
             preprocess_args.append(src_file)
             logging.debug("Running:" + ' '.join(preprocess_args))
             subprocess.check_call(' '.join(preprocess_args), cwd=target_directory, shell=True)
         args.append(prog_name)
-        if len(compiler_args) > 0:
-            args.extend(list(compiler_args))
-        args.append('-base-dir="' + compilation_base_dir + '"')
         args.extend(DEFAULT_ARGS)
         args.extend(extra_3c_args)
+        # Even when we run 3c on a single file, we can let it read the compiler
+        # options from the compilation database.
+        args.append('-p')
+        args.append(compile_commands_json)
+        args.append('-base-dir="' + compilation_base_dir + '"')
+        args.append('-output-dir="' + compilation_base_dir + '/out.checked"')
         args.append(src_file)
         # run individual commands.
         if run_individual:
@@ -219,10 +206,10 @@ def run3C(checkedc_bin, extra_3c_args,
     vcodewriter.addClangdArg("-log=verbose")
     vcodewriter.addClangdArg(args[1:])
     args.append('-base-dir="' + compilation_base_dir + '"')
+    vcodewriter.addClangdArg('-base-dir=' + compilation_base_dir)
     # Try to choose a name unlikely to collide with anything in any real
     # project.
     args.append('-output-dir="' + compilation_base_dir + '/out.checked"')
-    vcodewriter.addClangdArg('-base-dir=' + compilation_base_dir)
     args.extend(list(set(all_files)))
     vcodewriter.addClangdArg(list(set(all_files)))
     vcodewriter.writeJsonFile(VSCODE_SETTINGS_JSON)

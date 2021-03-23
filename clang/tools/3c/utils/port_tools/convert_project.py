@@ -124,7 +124,7 @@ if __name__ == "__main__":
 
     logging.info("Trying to convert all the source files to header files")
     run3C(progArgs.prog_name, progArgs.extra_3c_args,
-          progArgs.project_path, compileCmdsJson, progArgs.includeDir,
+          progArgs.project_path, compileCmdsJson,
           progArgs.skip_paths, progArgs.preprocess_before_conversion, progArgs.skip_exec)
     logging.info("Finished converting all the files to checkedc files.")
 
