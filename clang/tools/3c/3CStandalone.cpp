@@ -323,7 +323,7 @@ int main(int argc, const char **argv) {
   _3CInterface &_3CInterface = *_3CInterfacePtr;
 
   if (OptVerbose)
-    errs() << "Adding variables to database.\n";
+    errs() << "Parsing source files.\n";
 
   // Build AST from source.
   if (!_3CInterface.parseASTs()) {
