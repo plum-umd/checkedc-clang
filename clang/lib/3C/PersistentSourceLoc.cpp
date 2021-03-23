@@ -67,8 +67,14 @@ PersistentSourceLoc PersistentSourceLoc::mkPSL(clang::SourceRange SR,
   if (TFSL.isValid()) {
     const FileEntry *Fe = SM.getFileEntryForID(TFSL.getFileID());
     std::string FeAbsS = Fn;
-    if (Fe != nullptr)
+    if (Fe != nullptr) {
+      // Unlike in `emit` in RewriteUtils.cpp, we don't re-canonicalize the file
+      // path because of the potential performance cost (mkPSL is called on many
+      // AST nodes in each translation unit) and because we don't have a good
+      // way to handle errors. If there is a problem, `emit` will detect it
+      // before we actually write a file.
       FeAbsS = Fe->tryGetRealPathName().str();
+    }
     Fn = std::string(sys::path::remove_leading_dotslash(FeAbsS));
   }
   PersistentSourceLoc PSL(Fn, FESL.getExpansionLineNumber(),
