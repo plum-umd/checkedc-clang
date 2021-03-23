@@ -247,6 +247,9 @@ static void emit(Rewriter &R, ASTContext &C) {
             "to failure to re-canonicalize the file path provided by Clang");
         DE.Report(SM.translateFileLineCol(FE, 1, 1), ErrorId);
         {
+          // Put this in a block because Clang only allows one DiagnosticBuilder
+          // to exist at a time and the call to PrintExtraUnwritableChangeInfo
+          // below may create more DiagnosticBuilders.
           unsigned NoteId =
               DE.getCustomDiagID(DiagnosticsEngine::Note,
                                  "file path from Clang was %0; error was: %1");
@@ -264,6 +267,7 @@ static void emit(Rewriter &R, ASTContext &C) {
             "because the file path provided by Clang was not canonical");
         DE.Report(SM.translateFileLineCol(FE, 1, 1), ErrorId);
         {
+          // Ditto re the block.
           unsigned NoteId = DE.getCustomDiagID(
               DiagnosticsEngine::Note, "file path from Clang was %0; "
                                        "re-canonicalized file path is %1");
