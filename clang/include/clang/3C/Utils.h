@@ -139,7 +139,7 @@ bool isPtrOrArrayType(const clang::QualType &QT);
 bool isVarArgType(const std::string &TypeName);
 
 // Check if the variable is of a structure or union type.
-bool isStructOrUnionType(clang::VarDecl *VD);
+bool isStructOrUnionType(clang::DeclaratorDecl *VD);
 
 // Helper method to print a Type in a way that can be represented in the source.
 // If Name is given, it is included as the variable name (which otherwise isn't
@@ -152,6 +152,10 @@ std::string qtyToStr(clang::QualType QT, const std::string &Name = "");
 // Get the end source location of the end of the provided function.
 clang::SourceLocation getFunctionDeclRParen(clang::FunctionDecl *FD,
                                             clang::SourceManager &S);
+
+clang::SourceLocation locationPrecedingChar(clang::SourceLocation SL,
+                                            clang::SourceManager &S,
+                                            char C);
 
 // Remove auxillary casts from the provided expression.
 clang::Expr *removeAuxillaryCasts(clang::Expr *SrcExpr);
@@ -205,4 +209,13 @@ clang::TypeLoc getBaseTypeLoc(clang::TypeLoc T);
 // Ignore all CheckedC temporary and clang implicit expression on E. This
 // combines the behavior of IgnoreExprTmp and IgnoreImplicit.
 clang::Expr *ignoreCheckedCImplicit(clang::Expr *E);
+
+// Get a FunctionTypeLoc object from the declaration/type location. This is a
+// little complicated due to various clang wrapper types that come from
+// parenthesised types and function attributes.
+clang::FunctionTypeLoc getFunctionTypeLoc(clang::TypeLoc TLoc);
+clang::FunctionTypeLoc getFunctionTypeLoc(clang::DeclaratorDecl *Decl);
+
+bool isKAndRFunctionDecl(clang::FunctionDecl *FD);
+
 #endif

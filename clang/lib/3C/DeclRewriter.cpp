@@ -18,6 +18,7 @@
 #include "clang/Rewrite/Core/Rewriter.h"
 #include "llvm/Support/raw_ostream.h"
 #include <sstream>
+#include <algorithm>
 
 #ifdef FIVE_C
 #include "clang/3C/DeclRewriter_5C.h"
@@ -61,8 +62,7 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
           if (Var.anyChanges(Env)) {
             std::string newTy =
                   getStorageQualifierString(D) +
-                  Var.mkString(Info.getConstraints().getVariables(), true,
-                                   false, false, true);
+                  Var.mkString(Info.getConstraints(), true, false, false, true);
               RewriteThese.insert(
                   new TypedefDeclReplacement(TD, nullptr, newTy));
             }
@@ -117,7 +117,7 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
           DS = VDLToStmtMap[D];
 
         std::string NewTy = getStorageQualifierString(D) +
-                            PV->mkString(Info.getConstraints().getVariables()) +
+                            PV->mkString(Info.getConstraints()) +
                             ABRewriter.getBoundsString(PV, D);
         if (auto *VD = dyn_cast<VarDecl>(D))
           RewriteThese.insert(new VarDeclReplacement(VD, DS, NewTy));
@@ -211,6 +211,19 @@ void DeclRewriter::rewriteTypedefDecl(TypedefDeclReplacement *TDR, RSet &ToRewri
   rewriteSingleDecl(TDR, ToRewrite);
 }
 
+// In alltypes mode we need to handle inline structs inside functions specially
+// Because both the recorddecl and vardecl are inside one DeclStmt, the
+// SourceLocations will get be generated incorrectly if we rewrite it as a
+// normal multidecl.
+bool isInlineStruct(std::vector<Decl*> &InlineDecls) {
+  if (InlineDecls.size() >= 2 && AllTypes)
+    return isa<RecordDecl>(InlineDecls[0]) &&
+        std::all_of(InlineDecls.begin() + 1, InlineDecls.end(),
+                       [](Decl* D) { return isa<VarDecl>(D); });
+  else
+    return false;
+}
+
 template <typename DRType>
 void DeclRewriter::rewriteFieldOrVarDecl(DRType *N, RSet &ToRewrite) {
   static_assert(std::is_same<DRType, FieldDeclReplacement>::value ||
@@ -230,6 +243,8 @@ void DeclRewriter::rewriteFieldOrVarDecl(DRType *N, RSet &ToRewrite) {
   } else if (VisitedMultiDeclMembers.find(N) == VisitedMultiDeclMembers.end()) {
     std::vector<Decl *> SameLineDecls;
     getDeclsOnSameLine(N, SameLineDecls);
+    if (isInlineStruct(SameLineDecls))
+      SameLineDecls.erase(SameLineDecls.begin());
     rewriteMultiDecl(N, ToRewrite, SameLineDecls, false);
   } else {
     // Anything that reaches this case should be a multi-declaration that has
@@ -245,6 +260,8 @@ void DeclRewriter::rewriteSingleDecl(DeclReplacement *N, RSet &ToRewrite) {
       dyn_cast<TypedefDecl>(N->getDecl()) || isSingleDeclaration(N);
   assert("Declaration is not a single declaration." && IsSingleDecl);
   // This is the easy case, we can rewrite it locally, at the declaration.
+  // TODO why do we call getDecl() and getSourceRange() directly,
+  // TODO as opposed to getSourceRange()?
   SourceRange TR = N->getDecl()->getSourceRange();
   doDeclRewrite(TR, N);
 }
@@ -555,12 +572,10 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
   // Get rewritten parameter variable declarations.
   std::vector<std::string> ParmStrs;
   for (unsigned I = 0; I < Defnc->numParams(); ++I) {
-    PVConstraint *ExtCV = Defnc->getExternalParam(I);
-    PVConstraint *IntCV = Defnc->getInternalParam(I);
     ParmVarDecl *PVDecl = Definition->getParamDecl(I);
+    const FVComponentVariable *CV = Defnc->getCombineParam(I);
     std::string Type, IType;
-    this->buildDeclVar(IntCV, ExtCV, PVDecl, Type, IType, RewriteParams,
-                       RewriteReturn);
+    this->buildDeclVar(CV, PVDecl, Type, IType, RewriteParams, RewriteReturn);
     ParmStrs.push_back(Type + IType);
   }
 
@@ -574,8 +589,8 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
 
   // Get rewritten return variable.
   std::string ReturnVar, ItypeStr;
-  this->buildDeclVar(Defnc->getInternalReturn(), Defnc->getExternalReturn(), FD,
-                     ReturnVar, ItypeStr, RewriteParams, RewriteReturn);
+  this->buildDeclVar(Defnc->getCombineReturn(), FD, ReturnVar, ItypeStr,
+                     RewriteParams, RewriteReturn);
 
   // If the return is a function pointer, we need to rewrite the whole
   // declaration even if no actual changes were made to the parameters because
@@ -643,7 +658,7 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
 void FunctionDeclBuilder::buildCheckedDecl(
     PVConstraint *Defn, DeclaratorDecl *Decl, std::string &Type,
     std::string &IType, bool &RewriteParm, bool &RewriteRet) {
-  Type = Defn->mkString(Info.getConstraints().getVariables());
+  Type = Defn->mkString(Info.getConstraints());
   IType = getExistingIType(Defn);
   IType += ABRewriter.getBoundsString(Defn, Decl, !IType.empty());
   RewriteParm |= !IType.empty() || isa<ParmVarDecl>(Decl);
@@ -659,7 +674,7 @@ void FunctionDeclBuilder::buildItypeDecl(PVConstraint *Defn,
   if (isa<ParmVarDecl>(Decl))
     Type += Defn->getName();
   IType = " : itype(" +
-          Defn->mkString(Info.getConstraints().getVariables(), false, true) +
+          Defn->mkString(Info.getConstraints(), false, true) +
           ")" + ABRewriter.getBoundsString(Defn, Decl, true);
   RewriteParm = true;
   RewriteRet |= isa<FunctionDecl>(Decl);
@@ -670,26 +685,21 @@ void FunctionDeclBuilder::buildItypeDecl(PVConstraint *Defn,
 // the name) but the breakdown between Type and IType is not guaranteed. For a
 // return, Type will be what goes before the name and IType will be what goes
 // after the parentheses.
-void FunctionDeclBuilder::buildDeclVar(PVConstraint *IntCV, PVConstraint *ExtCV,
+void FunctionDeclBuilder::buildDeclVar(const FVComponentVariable *CV,
                                        DeclaratorDecl *Decl, std::string &Type,
                                        std::string &IType, bool &RewriteParm,
                                        bool &RewriteRet) {
-  const auto &Env = Info.getConstraints().getVariables();
-  // If the external constraint variable is checked, then the parameter should
-  // be advertised as checked to callers. This requires adding either an itype
-  // or a checked type. If the constraint variable type did not change, then
-  // the type does not need to be rewritten. The type in the source is correct.
-  if (isAValidPVConstraint(ExtCV) && ExtCV->isChecked(Env) &&
-      ExtCV->anyChanges(Env)) {
-    // If the internal and external constraint variables solve to the same type,
-    // then they are both checked and we can use a _Ptr type. Otherwise, an
-    // itype is used.
-    if (IntCV->solutionEqualTo(Info.getConstraints(), ExtCV))
-      buildCheckedDecl(ExtCV, Decl, Type, IType, RewriteParm, RewriteRet);
-    else
-      buildItypeDecl(ExtCV, Decl, Type, IType, RewriteParm, RewriteRet);
+  if (CV->hasCheckedSolution(Info.getConstraints())) {
+    buildCheckedDecl(CV->getExternal(), Decl, Type, IType, RewriteParm,
+                     RewriteRet);
     return;
   }
+  if (CV->hasItypeSolution(Info.getConstraints())) {
+    buildItypeDecl(CV->getExternal(), Decl, Type, IType, RewriteParm,
+                   RewriteRet);
+    return;
+  }
+
   // Variables that do not need to be rewritten fall through to here.
   // For parameter variables, we try to extract the declaration from the source
   // code. This preserves macros and other formatting. This isn't possible for
@@ -701,7 +711,7 @@ void FunctionDeclBuilder::buildDeclVar(PVConstraint *IntCV, PVConstraint *ExtCV,
   ParmVarDecl *PVD = dyn_cast<ParmVarDecl>(Decl);
   if (PVD) {
     SourceRange Range = PVD->getSourceRange();
-    if (Range.isValid()) {
+    if (Range.isValid() && !inParamMultiDecl(PVD) ) {
       Type = getSourceText(Range, *Context);
       if (!Type.empty()) {
         // Great, we got the original source including any itype and bounds.
@@ -714,10 +724,10 @@ void FunctionDeclBuilder::buildDeclVar(PVConstraint *IntCV, PVConstraint *ExtCV,
     // TODO: Do we care about `register` or anything else this doesn't handle?
     Type = qtyToStr(PVD->getOriginalType(), PVD->getNameAsString());
   } else {
-    Type = ExtCV->getOriginalTy() + " ";
+    Type = CV->getExternal()->getOriginalTy() + " ";
   }
-  IType = getExistingIType(ExtCV);
-  IType += ABRewriter.getBoundsString(ExtCV, Decl, !IType.empty());
+  IType = getExistingIType(CV->getExternal());
+  IType += ABRewriter.getBoundsString(CV->getExternal(), Decl, !IType.empty());
 }
 
 std::string FunctionDeclBuilder::getExistingIType(ConstraintVariable *DeclC) {
@@ -759,6 +769,22 @@ bool FunctionDeclBuilder::hasDeclWithTypedef(const FunctionDecl *FD) {
         FDIter->dump();
       }
     }
+  }
+  return false;
+}
+
+// K&R style function declarations can declare multiple parameter variables in
+// a single declaration statement. The source ranges for these parameters
+// overlap, so we cannot copy the declaration from source code to output code
+bool FunctionDeclBuilder::inParamMultiDecl(const ParmVarDecl *PVD) {
+  const DeclContext *DCtx = PVD->getDeclContext();
+  if (DCtx) {
+    SourceRange SR = PVD->getSourceRange();
+    SourceManager &SM = Context->getSourceManager();
+    for (auto *D : DCtx->decls())
+      if (D != PVD && D->getBeginLoc().isValid() &&
+          SM.isPointWithin(D->getBeginLoc(), SR.getBegin(), SR.getEnd()))
+        return true;
   }
   return false;
 }
