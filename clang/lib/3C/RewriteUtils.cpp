@@ -246,17 +246,10 @@ static void emit(Rewriter &R, ASTContext &C) {
             "3C internal error: not writing the new version of this file due "
             "to failure to re-canonicalize the file path provided by Clang");
         DE.Report(SM.translateFileLineCol(FE, 1, 1), ErrorId);
-        {
-          // Put this in a block because Clang only allows one DiagnosticBuilder
-          // to exist at a time and the call to PrintExtraUnwritableChangeInfo
-          // below may create more DiagnosticBuilders.
-          unsigned NoteId =
-              DE.getCustomDiagID(DiagnosticsEngine::Note,
-                                 "file path from Clang was %0; error was: %1");
-          auto ErrorBuilder = DE.Report(NoteId);
-          ErrorBuilder.AddString(ToConv);
-          ErrorBuilder.AddString(EC.message());
-        }
+        unsigned NoteId =
+            DE.getCustomDiagID(DiagnosticsEngine::Note,
+                               "file path from Clang was %0; error was: %1");
+        DE.Report(NoteId) << ToConv << EC.message();
         PrintExtraUnwritableChangeInfo();
         continue;
       }
@@ -266,15 +259,10 @@ static void emit(Rewriter &R, ASTContext &C) {
             "3C internal error: not writing the new version of this file "
             "because the file path provided by Clang was not canonical");
         DE.Report(SM.translateFileLineCol(FE, 1, 1), ErrorId);
-        {
-          // Ditto re the block.
-          unsigned NoteId = DE.getCustomDiagID(
-              DiagnosticsEngine::Note, "file path from Clang was %0; "
-                                       "re-canonicalized file path is %1");
-          auto ErrorBuilder = DE.Report(NoteId);
-          ErrorBuilder.AddString(ToConv);
-          ErrorBuilder.AddString(FeAbsS);
-        }
+        unsigned NoteId = DE.getCustomDiagID(
+            DiagnosticsEngine::Note, "file path from Clang was %0; "
+                                     "re-canonicalized file path is %1");
+        DE.Report(NoteId) << ToConv << FeAbsS;
         PrintExtraUnwritableChangeInfo();
         continue;
       }
