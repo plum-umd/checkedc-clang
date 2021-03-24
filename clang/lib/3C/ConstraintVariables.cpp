@@ -119,8 +119,15 @@ PointerVariableConstraint::PointerVariableConstraint(
 PointerVariableConstraint::PointerVariableConstraint(DeclaratorDecl *D,
                                                      ProgramInfo &I,
                                                      const ASTContext &C)
-    : PointerVariableConstraint(D->getType(), D, std::string(D->getName()), I,
-                                C) {}
+  : PointerVariableConstraint(D->getType(), D, std::string(D->getName()), I, C,
+                              nullptr, -1, false, D->getTypeSourceInfo()) {}
+
+PointerVariableConstraint::PointerVariableConstraint(TypedefDecl *D,
+                                                     ProgramInfo &I,
+                                                     const ASTContext &C)
+  : PointerVariableConstraint(D->getUnderlyingType(), nullptr,
+                              D->getNameAsString(), I, C, nullptr, -1,
+                              false, D->getTypeSourceInfo()) {}
 
 // Simple recursive visitor for determining if a type contains a typedef
 // entrypoint is find().
@@ -169,7 +176,7 @@ private:
 PointerVariableConstraint::PointerVariableConstraint(
     const QualType &QT, DeclaratorDecl *D, std::string N, ProgramInfo &I,
     const ASTContext &C, std::string *InFunc, int ForceGenericIndex,
-    bool VarAtomForChecked)
+    bool VarAtomForChecked, TypeSourceInfo *TSInfo)
     : ConstraintVariable(ConstraintVariable::PointerVariable,
                          tyToStr(QT.getTypePtr()), N),
       FV(nullptr), SrcHasItype(false), PartOfFuncPrototype(InFunc != nullptr),
@@ -435,10 +442,11 @@ PointerVariableConstraint::PointerVariableConstraint(
     //    tn fname = ...,
     // where tn is the typedef'ed type name.
     // There is possibly something more elegant to do in the code here.
-    FV = new FVConstraint(Ty, IsDeclTy ? D : nullptr, IsTypedef ? "" : N, I, C);
+    FV = new FVConstraint(Ty, IsDeclTy ? D : nullptr, IsTypedef ? "" : N, I, C,
+                          TSInfo);
 
   // Get a string representing the type without pointer and array indirection.
-  BaseType = extractBaseType(D, QT, Ty, C);
+  BaseType = extractBaseType(D, TSInfo, QT, Ty, C);
 
   IsVoidPtr = isTypeHasVoid(QT);
   bool IsWild = !getIsGeneric() && (isVarArgType(BaseType) || IsVoidPtr);
@@ -483,14 +491,16 @@ PointerVariableConstraint::PointerVariableConstraint(
 }
 
 std::string PointerVariableConstraint::tryExtractBaseType(DeclaratorDecl *D,
+                                                          TypeSourceInfo *TSI,
                                                           QualType QT,
                                                           const Type *Ty,
                                                           const ASTContext &C) {
   bool FoundBaseTypeInSrc = false;
-  if (!QT->isOrContainsCheckedType() && !Ty->getAs<TypedefType>() && D &&
-      D->getTypeSourceInfo()) {
+  if (D && !TSI)
+    TSI = D->getTypeSourceInfo();
+  if (!QT->isOrContainsCheckedType() && !Ty->getAs<TypedefType>() && D && TSI) {
     // Try to extract the type from original source to preserve defines
-    TypeLoc TL = D->getTypeSourceInfo()->getTypeLoc();
+    TypeLoc TL = TSI->getTypeLoc();
     if (isa<FunctionDecl>(D)) {
       FoundBaseTypeInSrc = D->getAsFunction()->getReturnType() == QT;
       TL = getBaseTypeLoc(TL).getAs<FunctionTypeLoc>();
@@ -517,10 +527,11 @@ std::string PointerVariableConstraint::tryExtractBaseType(DeclaratorDecl *D,
 }
 
 std::string PointerVariableConstraint::extractBaseType(DeclaratorDecl *D,
+                                                       TypeSourceInfo *TSI,
                                                        QualType QT,
                                                        const Type *Ty,
                                                        const ASTContext &C) {
-  std::string BaseTypeStr = tryExtractBaseType(D, QT, Ty, C);
+  std::string BaseTypeStr = tryExtractBaseType(D, TSI, QT, Ty, C);
   // Fall back to rebuilding the base type based on type passed to constructor
   if (BaseTypeStr.empty())
     BaseTypeStr = tyToStr(Ty);
@@ -660,7 +671,7 @@ std::string PointerVariableConstraint::gatherQualStrings(void) const {
   return S.str();
 }
 
-std::string PointerVariableConstraint::mkString(const EnvironmentMap &E,
+std::string PointerVariableConstraint::mkString(Constraints &CS,
                                                 bool EmitName, bool ForItype,
                                                 bool EmitPointee,
                                                 bool UnmaskTypedef) const {
@@ -711,7 +722,7 @@ std::string PointerVariableConstraint::mkString(const EnvironmentMap &E,
       VarAtom *VA = dyn_cast<VarAtom>(V);
       assert(VA != nullptr && "Constraint variable can "
                               "be either constant or VarAtom.");
-      C = E.at(VA).first;
+      C = CS.getVariables().at(VA).first;
     }
     assert(C != nullptr);
 
@@ -790,7 +801,7 @@ std::string PointerVariableConstraint::mkString(const EnvironmentMap &E,
         assert(BaseType.size() > 0);
         EmittedBase = true;
         if (FV) {
-          Ss << FV->mkString(E);
+          Ss << FV->mkString(CS);
         } else {
           Ss << BaseType << " *";
         }
@@ -824,7 +835,7 @@ std::string PointerVariableConstraint::mkString(const EnvironmentMap &E,
     // If we have a FV pointer, then our "base" type is a function pointer.
     // type.
     if (FV) {
-      Ss << FV->mkString(E);
+      Ss << FV->mkString(CS);
     } else if (TypedefLevelInfo.HasTypedef) {
       std::ostringstream Buf;
       getQualString(TypedefLevelInfo.TypedefLevel, Buf);
@@ -906,14 +917,22 @@ FunctionVariableConstraint::FunctionVariableConstraint(DeclaratorDecl *D,
                                                        const ASTContext &C)
     : FunctionVariableConstraint(
           D->getType().getTypePtr(), D,
-          (D->getDeclName().isIdentifier() ? std::string(D->getName()) : ""), I,
-          C) {}
+          D->getDeclName().isIdentifier() ? std::string(D->getName()) : "", I,
+          C, D->getTypeSourceInfo()) {}
+
+FunctionVariableConstraint::FunctionVariableConstraint(TypedefDecl *D,
+                                                       ProgramInfo &I,
+                                                       const ASTContext &C)
+  : FunctionVariableConstraint(D->getUnderlyingType().getTypePtr(), nullptr,
+                               D->getNameAsString(), I, C,
+                               D->getTypeSourceInfo()) {}
 
 FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
                                                        DeclaratorDecl *D,
                                                        std::string N,
                                                        ProgramInfo &I,
-                                                       const ASTContext &Ctx)
+                                                       const ASTContext &Ctx,
+                                                       TypeSourceInfo *TSInfo)
     : ConstraintVariable(ConstraintVariable::FunctionVariable, tyToStr(Ty), N),
       Parent(nullptr) {
   QualType RT;
@@ -962,6 +981,11 @@ FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
     else
       RT = FT->getReturnType();
 
+    FunctionTypeLoc FTL;
+    if (TSInfo != nullptr)
+      if (TypeLoc TL = TSInfo->getTypeLoc())
+        FTL = getBaseTypeLoc(TL).getAs<FunctionTypeLoc>();
+
     // Extract the types for the parameters to this function. If the parameter
     // has a bounds expression associated with it, substitute the type of that
     // bounds expression for the other type.
@@ -976,15 +1000,13 @@ FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
       else
         QT = FT->getParamType(J);
 
-      std::string PName = "";
       DeclaratorDecl *ParmVD = nullptr;
-      if (FD && J < FD->getNumParams()) {
-        ParmVarDecl *PVD = FD->getParamDecl(J);
-        if (PVD) {
-          ParmVD = PVD;
-          PName = std::string(PVD->getName());
-        }
-      }
+      if (FD && J < FD->getNumParams())
+        ParmVD = FD->getParamDecl(J);
+      if (ParmVD == nullptr && FTL && J < FTL.getNumParams())
+        ParmVD = FTL.getParam(J);
+      std::string PName = ParmVD ? ParmVD->getName().str() : "";
+
       auto ParamVar =
           FVComponentVariable(QT, ParmVD, PName, I, Ctx, &N, ParamHasItype);
       int GenericIdx = ParamVar.ExternalConstraint->getGenericIndex();
@@ -1414,19 +1436,19 @@ bool FunctionVariableConstraint::solutionEqualTo(Constraints &CS,
   return Ret;
 }
 
-std::string FunctionVariableConstraint::mkString(const EnvironmentMap &E,
+std::string FunctionVariableConstraint::mkString(Constraints &CS,
                                                  bool EmitName, bool ForItype,
                                                  bool EmitPointee,
                                                  bool UnmaskTypedef) const {
-  std::string Ret = ReturnVar.mkTypeStr(E);
-  std::string Itype = ReturnVar.mkItypeStr(E);
+  std::string Ret = ReturnVar.mkTypeStr(CS, false);
+  std::string Itype = ReturnVar.mkItypeStr(CS);
   // This is done to rewrite the typedef of a function proto
   if (UnmaskTypedef && EmitName)
     Ret += Name;
   Ret = Ret + "(";
   std::vector<std::string> ParmStrs;
   for (const auto &I : this->ParamVars)
-    ParmStrs.push_back(I.mkString(E));
+    ParmStrs.push_back(I.mkString(CS));
 
   if (ParmStrs.size() > 0) {
     std::ostringstream Ss;
@@ -1886,29 +1908,43 @@ void FVComponentVariable::mergeDeclaration(FVComponentVariable *From,
 }
 
 std::string
-FVComponentVariable::mkString(const EnvironmentMap &E) const {
-  std::string Str;
-  if (ExternalConstraint->anyChanges(E) && InternalConstraint->anyChanges(E))
-    Str = ExternalConstraint->mkString(E);
-  else {
-    Str = ExternalConstraint->getRewritableOriginalTy() +
-          ExternalConstraint->getName();
-    if (ExternalConstraint->anyChanges(E))
-      Str += " : itype(" + ExternalConstraint->mkString(E, false, true) + ")";
-  }
-  return Str;
+FVComponentVariable::mkString(Constraints &CS) const {
+  return mkTypeStr(CS, true) + mkItypeStr(CS);
 }
 
-std::string FVComponentVariable::mkTypeStr(const EnvironmentMap &E) const {
-  if (ExternalConstraint->anyChanges(E) && InternalConstraint->anyChanges(E))
-    return ExternalConstraint->mkString(E, false);
+std::string
+FVComponentVariable::mkTypeStr(Constraints &CS, bool EmitName) const {
+  if (hasCheckedSolution(CS))
+    return ExternalConstraint->mkString(CS, EmitName);
+  if (!SourceDeclaration.empty())
+    return SourceDeclaration;
   return ExternalConstraint->getRewritableOriginalTy();
 }
 
-std::string FVComponentVariable::mkItypeStr(const EnvironmentMap &E) const {
-  if (ExternalConstraint->anyChanges(E) && !InternalConstraint->anyChanges(E))
-    return " : itype(" + ExternalConstraint->mkString(E, false, true) + ")";
+std::string FVComponentVariable::mkItypeStr(Constraints &CS) const {
+  if (hasItypeSolution(CS))
+    return " : itype(" + ExternalConstraint->mkString(CS, false, true) + ")";
   return "";
+}
+
+bool FVComponentVariable::hasCheckedSolution(Constraints &CS) const {
+  // If the external constraint variable is checked, then the variable should
+  // be advertised as checked to callers. If the internal and external
+  // constraint variables solve to the same type, then they are both checked and
+  // we can use a _Ptr type.
+  return ExternalConstraint->isChecked(CS.getVariables()) &&
+         ExternalConstraint->anyChanges(CS.getVariables()) &&
+         InternalConstraint->solutionEqualTo(CS, ExternalConstraint);
+}
+
+bool FVComponentVariable::hasItypeSolution(Constraints &CS) const {
+  // As in hasCheckedSolution, we want the variable to be advertised as checked
+  // if the external variable is checked. If the external is checked, but the
+  // internal is not equal to the external, then the internal is unchecked, so
+  // have to use an itype instead of a _Ptr type.
+  return ExternalConstraint->isChecked(CS.getVariables()) &&
+         ExternalConstraint->anyChanges(CS.getVariables()) &&
+         !InternalConstraint->solutionEqualTo(CS, ExternalConstraint);
 }
 
 FVComponentVariable::FVComponentVariable(const QualType &QT,
@@ -1947,6 +1983,15 @@ FVComponentVariable::FVComponentVariable(const QualType &QT,
           CS.addConstraint(CS.createGeq(ExternalA, InternalA, true));
       }
     }
+  }
+
+  // Save the original source for the declaration if this is a param
+  // declaration. This lets us avoid macro expansion in function pointer
+  // parameters similarly to how we do it for pointers in regular function
+  // declarations.
+  if (D && D->getType() == QT) {
+    SourceRange SR = D->getSourceRange();
+    SourceDeclaration = SR.isValid() ? getSourceText(SR, C) : "";
   }
 }
 

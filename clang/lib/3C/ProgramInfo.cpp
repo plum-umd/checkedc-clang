@@ -606,11 +606,9 @@ ProgramInfo::insertNewFVConstraint(FunctionDecl *FD, FVConstraint *NewC,
     DiagBuilder.AddTaggedVal(Pointer, Kind);
     DiagBuilder.AddString(ReasonFailed);
   }
-  // Kill the process and stop conversion
-  // Without this code here, 3C simply ignores this pair of functions
-  // and converts the rest of the files as it will (in semi-compliance
-  // with Mike's (2) listed on the original issue (#283)
-  exit(1);
+  // A failed merge will provide poor data, but the diagnostic error report
+  // will cause the program to terminate after the variable adder step.
+  return (*Map)[FuncName];
 }
 
 void ProgramInfo::specialCaseVarIntros(ValueDecl *D, ASTContext *Context) {
@@ -1197,14 +1195,12 @@ bool ProgramInfo::seenTypedef(PersistentSourceLoc PSL) {
 
 void ProgramInfo::addTypedef(PersistentSourceLoc PSL, bool CanRewriteDef,
                              TypedefDecl* TD, ASTContext &C) {
-  auto Name = TD->getNameAsString();
   ConstraintVariable* V = nullptr;
-  const auto T = TD->getUnderlyingType();
-  if (isa<clang::FunctionProtoType>(T) || isa<clang::FunctionNoProtoType>(T)) 
-    V = new FunctionVariableConstraint(T.getTypePtr(), 
-        nullptr, Name, *this, C);
-   else  
-    V = new PointerVariableConstraint(T, nullptr, Name, *this, C);
+  if (isa<clang::FunctionType>(TD->getUnderlyingType()))
+    V = new FunctionVariableConstraint(TD, *this, C);
+  else
+    V = new PointerVariableConstraint(TD, *this, C);
+
   auto *const Rsn =
       !CanRewriteDef ?
            "Unable to rewrite a typedef with multiple names"
