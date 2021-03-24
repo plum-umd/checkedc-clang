@@ -164,17 +164,12 @@ void rewriteSourceRange(Rewriter &R, const CharSourceRange &Range,
   if (!RewriteSuccess) {
     clang::DiagnosticsEngine &DE = R.getSourceMgr().getDiagnostics();
     bool ReportError = ErrFail && !AllowRewriteFailures;
-    {
-      // Put this in a block because Clang only allows one DiagnosticBuilder to
-      // exist at a time.
-      unsigned ErrorId = DE.getCustomDiagID(
-          ReportError ? DiagnosticsEngine::Error : DiagnosticsEngine::Warning,
-          "Unable to rewrite converted source range. Intended rewriting: "
-          "\"%0\"");
-      auto ErrorBuilder = DE.Report(Range.getBegin(), ErrorId);
-      ErrorBuilder.AddSourceRange(R.getSourceMgr().getExpansionRange(Range));
-      ErrorBuilder.AddString(NewText);
-    }
+    unsigned ErrorId = DE.getCustomDiagID(
+        ReportError ? DiagnosticsEngine::Error : DiagnosticsEngine::Warning,
+        "Unable to rewrite converted source range. Intended rewriting: "
+        "\"%0\"");
+    DE.Report(Range.getBegin(), ErrorId)
+        << R.getSourceMgr().getExpansionRange(Range) << NewText;
     if (ReportError) {
       unsigned NoteId = DE.getCustomDiagID(
           DiagnosticsEngine::Note,
@@ -331,8 +326,7 @@ static void emit(Rewriter &R, ASTContext &C) {
           unsigned ID = DE.getCustomDiagID(
               DiagnosticsEngine::Error,
               "failed to create parent directory of output file \"%0\"");
-          auto DiagBuilder = DE.Report(SM.translateFileLineCol(FE, 1, 1), ID);
-          DiagBuilder.AddString(NFile);
+          DE.Report(SM.translateFileLineCol(FE, 1, 1), ID) << NFile;
           continue;
         }
       }
@@ -346,8 +340,7 @@ static void emit(Rewriter &R, ASTContext &C) {
       } else {
         unsigned ID = DE.getCustomDiagID(DiagnosticsEngine::Error,
                                          "failed to write output file \"%0\"");
-        auto DiagBuilder = DE.Report(SM.translateFileLineCol(FE, 1, 1), ID);
-        DiagBuilder.AddString(NFile);
+        DE.Report(SM.translateFileLineCol(FE, 1, 1), ID) << NFile;
         // This is awkward. What to do? Since we're iterating, we could have
         // created other files successfully. Do we go back and erase them? Is
         // that surprising? For now, let's just keep going.
@@ -629,10 +622,7 @@ void RewriteConsumer::emitRootCauseDiagnostics(ASTContext &Context) {
           // SL is invalid when the File is not in the current translation unit.
           if (SL.isValid()) {
             EmittedDiagnostics.insert(PSL);
-            auto DiagBuilder = DE.Report(SL, ID);
-            DiagBuilder.AddTaggedVal(PtrCount,
-                                     DiagnosticsEngine::ArgumentKind::ak_uint);
-            DiagBuilder.AddString(WReason.second.getWildPtrReason());
+            DE.Report(SL, ID) << PtrCount << WReason.second.getWildPtrReason();
           }
         }
       }
