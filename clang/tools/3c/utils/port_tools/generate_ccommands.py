@@ -1,6 +1,7 @@
 """
 
 """
+from typing import List
 import re
 import os
 import sys
@@ -8,6 +9,8 @@ import json
 import traceback
 import subprocess
 import logging
+from common import TranslationUnitInfo
+from expand_macros import expandMacros, ExpandMacrosOptions
 
 SLASH = os.sep
 # file in which the individual commands will be stored
@@ -89,7 +92,7 @@ def tryFixUp(s):
 def run3C(checkedc_bin, extra_3c_args,
           compilation_base_dir, compile_commands_json,
           skip_paths,
-          preprocess_before_conversion,
+          expand_macros_opts: ExpandMacrosOptions,
           skip_running=False, run_individual=False):
     global INDIVIDUAL_COMMANDS_FILE
     global TOTAL_COMMANDS_FILE
@@ -110,7 +113,7 @@ def run3C(checkedc_bin, extra_3c_args,
         logging.error("failed to get commands from compile commands json:" + compile_commands_json)
         return
 
-    s = list()  # Nothing seems to care whether this is a set.
+    translation_units: List[TranslationUnitInfo] = []
     all_files = []
     for i in cmds:
         file_to_add = i['file']
@@ -143,30 +146,23 @@ def run3C(checkedc_bin, extra_3c_args,
             # just remove it, but for the total_x_args, we are left without a
             # good way to deduplicate arguments. So just stop using total_x_args
             # in favor of the compilation database.
-            s.append((compiler_path, compiler_x_args, target_directory, file_to_add))
+            translation_units.append(TranslationUnitInfo(compiler_path, compiler_x_args, target_directory, file_to_add))
+
+    expandMacros(expand_macros_opts, compilation_base_dir, translation_units)
 
     prog_name = checkedc_bin
     f = open(INDIVIDUAL_COMMANDS_FILE, 'w')
     f.write("#!/bin/bash\n")
-    for compiler_path, compiler_args, target_directory, src_file in s:
+    for tu in translation_units:
         args = []
         # get the command to change the working directory
+        target_directory = tu.target_directory
         change_dir_cmd = ""
         if len(target_directory) > 0:
             change_dir_cmd = "cd " + target_directory + CMD_SEP
         else:
             # default working directory
             target_directory = os.getcwd()
-        if preprocess_before_conversion:
-            preprocess_args = []
-            preprocess_args.append(compiler_path)
-            preprocess_args.append('-E')
-            preprocess_args.extend(compiler_args)
-            preprocess_args.append(src_file)
-            preprocess_args.append('-o')
-            preprocess_args.append(src_file)
-            logging.debug("Running:" + ' '.join(preprocess_args))
-            subprocess.check_call(' '.join(preprocess_args), cwd=target_directory, shell=True)
         args.append(prog_name)
         args.extend(DEFAULT_ARGS)
         args.extend(extra_3c_args)
@@ -176,7 +172,7 @@ def run3C(checkedc_bin, extra_3c_args,
         args.append(compile_commands_json)
         args.append('-base-dir="' + compilation_base_dir + '"')
         args.append('-output-dir="' + compilation_base_dir + '/out.checked"')
-        args.append(src_file)
+        args.append(tu.file)
         # run individual commands.
         if run_individual:
             logging.debug("Running:" + ' '.join(args))
