@@ -76,12 +76,16 @@ def parseTheArg():
                               'based on the compiler options in compile_commands.json. '
                               'This will help stop macros from interfering with 3C\'s ability to perform rewrites.'))
     parser.add_argument('--include_before_undefs', dest='includes_before_undefs', action='append',
+                        # Start a combined list here rather than potentially duplicating the options for
+                        # every benchmark. TBD what we want to do longer term.
+                        default=['<signal.h>', '<ctype.h>'],
                         help=('With --expand_macros_before_conversion, #include the given filename '
                               '(which should contain the double quotes or angle brackets) in each translation '
                               'unit before undefining the macros specified via --undef_macro. Assuming the '
                               'header has a multiple inclusion guard, this can be used to prevent '
                               'a subsequent inclusion from defining the macros again.'))
     parser.add_argument('--undef_macro', dest='undef_macros', action='append',
+                        default=['sa_handler', 'toupper'],
                         help=('With --expand_macros_before_conversion, #undef the given macro name '
                               'in each translation unit. Can be used to prevent problematic '
                               '(e.g., recursive) macros from being expanded.'))
