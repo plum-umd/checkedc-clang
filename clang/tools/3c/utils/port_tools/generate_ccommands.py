@@ -55,11 +55,11 @@ class VSCodeJsonWriter():
 def getCheckedCArgs(argument_list):
     """
       Adjust the compilation arguments. This is now used only by
-      preprocess_before_conversion since 3c takes the arguments directly from
+      expand_macros_before_conversion since 3c takes the arguments directly from
       the compilation database. Thus, we no longer use -extra-arg-before here.
 
     :param argument_list: list of compiler argument.
-    :return: checked c args
+    :return: (checked c args, output filename)
     """
     # New approach: Rather than keeping only specific flags, try keeping
     # everything except `-c` (because we will add `-E` if we preprocess the
@@ -69,6 +69,10 @@ def getCheckedCArgs(argument_list):
     # setting the working directory instead of trying to recognize all paths
     # that might need to be made absolute here.
     clang_x_args = []
+    source_filename = argument_list[-1]
+    assert source_filename.endswith('.c')
+    # By default; may be overwritten below.
+    output_filename = source_filename[:-len('.c')] + '.o'
     idx = 0
     while idx < len(argument_list) - 1:
         arg = argument_list[idx]
@@ -76,14 +80,15 @@ def getCheckedCArgs(argument_list):
         if arg == '-c':
             continue
         elif arg == '-o':
-            # Also skip the next argument (the output file name).
+            # Remove the output filename from the argument list and save it separately.
+            output_filename = argument_list[idx]
             idx += 1
             continue
         else:
             clang_x_args.append(arg)
     # disable all warnings.
     clang_x_args.append('-w')
-    return clang_x_args
+    return (clang_x_args, output_filename)
 
 
 def tryFixUp(s):
@@ -131,6 +136,7 @@ def run3C(checkedc_bin, extra_3c_args,
         file_to_add = i['file']
         compiler_path = None  # FIXME
         compiler_x_args = []
+        output_filename = None
         target_directory = ""
         if file_to_add.endswith(".cpp"):
             continue  # Checked C extension doesn't support cpp files yet
@@ -143,7 +149,7 @@ def run3C(checkedc_bin, extra_3c_args,
             file_to_add = i['directory'] + SLASH + file_to_add
             compiler_path = i['arguments'][0]
             # get the compiler arguments
-            compiler_x_args = getCheckedCArgs(i["arguments"][1:])
+            (compiler_x_args, output_filename) = getCheckedCArgs(i["arguments"][1:])
             # get the directory used during compilation.
             target_directory = i['directory']
         file_to_add = os.path.realpath(file_to_add)
@@ -158,7 +164,8 @@ def run3C(checkedc_bin, extra_3c_args,
             # just remove it, but for the total_x_args, we are left without a
             # good way to deduplicate arguments. So just stop using total_x_args
             # in favor of the compilation database.
-            translation_units.append(TranslationUnitInfo(compiler_path, compiler_x_args, target_directory, file_to_add))
+            translation_units.append(TranslationUnitInfo(
+                compiler_path, compiler_x_args, target_directory, file_to_add, output_filename))
 
     expandMacros(expand_macros_opts, compilation_base_dir, translation_units)
 
@@ -184,7 +191,7 @@ def run3C(checkedc_bin, extra_3c_args,
         args.append(compile_commands_json)
         args.append('-base-dir="' + compilation_base_dir + '"')
         args.append('-output-dir="' + compilation_base_dir + '/out.checked"')
-        args.append(tu.file)
+        args.append(tu.input_filename)
         # run individual commands.
         if run_individual:
             logging.debug("Running:" + ' '.join(args))

@@ -32,11 +32,11 @@ class SourceFileInfo:
     def __init__(self):
         self.lines = collections.defaultdict(lambda: LineInfo())
 
-def preprocess(tu, i_fname, custom_tu_file=None):
+def preprocess(tu: TranslationUnitInfo, i_fname: str, custom_input_filename=None):
     subprocess.check_call(
         [tu.compiler_path, '-E', '-o', i_fname] +
         tu.compiler_args +
-        [custom_tu_file if custom_tu_file is not None else tu.file],
+        [custom_input_filename if custom_input_filename is not None else tu.input_filename],
         cwd=tu.target_directory)
 
 def expandMacros(opts: ExpandMacrosOptions, compilation_base_dir: str,
@@ -47,24 +47,30 @@ def expandMacros(opts: ExpandMacrosOptions, compilation_base_dir: str,
     compilation_base_dir = os.path.realpath(compilation_base_dir)
 
     for tu in translation_units:
-        logging.info(f'Saving original preprocessed output of {tu.file}...')
-        preprocess(tu, f'{tu.file}.i')
+        # Since there may be multiple compilation database entries / translation
+        # units for the same input file (presumably with different compiler
+        # options), translation units must always be identified by their output
+        # files (which must be distinct, otherwise it doesn't make sense).
+        logging.info(f'Saving original preprocessor output for {tu.output_realpath}...')
+        preprocess(tu, f'{tu.output_realpath}.pre-em.i')
 
-    source_files: Dict[str, SourceFileInfo] = collections.defaultdict(lambda: SourceFileInfo())
+    # The keys are canonical (os.path.realpath) source file paths.
+    source_files: Dict[str, SourceFileInfo] = (
+        collections.defaultdict(lambda: SourceFileInfo()))
 
     # Map the preprocessed output of all translation units back to source lines.
     for tu in translation_units:
-        logging.info(f'Scanning customized preprocessed output of {tu.file}...')
-        em_fname = tu.file + '.em.c'
+        logging.info(f'Scanning customized preprocessor output for {tu.output_realpath}...')
+        em_fname = tu.output_realpath + '.em.c'
         with open(em_fname, 'w') as em_f:
             for inc in opts.includes_before_undefs:
                 em_f.write(f'#include {inc}\n')
             for macro in opts.undef_macros:
                 em_f.write(f'#undef {macro}\n')
-            em_f.write(f'#include "{os.path.basename(tu.file)}"\n')
+            em_f.write(f'#include "{tu.input_realpath}"\n')
             pass
 
-        i_fname = em_fname + '.i'
+        i_fname = tu.output_realpath + '.em.i'
         preprocess(tu, i_fname, em_fname)
 
         with open(i_fname) as i_f:
@@ -74,9 +80,9 @@ def expandMacros(opts: ExpandMacrosOptions, compilation_base_dir: str,
                 i_lineno = i_lineno0 + 1
                 m = re.search(r'^# (\d+) "(.*)"[^"]*', i_line_content)
                 if m is not None:
-                    # XXX Unescape the filename, maybe using `eval`?
-                    # REVIEW: Do we have to deal with relative paths or anything?
-                    src_fname, src_lineno = m.group(2), int(m.group(1))
+                    # XXX Unescape the filename?
+                    src_fname = tu.realpath(m.group(2))
+                    src_lineno = int(m.group(1))
                 else:
                     i_loc = FileLinePos(i_fname, i_lineno)
                     assert src_lineno is not None, (
@@ -90,7 +96,7 @@ def expandMacros(opts: ExpandMacrosOptions, compilation_base_dir: str,
 
     # Update source files.
     for src_fname, src_finfo in source_files.items():
-        if not os.path.realpath(src_fname).startswith(compilation_base_dir + '/'):
+        if not src_fname.startswith(compilation_base_dir + '/'):
             logging.info(f'Not updating source file {src_fname} because it is outside the base directory')
             continue
         if src_fname.endswith('.em.c'):
@@ -142,18 +148,18 @@ def expandMacros(opts: ExpandMacrosOptions, compilation_base_dir: str,
                                     f'and {repr(expansions[1][0])} at {expansions[1][1][0]}; '
                                     f'keeping original content')
                     src_f_new.write(src_line_content + '\n')
+        os.rename(src_fname, src_fname + '.pre-em')
         os.rename(src_fname_new, src_fname)
 
     # Check that we didn't change the preprocessed output.
     verification_ok = True
     for tu in translation_units:
-        logging.info(f'Verifying preprocessed output of {tu.file}...')
-        i_fname = tu.file + '.i'
-        i_fname_new = i_fname + '.new'
-        preprocess(tu, i_fname_new)
+        logging.info(f'Verifying preprocessor output for {tu.output_realpath}...')
+        preprocess(tu, f'{tu.output_realpath}.post-em.i')
         # `diff` exits nonzero if there is a difference.
-        # XXX Relative paths??
-        returncode = subprocess.call(['diff', '-u', i_fname, i_fname_new])
+        returncode = subprocess.call(['diff', '-u',
+                                      f'{tu.output_realpath}.pre-em.i',
+                                      f'{tu.output_realpath}.post-em.i'])
         if returncode != 0:
             verification_ok = False
     assert verification_ok, 'Verification of preprocessed output failed: see diffs above.'
