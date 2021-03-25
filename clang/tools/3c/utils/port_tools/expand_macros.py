@@ -121,9 +121,12 @@ def expandMacros(opts: ExpandMacrosOptions, compilation_base_dir: str,
                     if line_info.saw_blank_expansion:
                         src_f_new.write('\n')
                     else:
-                        # This line was never reached at all. It probably doesn't
-                        # matter what we put here, but preserve the original content by default.
-                        src_f_new.write(src_line_content + '\n')
+                        # This line number was never reached in the preprocessed output. However,
+                        # we've seen examples where a preprocessed line was logically blank but
+                        # the preprocessor skipped it by emitting a line marker with a later line
+                        # number rather than passing the blank line through. So guess that the
+                        # line is supposed to be blank.
+                        src_f_new.write('\n')
                 elif len(expansions) == 1:
                     # If we also saw a blank expansion, assume that was an #if branch not taken
                     # and keep the non-blank expansion.
