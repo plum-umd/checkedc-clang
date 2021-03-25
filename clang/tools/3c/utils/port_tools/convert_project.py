@@ -85,7 +85,7 @@ def parseTheArg():
                               'header has a multiple inclusion guard, this can be used to prevent '
                               'a subsequent inclusion from defining the macros again.'))
     parser.add_argument('--undef_macro', dest='undef_macros', action='append',
-                        default=['sa_handler', 'toupper'],
+                        default=['sa_handler', 'toupper', 'tolower'],
                         help=('With --expand_macros_before_conversion, #undef the given macro name '
                               'in each translation unit. Can be used to prevent problematic '
                               '(e.g., recursive) macros from being expanded.'))
