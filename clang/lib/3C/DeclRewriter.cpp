@@ -107,7 +107,6 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
     if (Decl *D = std::get<1>(PSLMap[PLoc])) {
       ConstraintVariable *CV = V.second;
       PVConstraint *PV = dyn_cast<PVConstraint>(CV);
-      FVConstraint *FV = dyn_cast<FVConstraint>(CV);
 
       if (PV && PV->anyChanges(Info.getConstraints().getVariables()) &&
           !PV->isPartOfFunctionPrototype()) {
@@ -127,16 +126,6 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
           RewriteThese.insert(new ParmVarDeclReplacement(PD, DS, NewTy));
         else
           llvm_unreachable("Unrecognized declaration type.");
-      } else if (FV && NewFuncSig.find(FV->getName()) != NewFuncSig.end() &&
-                 !TRV->isFunctionVisited(FV->getName())) {
-        auto *FD = cast<FunctionDecl>(D);
-        // TODO: I don't think this branch is ever reached. Either remove it or
-        //       add a test case that reaches it.
-        // If this function already has a modified signature? and it is not
-        // visited by our cast placement visitor then rewrite it.
-        std::string NewSig = NewFuncSig[FV->getName()];
-        RewriteThese.insert(
-            new FunctionDeclReplacement(FD, NewSig, true, true));
       }
     }
   }
