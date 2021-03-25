@@ -68,7 +68,19 @@ def getCheckedCArgs(argument_list):
     # be using that might affect the default preprocessor state. We rely on
     # setting the working directory instead of trying to recognize all paths
     # that might need to be made absolute here.
-    clang_x_args = [arg for arg in argument_list[:-1] if arg != '-c']
+    clang_x_args = []
+    idx = 0
+    while idx < len(argument_list) - 1:
+        arg = argument_list[idx]
+        idx += 1
+        if arg == '-c':
+            continue
+        elif arg == '-o':
+            # Also skip the next argument (the output file name).
+            idx += 1
+            continue
+        else:
+            clang_x_args.append(arg)
     # disable all warnings.
     clang_x_args.append('-w')
     return clang_x_args
