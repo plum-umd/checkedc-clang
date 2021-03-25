@@ -164,20 +164,21 @@ void rewriteSourceRange(Rewriter &R, const CharSourceRange &Range,
   if (!RewriteSuccess) {
     clang::DiagnosticsEngine &DE = R.getSourceMgr().getDiagnostics();
     bool ReportError = ErrFail && !AllowRewriteFailures;
-    unsigned ErrorId = DE.getCustomDiagID(
+    reportCustomDiagnostic(
+        DE,
         ReportError ? DiagnosticsEngine::Error : DiagnosticsEngine::Warning,
         "Unable to rewrite converted source range. Intended rewriting: "
-        "\"%0\"");
-    DE.Report(Range.getBegin(), ErrorId)
+        "\"%0\"",
+        Range.getBegin())
         << R.getSourceMgr().getExpansionRange(Range) << NewText;
     if (ReportError) {
-      unsigned NoteId = DE.getCustomDiagID(
-          DiagnosticsEngine::Note,
+      reportCustomDiagnostic(
+          DE, DiagnosticsEngine::Note,
           "you can use the -allow-rewrite-failures option to temporarily "
-          "downgrade this error to a warning");
-      // If we pass the location here, the macro call stack gets dumped again,
-      // which looks silly.
-      DE.Report(NoteId);
+          "downgrade this error to a warning",
+          // If we pass the location here, the macro call stack gets dumped
+          // again, which looks silly.
+          SourceLocation());
     }
   }
 }
@@ -193,6 +194,9 @@ static void emit(Rewriter &R, ASTContext &C) {
   for (auto Buffer = R.buffer_begin(); Buffer != R.buffer_end(); ++Buffer) {
     if (const FileEntry *FE = SM.getFileEntryForID(Buffer->first)) {
       assert(FE->isValid());
+      // Used for diagnostics related to the file.
+      SourceLocation BeginningOfFileSourceLoc =
+          SM.translateFileLineCol(FE, 1, 1);
 
       DiagnosticsEngine &DE = C.getDiagnostics();
       DiagnosticsEngine::Level UnwritableChangeDiagnosticLevel =
@@ -202,18 +206,18 @@ static void emit(Rewriter &R, ASTContext &C) {
         // With -dump-unwritable-changes and not -allow-unwritable-changes, we
         // want the -allow-unwritable-changes note before the dump.
         if (!DumpUnwritableChanges) {
-          unsigned DumpNoteId = DE.getCustomDiagID(
-              DiagnosticsEngine::Note,
+          reportCustomDiagnostic(
+              DE, DiagnosticsEngine::Note,
               "use the -dump-unwritable-changes option to see the new version "
-              "of the file");
-          DE.Report(DumpNoteId);
+              "of the file",
+              SourceLocation());
         }
         if (!AllowUnwritableChanges) {
-          unsigned AllowNoteId = DE.getCustomDiagID(
-              DiagnosticsEngine::Note,
+          reportCustomDiagnostic(
+              DE, DiagnosticsEngine::Note,
               "you can use the -allow-unwritable-changes option to temporarily "
-              "downgrade this error to a warning");
-          DE.Report(AllowNoteId);
+              "downgrade this error to a warning",
+              SourceLocation());
         }
         if (DumpUnwritableChanges) {
           errs() << "=== Beginning of new version of " << FE->getName()
@@ -236,40 +240,41 @@ static void emit(Rewriter &R, ASTContext &C) {
       std::string FeAbsS = "";
       std::error_code EC = tryGetCanonicalFilePath(ToConv, FeAbsS);
       if (EC) {
-        unsigned ErrorId = DE.getCustomDiagID(
-            UnwritableChangeDiagnosticLevel,
+        reportCustomDiagnostic(
+            DE, UnwritableChangeDiagnosticLevel,
             "3C internal error: not writing the new version of this file due "
-            "to failure to re-canonicalize the file path provided by Clang");
-        DE.Report(SM.translateFileLineCol(FE, 1, 1), ErrorId);
-        unsigned NoteId =
-            DE.getCustomDiagID(DiagnosticsEngine::Note,
-                               "file path from Clang was %0; error was: %1");
-        DE.Report(NoteId) << ToConv << EC.message();
+            "to failure to re-canonicalize the file path provided by Clang",
+            BeginningOfFileSourceLoc);
+        reportCustomDiagnostic(
+            DE, DiagnosticsEngine::Note,
+            "file path from Clang was %0; error was: %1",
+            SourceLocation())
+            << ToConv << EC.message();
         PrintExtraUnwritableChangeInfo();
         continue;
       }
       if (FeAbsS != ToConv) {
-        unsigned ErrorId = DE.getCustomDiagID(
-            UnwritableChangeDiagnosticLevel,
+        reportCustomDiagnostic(
+            DE, UnwritableChangeDiagnosticLevel,
             "3C internal error: not writing the new version of this file "
-            "because the file path provided by Clang was not canonical");
-        DE.Report(SM.translateFileLineCol(FE, 1, 1), ErrorId);
-        unsigned NoteId = DE.getCustomDiagID(
-            DiagnosticsEngine::Note, "file path from Clang was %0; "
-                                     "re-canonicalized file path is %1");
-        DE.Report(NoteId) << ToConv << FeAbsS;
+            "because the file path provided by Clang was not canonical",
+            BeginningOfFileSourceLoc);
+        reportCustomDiagnostic(
+            DE, DiagnosticsEngine::Note,
+            "file path from Clang was %0; re-canonicalized file path is %1",
+            SourceLocation())
+            << ToConv << FeAbsS;
         PrintExtraUnwritableChangeInfo();
         continue;
       }
       if (!canWrite(FeAbsS)) {
-        unsigned ID =
-            DE.getCustomDiagID(UnwritableChangeDiagnosticLevel,
+        reportCustomDiagnostic(DE, UnwritableChangeDiagnosticLevel,
                                "3C internal error: 3C generated changes to "
                                "this file even though it is not allowed to "
                                "write to the file "
                                "(https://github.com/correctcomputation/"
-                               "checkedc-clang/issues/387)");
-        DE.Report(SM.translateFileLineCol(FE, 1, 1), ID);
+                               "checkedc-clang/issues/387)",
+                               BeginningOfFileSourceLoc);
         PrintExtraUnwritableChangeInfo();
         continue;
       }
@@ -280,12 +285,12 @@ static void emit(Rewriter &R, ASTContext &C) {
           Buffer->second.write(outs());
           StdoutModeSawMainFile = true;
         } else {
-          unsigned ID = DE.getCustomDiagID(
-              UnwritableChangeDiagnosticLevel,
+          reportCustomDiagnostic(
+              DE, UnwritableChangeDiagnosticLevel,
               "3C generated changes to this file, which is under the base dir "
               "but is not the main file and thus cannot be written in stdout "
-              "mode");
-          DE.Report(SM.translateFileLineCol(FE, 1, 1), ID);
+              "mode",
+              BeginningOfFileSourceLoc);
           PrintExtraUnwritableChangeInfo();
         }
         continue;
@@ -323,10 +328,11 @@ static void emit(Rewriter &R, ASTContext &C) {
         NFile = std::string(Tmp.str());
         EC = llvm::sys::fs::create_directories(sys::path::parent_path(NFile));
         if (EC) {
-          unsigned ID = DE.getCustomDiagID(
-              DiagnosticsEngine::Error,
-              "failed to create parent directory of output file \"%0\"");
-          DE.Report(SM.translateFileLineCol(FE, 1, 1), ID) << NFile;
+          reportCustomDiagnostic(
+              DE, DiagnosticsEngine::Error,
+              "failed to create parent directory of output file \"%0\"",
+              BeginningOfFileSourceLoc)
+              << NFile;
           continue;
         }
       }
@@ -338,9 +344,10 @@ static void emit(Rewriter &R, ASTContext &C) {
           errs() << "writing out " << NFile << "\n";
         Buffer->second.write(Out);
       } else {
-        unsigned ID = DE.getCustomDiagID(DiagnosticsEngine::Error,
-                                         "failed to write output file \"%0\"");
-        DE.Report(SM.translateFileLineCol(FE, 1, 1), ID) << NFile;
+        reportCustomDiagnostic(DE, DiagnosticsEngine::Error,
+                               "failed to write output file \"%0\"",
+                               BeginningOfFileSourceLoc)
+            << NFile;
         // This is awkward. What to do? Since we're iterating, we could have
         // created other files successfully. Do we go back and erase them? Is
         // that surprising? For now, let's just keep going.
