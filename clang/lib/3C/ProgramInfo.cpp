@@ -582,7 +582,7 @@ ProgramInfo::insertNewFVConstraint(FunctionDecl *FD, FVConstraint *NewC,
   } else if (NewHasBody) {
     NewC->mergeDeclaration(OldC, *this, ReasonFailed);
     (*Map)[FuncName] = NewC;
-  } else { // !NewHasBody
+  } else { // !OldHasBody && !NewHasBody
     // lacking bodies, we favor declared params
     if (OldC->numParams() == 0 && NewC->numParams() != 0) {
       NewC->mergeDeclaration(OldC, *this, ReasonFailed);
