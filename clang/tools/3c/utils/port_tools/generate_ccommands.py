@@ -133,6 +133,7 @@ def run3C(checkedc_bin, extra_3c_args,
 
     translation_units: List[TranslationUnitInfo] = []
     all_files = []
+    absolute_include_dirs = set()
     for i in cmds:
         file_to_add = i['file']
         compiler_path = None  # FIXME
@@ -165,8 +166,12 @@ def run3C(checkedc_bin, extra_3c_args,
             # just remove it, but for the total_x_args, we are left without a
             # good way to deduplicate arguments. So just stop using total_x_args
             # in favor of the compilation database.
-            translation_units.append(TranslationUnitInfo(
-                compiler_path, compiler_x_args, target_directory, file_to_add, output_filename))
+            tu = TranslationUnitInfo(
+                compiler_path, compiler_x_args, target_directory, file_to_add, output_filename)
+            translation_units.append(tu)
+            for arg in compiler_x_args:
+                if arg.startswith('-I'):
+                    absolute_include_dirs.add(tu.realpath(arg[len('-I'):]))
 
     expandMacros(expand_macros_opts, compilation_base_dir, translation_units)
 
@@ -222,6 +227,12 @@ def run3C(checkedc_bin, extra_3c_args,
     args.append('-p')
     args.append(compile_commands_json)
     args.append('-extra-arg=-w')
+    # This is a workaround for a bug in Clang LibTooling that affects the use of
+    # relative paths with -I when different translation units have different
+    # working directories. For details, see
+    # https://github.com/correctcomputation/checkedc-clang/issues/515 .
+    for dir in absolute_include_dirs:
+        args.append('-extra-arg-before=-I' + dir)
     vcodewriter.addClangdArg("-log=verbose")
     vcodewriter.addClangdArg(args[1:])
     args.append('-base-dir="' + compilation_base_dir + '"')
