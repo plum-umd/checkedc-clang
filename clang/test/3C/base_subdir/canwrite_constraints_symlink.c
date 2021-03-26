@@ -30,5 +30,5 @@
 // expected-note@*:* {{-dump-unwritable-changes}}
 // expected-note@*:* {{-allow-unwritable-changes}}
 
-void foo()
+void
 #include "base_subdir_partial_defn.h"

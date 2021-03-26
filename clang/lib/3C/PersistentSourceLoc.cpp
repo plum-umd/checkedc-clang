@@ -61,11 +61,7 @@ PersistentSourceLoc PersistentSourceLoc::mkPSL(clang::SourceRange SR,
     }
   }
   std::string Fn = PL.getFilename();
-  std::string Tmp;
-  getCanonicalFilePath(Fn, Tmp);
-  Fn = Tmp;
 
-#if 0
   // Get the absolute filename of the file.
   FullSourceLoc TFSL(SR.getBegin(), SM);
   if (TFSL.isValid()) {
@@ -81,8 +77,7 @@ PersistentSourceLoc PersistentSourceLoc::mkPSL(clang::SourceRange SR,
     }
     Fn = std::string(sys::path::remove_leading_dotslash(FeAbsS));
   }
-#endif
-  PersistentSourceLoc PSL(Fn, PL.getLine() /*FESL.getExpansionLineNumber()*/,
+  PersistentSourceLoc PSL(Fn, FESL.getExpansionLineNumber(),
                           FESL.getExpansionColumnNumber(), EndCol);
 
   return PSL;
