@@ -119,8 +119,34 @@ def expandMacros(opts: ExpandMacrosOptions, compilation_base_dir: str,
                         logging.warning(
                             f'{src_loc}: in a preprocessor directive but had a non-blank expansion: '
                             f'{repr(expansions[0][0])} at {expansions[0][1][0]}')
-                    # Pass the directive through.
-                    src_f_new.write(src_line_content + '\n')
+                    # Pass the directive through, but not the portion of any
+                    # comment that starts later on the line. libtiff has code like this:
+                    #
+                    # #define FOO 1   /* first line of comment
+                    #                    second line of comment */
+                    #
+                    # The preprocessor will blank the whole thing. If we kept the entire
+                    # #define line but let the second line get blanked as usual, we'd
+                    # end up with an unterminated comment.
+                    #
+                    # HOWEVER, before we do this, try to remove /*...*/ comments within
+                    # the directive itself. In this case (also seen in libtiff):
+                    #
+                    # #define FOO /* blah */ one_line_of_code; \
+                    #                        another_line_of_code;
+                    #
+                    # if we didn't remove /* blah */ first, then we would remove everything
+                    # starting from the /* through the line continuation backslash, which
+                    # would break things badly.
+                    #
+                    # XXX: This will break if // or /* appears inside a string literal and
+                    # maybe some other obscure cases. Rely on the final verification.
+                    directive_content = re.sub('/\*.*?\*/', '', src_line_content)
+                    directive_content = re.sub('/[/*].*', '', directive_content)
+                    src_f_new.write(directive_content + '\n')
+                    # Preprocessor directives can be continued onto the next line with a backslash.
+                    # XXX: This doesn't interact properly with the above comment stripping.
+                    # Again, if this case comes up, the verification will catch it.
                     if not re.search(r'\\\s*$', src_line_content):
                         in_preprocessor_directive = False
                 elif len(expansions) == 0:
