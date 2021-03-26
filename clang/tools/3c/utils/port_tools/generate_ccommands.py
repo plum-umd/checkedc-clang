@@ -86,7 +86,8 @@ def getCheckedCArgs(argument_list):
             continue
         else:
             clang_x_args.append(arg)
-    # disable all warnings.
+    # Disable all Clang warnings. Generally, we don't want to do anything about
+    # them and they are just distracting.
     clang_x_args.append('-w')
     return (clang_x_args, output_filename)
 
@@ -189,6 +190,8 @@ def run3C(checkedc_bin, extra_3c_args,
         # options from the compilation database.
         args.append('-p')
         args.append(compile_commands_json)
+        # ...but we need to add -w, as in getCheckedCArgs.
+        args.append('-extra-arg=-w')
         args.append('-base-dir="' + compilation_base_dir + '"')
         args.append('-output-dir="' + compilation_base_dir + '/out.checked"')
         args.append(tu.input_filename)
@@ -218,6 +221,7 @@ def run3C(checkedc_bin, extra_3c_args,
     args.extend(extra_3c_args)
     args.append('-p')
     args.append(compile_commands_json)
+    args.append('-extra-arg=-w')
     vcodewriter.addClangdArg("-log=verbose")
     vcodewriter.addClangdArg(args[1:])
     args.append('-base-dir="' + compilation_base_dir + '"')
