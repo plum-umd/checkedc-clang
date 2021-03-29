@@ -678,6 +678,7 @@ std::string PointerVariableConstraint::mkString(Constraints &CS,
                                                 std::string UseName) const {
   if (UseName.empty())
     UseName = getName();
+
   if (IsTypedef && !UnmaskTypedef) {
     return gatherQualStrings() + TypedefString +
            (EmitName && UseName != RETVAR ? (" " + UseName) : " ");

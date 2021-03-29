@@ -657,8 +657,11 @@ void FunctionDeclBuilder::buildItypeDecl(PVConstraint *Defn,
   Type = Defn->getRewritableOriginalTy();
   if (isa_and_nonnull<ParmVarDecl>(Decl))
     Type += Decl->getQualifiedNameAsString();
-  else
-    Type += Defn->getName();
+  else {
+    std::string Name = Defn->getName();
+    if (Name != RETVAR)
+      Type += Name;
+  }
   IType = " : itype(" +
           Defn->mkString(Info.getConstraints(), false, true) +
           ")" + ABRewriter.getBoundsString(Defn, Decl, true);
