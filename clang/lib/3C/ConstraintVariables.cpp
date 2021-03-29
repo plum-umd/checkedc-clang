@@ -85,6 +85,38 @@ PointerVariableConstraint::getNamedNonPtrPVConstraint(StringRef Name,
                           "");
 }
 
+PointerVariableConstraint *
+PointerVariableConstraint::derefPVConstraint(PointerVariableConstraint *PVC) {
+  std::vector<Atom *> Vars = PVC->Vars;
+  assert(!PVC->Vars.empty());
+  Vars.erase(Vars.begin());
+  return new PointerVariableConstraint(Vars, PVC->getTy(), PVC->getName(),
+                                       PVC->getFV(), PVC->getArrPresent(),
+                                       PVC->getItype());
+}
+
+PointerVariableConstraint *
+PointerVariableConstraint::addAtomPVConstraint(PointerVariableConstraint *PVC,
+                                               ConstAtom *PtrTyp,
+                                               Constraints &CS) {
+  VarAtom *NewA = CS.getFreshVar("&" + PVC->Name, VarAtom::V_Other);
+  CS.addConstraint(CS.createGeq(NewA, PtrTyp, false));
+  std::vector<Atom*> Vars = PVC->Vars;
+  if (!Vars.empty()) {
+    if (auto *VA = dyn_cast<VarAtom>(*Vars.begin())) {
+      // If PVC is already a pointer, add implication forcing outermost one to be
+      // wild if this added one is.
+      auto *Prem = CS.createGeq(NewA, CS.getWild());
+      auto *Conc = CS.createGeq(VA, CS.getWild());
+      CS.addConstraint(CS.createImplies(Prem, Conc));
+    }
+  }
+
+  Vars.insert(Vars.begin(), NewA);
+  return new PointerVariableConstraint(Vars, PVC->BaseType, PVC->Name, PVC->FV,
+                                       PVC->ArrPresent, PVC->ItypeStr);
+}
+
 PointerVariableConstraint::PointerVariableConstraint(
     PointerVariableConstraint *Ot, Constraints &CS)
     : ConstraintVariable(ConstraintVariable::PointerVariable, Ot->OriginalType,
@@ -128,6 +160,11 @@ PointerVariableConstraint::PointerVariableConstraint(TypedefDecl *D,
   : PointerVariableConstraint(D->getUnderlyingType(), nullptr,
                               D->getNameAsString(), I, C, nullptr, -1,
                               false, D->getTypeSourceInfo()) {}
+
+PointerVariableConstraint::PointerVariableConstraint(Expr *E, ProgramInfo &I,
+                                                     const ASTContext &C)
+  : PointerVariableConstraint(E->getType(), nullptr, E->getStmtClassName(), I,
+                              C, nullptr) {}
 
 // Simple recursive visitor for determining if a type contains a typedef
 // entrypoint is find().

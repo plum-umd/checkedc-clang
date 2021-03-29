@@ -213,6 +213,13 @@ public:
   static PointerVariableConstraint *getNamedNonPtrPVConstraint(StringRef Name,
                                                                Constraints &CS);
 
+  static PointerVariableConstraint *
+  addAtomPVConstraint(PointerVariableConstraint *PVC, ConstAtom *PtrTyp,
+                      Constraints &CS);
+
+  static PointerVariableConstraint *
+  derefPVConstraint(PointerVariableConstraint *PVC);
+
 private:
   std::string BaseType;
   CAtoms Vars;
@@ -299,7 +306,6 @@ private:
   // Is this a pointer to void? Possibly with multiple levels of indirection.
   bool IsVoidPtr;
 
-public:
   // Constructor for when we know a CVars and a type string.
   PointerVariableConstraint(CAtoms V, std::string T, std::string Name,
                             FunctionVariableConstraint *F, bool IsArr,
@@ -309,6 +315,8 @@ public:
         ItypeStr(Is), PartOfFuncPrototype(false), Parent(nullptr),
         BoundsAnnotationStr(""), GenericIndex(Generic), IsZeroWidthArray(false),
         IsVoidPtr(false) {}
+
+public:
 
   std::string getTy() const { return BaseType; }
   bool getArrPresent() const { return ArrPresent; }
@@ -358,6 +366,8 @@ public:
   PointerVariableConstraint(clang::DeclaratorDecl *D, ProgramInfo &I,
                             const clang::ASTContext &C);
   PointerVariableConstraint(clang::TypedefDecl *D, ProgramInfo &I,
+                            const clang::ASTContext &C);
+  PointerVariableConstraint(clang::Expr *E, ProgramInfo &I,
                             const clang::ASTContext &C);
 
   // QT: Defines the type for the constraint variable. One atom is added for
