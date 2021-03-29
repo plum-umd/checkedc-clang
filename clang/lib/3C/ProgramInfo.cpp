@@ -472,13 +472,22 @@ bool ProgramInfo::link() {
       std::string Rsn =
           "Unchecked pointer in parameter or return of external function " +
           FuncName;
-      G->getInternalReturn()->constrainToWild(CS, Rsn);
-      if (!G->getExternalReturn()->getIsGeneric())
-        G->getExternalReturn()->constrainToWild(CS, Rsn);
+      const FVComponentVariable *Ret = G->getCombineReturn();
+      Ret->getInternal()->constrainToWild(CS, Rsn);
+      if (Ret->getExternal()->srcHasItype()) {
+        Ret->getExternal()->equateWithItype(CS);
+        Ret->getInternal()->equateWithItype(CS);
+      } else if (!Ret->getExternal()->getIsGeneric())
+          Ret->getExternal()->constrainToWild(CS, Rsn);
+
       for (unsigned I = 0; I < G->numParams(); I++) {
-        G->getInternalParam(I)->constrainToWild(CS, Rsn);
-        if (!G->getExternalParam(I)->getIsGeneric())
-          G->getExternalParam(I)->constrainToWild(CS, Rsn);
+        const FVComponentVariable *Param = G->getCombineParam(I);
+        Param->getInternal()->constrainToWild(CS, Rsn);
+        if (Param->getExternal()->srcHasItype()) {
+          Param->getExternal()->equateWithItype(CS);
+          Param->getInternal()->equateWithItype(CS);
+        } else if (!Param->getExternal()->getIsGeneric())
+          Param->getExternal()->constrainToWild(CS, Rsn);
       }
     }
   }

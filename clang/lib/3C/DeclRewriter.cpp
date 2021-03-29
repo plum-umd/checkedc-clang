@@ -711,6 +711,8 @@ void FunctionDeclBuilder::buildDeclVar(const FVComponentVariable *CV,
   ParmVarDecl *PVD = dyn_cast<ParmVarDecl>(Decl);
   if (PVD) {
     SourceRange Range = PVD->getSourceRange();
+    if (PVD->hasBoundsExpr())
+      Range.setEnd(PVD->getBoundsExpr()->getEndLoc());
     if (Range.isValid() && !inParamMultiDecl(PVD) ) {
       Type = getSourceText(Range, *Context);
       if (!Type.empty()) {

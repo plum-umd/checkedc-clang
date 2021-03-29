@@ -22,23 +22,14 @@ bool CastPlacementVisitor::VisitCallExpr(CallExpr *CE) {
   Decl *CalleeDecl = CE->getCalleeDecl();
   FunctionDecl *FD = dyn_cast_or_null<FunctionDecl>(CalleeDecl);
 
-  // Find a FVConstraint for this call. If there is more than one, then they
-  // will have been unified during constraint generation, so we can use any of
-  // them.
-  FVConstraint *FV = nullptr;
-  for (auto *CV : CR.getCalleeConstraintVars(CE)) {
-    if (isa<FVConstraint>(CV))
-      FV = cast<FVConstraint>(CV);
-    else if (isa<PVConstraint>(CV) && cast<PVConstraint>(CV)->getFV())
-      FV = cast<PVConstraint>(CV)->getFV();
-    if (FV)
-      break;
-  }
+  FVConstraint *FV = getCallFVConstraint(CE);
+  if (FV == nullptr)
+    return true;
 
   // Note: I'm not entirely sure that this will always hold. The previous
   // implementation just returned early if FV was null, but I don't think that
   // can ever actually happen.
-  assert("Could not find function constraint variable!" && FV != nullptr);
+  // assert("Could not find function constraint variable!" && FV != nullptr);
 
   // Now we need to check the type of the arguments and corresponding
   // parameters to see if any explicit casting is needed.
@@ -125,6 +116,22 @@ CastPlacementVisitor::CastNeeded CastPlacementVisitor::needCasting(
     return CAST_TO_CHECKED;
 
   return CAST_TO_WILD;
+}
+
+// Find a FVConstraint for this call. If there is more than one, then they
+// will have been unified during constraint generation, so we can use any of
+// them.
+FVConstraint *CastPlacementVisitor::getCallFVConstraint(CallExpr *CE) {
+  for (auto *CV : CR.getCalleeConstraintVars(CE)) {
+    FVConstraint *FV = nullptr;
+    if (isa<FVConstraint>(CV))
+      FV = cast<FVConstraint>(CV);
+    else if (isa<PVConstraint>(CV) && cast<PVConstraint>(CV)->getFV())
+      FV = cast<PVConstraint>(CV)->getFV();
+    if (FV && !isFunctionAllocator(FV->getName()))
+      return FV;
+  }
+  return nullptr;
 }
 
 // Get the string representation of the cast required for the call. The return

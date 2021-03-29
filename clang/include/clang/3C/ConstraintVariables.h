@@ -223,6 +223,7 @@ public:
 private:
   std::string BaseType;
   CAtoms Vars;
+  std::vector<ConstAtom *> SrcVars;
   FunctionVariableConstraint *FV;
   std::map<uint32_t, std::set<Qualification>> QualMap;
   enum OriginalArrType { O_Pointer, O_SizedArray, O_UnSizedArray };
@@ -307,11 +308,12 @@ private:
   bool IsVoidPtr;
 
   // Constructor for when we know a CVars and a type string.
-  PointerVariableConstraint(CAtoms V, std::string T, std::string Name,
+  PointerVariableConstraint(CAtoms V, std::vector<ConstAtom *> SV,
+                            std::string T, std::string Name,
                             FunctionVariableConstraint *F, bool IsArr,
                             std::string Is, int Generic = -1)
       : ConstraintVariable(PointerVariable, "" /*not used*/, Name), BaseType(T),
-        Vars(V), FV(F), ArrPresent(IsArr), SrcHasItype(!Is.empty()),
+        Vars(V), SrcVars(SV), FV(F), ArrPresent(IsArr), SrcHasItype(!Is.empty()),
         ItypeStr(Is), PartOfFuncPrototype(false), Parent(nullptr),
         BoundsAnnotationStr(""), GenericIndex(Generic), IsZeroWidthArray(false),
         IsVoidPtr(false) {}
@@ -445,6 +447,8 @@ public:
   Atom *getAtom(unsigned int AtomIdx, Constraints &CS);
 
   ~PointerVariableConstraint() override{};
+
+  void equateWithItype(Constraints &CS);
 };
 
 typedef PointerVariableConstraint PVConstraint;
