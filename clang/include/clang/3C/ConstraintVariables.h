@@ -86,7 +86,8 @@ public:
   // to be used inside an itype.
   virtual std::string mkString(Constraints &CS, bool EmitName = true,
                                bool ForItype = false, bool EmitPointee = false,
-                               bool UnmaskTypedef = false) const = 0;
+                               bool UnmaskTypedef = false,
+                               std::string UseName = "") const = 0;
 
   // Debug printing of the constraint variable.
   virtual void print(llvm::raw_ostream &O) const = 0;
@@ -401,7 +402,8 @@ public:
 
   std::string mkString(Constraints &CS, bool EmitName = true,
                        bool ForItype = false, bool EmitPointee = false,
-                       bool UnmaskTypedef = false) const override;
+                       bool UnmaskTypedef = false,
+                       std::string UseName = "") const override;
 
   FunctionVariableConstraint *getFV() const { return FV; }
 
@@ -577,7 +579,8 @@ public:
 
   std::string mkString(Constraints &CS, bool EmitName = true,
                        bool ForItype = false, bool EmitPointee = false,
-                       bool UnmaskTypedef = false) const override;
+                       bool UnmaskTypedef = false,
+                       std::string UseName = "") const override;
   void print(llvm::raw_ostream &O) const override;
   void dump() const override { print(llvm::errs()); }
   void dumpJson(llvm::raw_ostream &O) const override;

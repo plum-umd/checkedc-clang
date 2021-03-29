@@ -674,10 +674,13 @@ std::string PointerVariableConstraint::gatherQualStrings(void) const {
 std::string PointerVariableConstraint::mkString(Constraints &CS,
                                                 bool EmitName, bool ForItype,
                                                 bool EmitPointee,
-                                                bool UnmaskTypedef) const {
+                                                bool UnmaskTypedef,
+                                                std::string UseName) const {
+  if (UseName.empty())
+    UseName = getName();
   if (IsTypedef && !UnmaskTypedef) {
     return gatherQualStrings() + TypedefString +
-           (EmitName && getName() != RETVAR ? (" " + getName()) : " ");
+           (EmitName && UseName != RETVAR ? (" " + UseName) : " ");
   }
 
   std::ostringstream Ss;
@@ -699,7 +702,7 @@ std::string PointerVariableConstraint::mkString(Constraints &CS,
   bool AllArrays = true;
   // Are we in a sequence of arrays
   bool ArrayRun = false;
-  if (!EmitName || getName() == RETVAR)
+  if (!EmitName || UseName == RETVAR)
     EmittedName = true;
   uint32_t TypeIdx = 0;
 
@@ -736,7 +739,7 @@ std::string PointerVariableConstraint::mkString(Constraints &CS,
     if (PrevArr && ArrSizes.at(TypeIdx).first != O_SizedArray && !EmittedName) {
       EmittedName = true;
       addArrayAnnotations(CheckedArrs, EndStrs);
-      EndStrs.push_front(" " + getName());
+      EndStrs.push_front(" " + UseName);
     }
     PrevArr = ((K == Atom::A_Arr || K == Atom::A_NTArr) && ArrPresent &&
                ArrSizes.at(TypeIdx).first == O_SizedArray);
@@ -828,7 +831,7 @@ std::string PointerVariableConstraint::mkString(Constraints &CS,
   // the the stack array type.
   if (PrevArr && !EmittedName && AllArrays) {
     EmittedName = true;
-    EndStrs.push_front(" " + getName());
+    EndStrs.push_front(" " + UseName);
   }
 
   if (!EmittedBase) {
@@ -853,7 +856,7 @@ std::string PointerVariableConstraint::mkString(Constraints &CS,
 
   // No space after itype.
   if (!EmittedName)
-    Ss << " " << getName();
+    Ss << " " << UseName;
 
   // Final array dropping.
   if (!CheckedArrs.empty()) {
@@ -864,7 +867,7 @@ std::string PointerVariableConstraint::mkString(Constraints &CS,
   }
 
   // TODO Remove comparison to RETVAR.
-  if (getName() == RETVAR && !ForItype)
+  if (UseName == RETVAR && !ForItype)
     Ss << " ";
 
   return Ss.str();
@@ -1439,12 +1442,15 @@ bool FunctionVariableConstraint::solutionEqualTo(Constraints &CS,
 std::string FunctionVariableConstraint::mkString(Constraints &CS,
                                                  bool EmitName, bool ForItype,
                                                  bool EmitPointee,
-                                                 bool UnmaskTypedef) const {
+                                                 bool UnmaskTypedef,
+                                                 std::string UseName) const {
+  if (UseName.empty())
+    UseName = Name;
   std::string Ret = ReturnVar.mkTypeStr(CS, false);
   std::string Itype = ReturnVar.mkItypeStr(CS);
   // This is done to rewrite the typedef of a function proto
   if (UnmaskTypedef && EmitName)
-    Ret += Name;
+    Ret += UseName;
   Ret = Ret + "(";
   std::vector<std::string> ParmStrs;
   for (const auto &I : this->ParamVars)
