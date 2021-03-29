@@ -655,9 +655,12 @@ void FunctionDeclBuilder::buildItypeDecl(PVConstraint *Defn,
                                          std::string &Type, std::string &IType,
                                          bool &RewriteParm, bool &RewriteRet) {
   Type = Defn->getRewritableOriginalTy();
-  if (isa_and_nonnull<ParmVarDecl>(Decl))
-    Type += Decl->getQualifiedNameAsString();
-  else {
+  if (isa_and_nonnull<ParmVarDecl>(Decl)) {
+    if (Decl->getName() == "")
+      Type += Defn->getName();
+    else
+      Type += Decl->getQualifiedNameAsString();
+  } else {
     std::string Name = Defn->getName();
     if (Name != RETVAR)
       Type += Name;
@@ -690,7 +693,7 @@ void FunctionDeclBuilder::buildDeclVar(const FVComponentVariable *CV,
 
   // Variables that do not need to be rewritten fall through to here.
   ParmVarDecl *PVD = dyn_cast_or_null<ParmVarDecl>(Decl);
-  if (PVD) {
+  if (PVD && !PVD->getName().empty()) {
     Type = PVD->getTypeSourceInfo()->getType().getAsString()
            + " " + PVD->getQualifiedNameAsString();
     IType = getExistingIType(CV->getExternal());
