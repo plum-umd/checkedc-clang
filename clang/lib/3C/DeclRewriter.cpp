@@ -694,13 +694,23 @@ void FunctionDeclBuilder::buildDeclVar(const FVComponentVariable *CV,
   // Variables that do not need to be rewritten fall through to here.
   ParmVarDecl *PVD = dyn_cast_or_null<ParmVarDecl>(Decl);
   if (PVD && !PVD->getName().empty()) {
-    Type = PVD->getTypeSourceInfo()->getType().getAsString()
-           + " " + PVD->getQualifiedNameAsString();
-    IType = getExistingIType(CV->getExternal());
+    SourceRange Range = PVD->getSourceRange();
+    if (Range.isValid() && !inParamMultiDecl(PVD) ) {
+      Type = getSourceText(Range, *Context);
+      if (!Type.empty()) {
+      // Great, we got the original source including any itype and bounds.
+        IType = "";
+        return;
+      }
+    }
+    // Otherwise, reconstruct the name and type, and reuse the code below for
+    // the itype and bounds.
+    // TODO: Do we care about `register` or anything else this doesn't handle?
+    Type = qtyToStr(PVD->getOriginalType(), PVD->getNameAsString());
   } else {
-    Type = CV->mkTypeStr(Info.getConstraints(),false);
-    IType = CV->mkItypeStr(Info.getConstraints());
+    Type = CV->mkTypeStr(Info.getConstraints(),true,UseName);
   }
+  IType = getExistingIType(CV->getExternal());
   IType += ABRewriter.getBoundsString(CV->getExternal(), Decl, !IType.empty());
 }
 

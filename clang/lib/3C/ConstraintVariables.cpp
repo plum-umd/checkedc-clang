@@ -1920,9 +1920,13 @@ FVComponentVariable::mkString(Constraints &CS) const {
 }
 
 std::string
-FVComponentVariable::mkTypeStr(Constraints &CS, bool EmitName) const {
+FVComponentVariable::mkTypeStr(Constraints &CS, bool EmitName,
+                               std::string UseName) const {
   if (hasCheckedSolution(CS))
     return ExternalConstraint->mkString(CS, EmitName);
+  if (!UseName.empty())
+    return ExternalConstraint->mkString(CS, true, false,
+                                        false, false, UseName);
   if (!SourceDeclaration.empty())
     return SourceDeclaration;
   return ExternalConstraint->getRewritableOriginalTy();

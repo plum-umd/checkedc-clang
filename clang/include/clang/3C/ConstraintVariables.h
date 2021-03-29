@@ -475,7 +475,8 @@ public:
   void mergeDeclaration(FVComponentVariable *From, ProgramInfo &I,
                         std::string &ReasonFailed);
   std::string mkItypeStr(Constraints &CS) const;
-  std::string mkTypeStr(Constraints &CS, bool EmitName) const;
+  std::string mkTypeStr(Constraints &CS, bool EmitName,
+                        std::string UseName = "") const;
   std::string mkString(Constraints &CS) const;
 
   bool hasItypeSolution(Constraints &CS) const;
