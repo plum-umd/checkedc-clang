@@ -397,7 +397,8 @@ public:
                             std::string *InFunc = nullptr,
                             int ForceGenericIndex = -1,
                             bool VarAtomForChecked = false,
-                            TypeSourceInfo *TSI = nullptr);
+                            TypeSourceInfo *TSI = nullptr,
+                            const clang::QualType &ItypeT = QualType());
 
   const CAtoms &getCvars() const { return Vars; }
 
@@ -478,9 +479,11 @@ public:
       SourceDeclaration("") {}
 
   FVComponentVariable(FVComponentVariable *Ot, Constraints &CS);
-  FVComponentVariable(const clang::QualType &QT, clang::DeclaratorDecl *D,
-                      std::string N, ProgramInfo &I, const clang::ASTContext &C,
-                      std::string *InFunc, bool HasItype);
+
+  FVComponentVariable(const clang::QualType &QT, const clang::QualType &ITypeT,
+                      clang::DeclaratorDecl *D, std::string N, ProgramInfo &I,
+                      const clang::ASTContext &C, std::string *InFunc,
+                      bool HasItype);
 
   void mergeDeclaration(FVComponentVariable *From, ProgramInfo &I,
                         std::string &ReasonFailed);

@@ -211,7 +211,7 @@ private:
 PointerVariableConstraint::PointerVariableConstraint(
     const QualType &QT, DeclaratorDecl *D, std::string N, ProgramInfo &I,
     const ASTContext &C, std::string *InFunc, int ForceGenericIndex,
-    bool VarAtomForChecked, TypeSourceInfo *TSInfo)
+    bool VarAtomForChecked, TypeSourceInfo *TSInfo, const QualType &ITypeT)
     : ConstraintVariable(ConstraintVariable::PointerVariable,
                          tyToStr(QT.getTypePtr()), N),
       FV(nullptr), SrcHasItype(false), PartOfFuncPrototype(InFunc != nullptr),
@@ -293,6 +293,11 @@ PointerVariableConstraint::PointerVariableConstraint(
         }
       }
     }
+  }
+  if (!SrcHasItype && !ITypeT.isNull()) {
+    QTy = ITypeT;
+    Ty = QTy.getTypePtr();
+    SrcHasItype = true;
   }
 
   // At this point `QTy`/`Ty` hold the computed type (and `QT` still holds the
@@ -974,7 +979,7 @@ FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
                                                        TypeSourceInfo *TSInfo)
     : ConstraintVariable(ConstraintVariable::FunctionVariable, tyToStr(Ty), N),
       Parent(nullptr) {
-  QualType RT;
+  QualType RT, RTIType;
   Hasproto = false;
   Hasbody = false;
   FileName = "";
@@ -1015,12 +1020,10 @@ FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
     // itype, then use the itype as the return type. This is so that we don't
     // drop itype annotation on function pointer return types.
     // TODO: record the itype and pass it into the PVConstraint constructor
-    ReturnHasItype = FT->getReturnAnnots().getInteropTypeExpr();
     RT = FT->getReturnType();
-    //if (!FD && ReturnHasItype)
-    //  RT = FT->getReturnAnnots().getInteropTypeExpr()->getType();
-    //else
-    //  RT = FT->getReturnType();
+    ReturnHasItype = FT->getReturnAnnots().getInteropTypeExpr();
+    if (ReturnHasItype)
+      RTIType = FT->getReturnAnnots().getInteropTypeExpr()->getType();
 
     FunctionTypeLoc FTL;
     if (TSInfo != nullptr)
@@ -1036,11 +1039,10 @@ FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
       // were the parameter's primary type.
       // TODO: also record itype here
       QualType QT = FT->getParamType(J);
+      QualType ITypeT;
       bool ParamHasItype = FT->getParamAnnots(J).getInteropTypeExpr();
-      //if (!FD && ParamHasItype)
-      //  QT = FT->getParamAnnots(J).getInteropTypeExpr()->getType();
-      //else
-      //  QT = FT->getParamType(J);
+      if (ParamHasItype)
+        ITypeT = FT->getParamAnnots(J).getInteropTypeExpr()->getType();
 
       DeclaratorDecl *ParmVD = nullptr;
       if (FD && J < FD->getNumParams())
@@ -1050,7 +1052,7 @@ FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
       std::string PName = ParmVD ? ParmVD->getName().str() : "";
 
       auto ParamVar =
-          FVComponentVariable(QT, ParmVD, PName, I, Ctx, &N, ParamHasItype);
+          FVComponentVariable(QT, ITypeT, ParmVD, PName, I, Ctx, &N, ParamHasItype);
       int GenericIdx = ParamVar.ExternalConstraint->getGenericIndex();
       if (GenericIdx >= 0)
         TypeParams = std::max(TypeParams, GenericIdx + 1);
@@ -1067,7 +1069,7 @@ FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
   }
 
   // ConstraintVariable for the return.
-  ReturnVar = FVComponentVariable(RT, D, RETVAR, I, Ctx, &N, ReturnHasItype);
+  ReturnVar = FVComponentVariable(RT, RTIType, D, RETVAR, I, Ctx, &N, ReturnHasItype);
   int GenericIdx = ReturnVar.ExternalConstraint->getGenericIndex();
   if (GenericIdx >= 0)
     TypeParams = std::max(TypeParams, GenericIdx + 1);
@@ -1988,17 +1990,20 @@ bool FVComponentVariable::hasItypeSolution(Constraints &CS) const {
 }
 
 FVComponentVariable::FVComponentVariable(const QualType &QT,
+                                         const QualType &ITypeT,
                                          clang::DeclaratorDecl *D,
                                          std::string N, ProgramInfo &I,
                                          const ASTContext &C,
                                          std::string *InFunc, bool HasItype) {
-  ExternalConstraint = new PVConstraint(QT, D, N, I, C, InFunc, -1, HasItype);
+  ExternalConstraint = new PVConstraint(QT, D, N, I, C, InFunc, -1, HasItype,
+                                        nullptr, ITypeT);
   if ((QT->isVoidPointerType() || QT->isFunctionPointerType()) && !HasItype) {
     // For void pointers and function pointers, internal and external would need
     // to be equated, so can we avoid allocating extra constraints.
     InternalConstraint = ExternalConstraint;
   } else {
-    InternalConstraint = new PVConstraint(QT, D, N, I, C, InFunc, -1, HasItype);
+    InternalConstraint = new PVConstraint(QT, D, N, I, C, InFunc, -1, HasItype,
+                                          nullptr, ITypeT);
     Constraints &CS = I.getConstraints();
     for (unsigned J = 0; J < InternalConstraint->getCvars().size(); J++) {
       Atom *InternalA = InternalConstraint->getCvars()[J];
