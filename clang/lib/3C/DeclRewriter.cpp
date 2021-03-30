@@ -39,12 +39,12 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
 
   FunctionDeclBuilder *TRV = nullptr;
 #ifdef FIVE_C
-  auto TRV5C = FunctionDeclBuilder5C(&Context, Info, RewriteThese, NewFuncSig,
+  auto TRV5C = FunctionDeclBuilder5C(&Context, Info, RewriteThese,
                                      ABRewriter);
   TRV = &TRV5C;
 #else
   auto TRV3C =
-      FunctionDeclBuilder(&Context, Info, RewriteThese, NewFuncSig, ABRewriter);
+      FunctionDeclBuilder(&Context, Info, RewriteThese, ABRewriter);
   TRV = &TRV3C;
 #endif
   StructVariableInitializer SVI =
@@ -508,10 +508,6 @@ void DeclRewriter::getDeclsOnSameLine(DeclReplacement *N,
                D0->getEndLoc(), D1->getEndLoc());
          }));
 }
-
-// Note: This is variable declared static in the header file in order to pass
-// information between different invocations on different translation units.
-std::map<std::string, std::string> DeclRewriter::NewFuncSig;
 
 // This function checks how to re-write a function declaration.
 bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {

@@ -577,22 +577,14 @@ ProgramInfo::insertNewFVConstraint(FunctionDecl *FD, FVConstraint *NewC,
   bool OldHasBody = OldC->hasBody();
   std::string ReasonFailed = "";
 
-  if (OldHasBody && NewHasBody) {
-    // two bodies, favor the greater number of params
-    if (OldC->numParams() < NewC->numParams()) {
-      NewC->mergeDeclaration(OldC, *this, ReasonFailed);
-      (*Map)[FuncName] = NewC;
-    } else {
-      OldC->mergeDeclaration(NewC, *this, ReasonFailed);
-    }
-  } else if (OldHasBody && !NewHasBody) {
+  if (OldHasBody && !NewHasBody) {
     OldC->mergeDeclaration(NewC, *this, ReasonFailed);
-  } else if (NewHasBody) { // && !OldHasBody
+  } else if (NewHasBody && !OldHasBody) {
     NewC->mergeDeclaration(OldC, *this, ReasonFailed);
     (*Map)[FuncName] = NewC;
-  } else { // !OldHasBody && !NewHasBody
-    // lacking bodies, we favor declared params
-    if (OldC->numParams() == 0 && NewC->numParams() != 0) {
+  } else {
+    // same number of bodies, we favor declared params
+    if (OldC->numParams() < NewC->numParams()) {
       NewC->mergeDeclaration(OldC, *this, ReasonFailed);
       (*Map)[FuncName] = NewC;
     } else {
