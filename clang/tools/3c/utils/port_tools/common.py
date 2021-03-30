@@ -9,6 +9,7 @@ import os
 # process that uses this code.
 realpath_cached = functools.lru_cache(maxsize=None)(os.path.realpath)
 
+
 class TranslationUnitInfo(NamedTuple):
     compiler_path: str
     # Any file paths in compiler_args (-I, etc.), input_filename, and

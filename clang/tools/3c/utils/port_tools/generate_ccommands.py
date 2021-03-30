@@ -78,12 +78,12 @@ def getCheckedCArgs(argument_list):
         arg = argument_list[idx]
         idx += 1
         if arg == '-c':
-            continue
+            pass
         elif arg == '-o':
-            # Remove the output filename from the argument list and save it separately.
+            # Remove the output filename from the argument list and save it
+            # separately.
             output_filename = argument_list[idx]
             idx += 1
-            continue
         else:
             clang_x_args.append(arg)
     # Disable all Clang warnings. Generally, we don't want to do anything about
@@ -136,7 +136,7 @@ def run3C(checkedc_bin, extra_3c_args,
     absolute_include_dirs = set()
     for i in cmds:
         file_to_add = i['file']
-        compiler_path = None  # FIXME
+        compiler_path = None  # XXX Clean this up
         compiler_x_args = []
         output_filename = None
         target_directory = ""
@@ -161,13 +161,9 @@ def run3C(checkedc_bin, extra_3c_args,
                 matched = True
         if not matched:
             all_files.append(file_to_add)
-            # We can't use frozenset any more because it affects the order of
-            # multi-argument sequences such as `-idirafter foo`. Here we can
-            # just remove it, but for the total_x_args, we are left without a
-            # good way to deduplicate arguments. So just stop using total_x_args
-            # in favor of the compilation database.
-            tu = TranslationUnitInfo(
-                compiler_path, compiler_x_args, target_directory, file_to_add, output_filename)
+            tu = TranslationUnitInfo(compiler_path, compiler_x_args,
+                                     target_directory, file_to_add,
+                                     output_filename)
             translation_units.append(tu)
             for arg in compiler_x_args:
                 if arg.startswith('-I'):
