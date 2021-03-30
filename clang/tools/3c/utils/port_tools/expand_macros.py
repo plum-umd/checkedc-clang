@@ -25,9 +25,10 @@
 #
 # We ran into various special cases for which we have implemented workarounds.
 # There are probably more special cases that we haven't seen yet. To ensure we
-# detect any problems, we verify that the _original_ preprocessor output for
-# each translation unit (not using options specific to this module such as
-# `undef_macros`) is identical before and after our edits.
+# detect any problems, we verify that the preprocessor output for each
+# translation unit using the _original_ compiler options (not using options
+# specific to this module such as `undef_macros`) is identical before and after
+# our edits.
 
 from typing import List, NamedTuple, Dict
 import collections
@@ -39,7 +40,7 @@ from common import TranslationUnitInfo, realpath_cached
 
 
 class ExpandMacrosOptions(NamedTuple):
-    # If `enable` is false, the other options don't matter.
+    # If `enable` is false, the other options aren't used.
     enable: bool
     includes_before_undefs: List[str]
     undef_macros: List[str]
