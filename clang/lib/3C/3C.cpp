@@ -85,17 +85,6 @@ ArgumentsAdjuster getIgnoreCheckedPointerAdjuster() {
     return AdjustedArgs;
   };
 }
-ArgumentsAdjuster addVerifyAdjuster() {
-  return [](const CommandLineArguments &Args, StringRef /*unused*/) {
-    CommandLineArguments AdjustedArgs(Args);
-    if (std::find(AdjustedArgs.begin(),AdjustedArgs.end(),"-verify")
-        == AdjustedArgs.end()) {
-      AdjustedArgs.push_back("-Xclang");
-      AdjustedArgs.push_back("-verify");
-    }
-    return AdjustedArgs;
-  };
-}
 
 void dumpConstraintOutputJson(const std::string &PostfixStr,
                               ProgramInfo &Info) {
@@ -185,6 +174,13 @@ _3CInterface::_3CInterface(const struct _3COptions &CCopt,
   llvm::InitializeAllAsmParsers();
 
   ConstraintsBuilt = false;
+
+  if (VerifyDiagnosticOutput) {
+    errs() << "3C initialization error: Diagnostic verification is currently "
+              "unsupported.\n";
+    Failed = true;
+    return;
+  }
 
   if (OutputPostfix != "-" && !OutputDir.empty()) {
     errs() << "3C initialization error: Cannot use both -output-postfix and "
@@ -287,11 +283,6 @@ bool _3CInterface::parseASTs() {
 
   auto *Tool = new ClangTool(*CurrCompDB, SourceFiles);
   Tool->appendArgumentsAdjuster(getIgnoreCheckedPointerAdjuster());
-  // TODO: This currently only enables compiler diagnostic verification.
-  // see https://github.com/correctcomputation/checkedc-clang/issues/425
-  // for status.
-  if (VerifyDiagnosticOutput)
-    Tool->appendArgumentsAdjuster(addVerifyAdjuster());
 
   // load the ASTs
   return !Tool->buildASTs(ASTs);
