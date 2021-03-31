@@ -476,7 +476,6 @@ bool ProgramInfo::link() {
       Ret->getInternal()->constrainToWild(CS, Rsn);
       if (Ret->getExternal()->srcHasItype()) {
         Ret->getExternal()->equateWithItype(CS);
-        Ret->getInternal()->equateWithItype(CS);
       } else if (!Ret->getExternal()->getIsGeneric())
           Ret->getExternal()->constrainToWild(CS, Rsn);
 
@@ -485,9 +484,35 @@ bool ProgramInfo::link() {
         Param->getInternal()->constrainToWild(CS, Rsn);
         if (Param->getExternal()->srcHasItype()) {
           Param->getExternal()->equateWithItype(CS);
-          Param->getInternal()->equateWithItype(CS);
         } else if (!Param->getExternal()->getIsGeneric())
           Param->getExternal()->constrainToWild(CS, Rsn);
+      }
+    } else {
+      // Generic functions  (_IType_for_any) should not be changed
+      // FIXME: de-duplicate with above
+      // FIXME: constraining internal to wild doesn't feel like the right thing
+      { // FIXME: scoped because I re-use variable names
+      const FVComponentVariable *Ret = G->getCombineReturn();
+      bool IsGeneric = Ret->getExternal()->getIsGeneric();
+      bool HasBounds = Ret->getExternal()->srcHasBounds();
+      bool HasItype = Ret->getExternal()->srcHasItype();
+      if (HasItype && (IsGeneric || HasBounds)) {
+        Ret->equateWithItype(CS);
+        if (IsGeneric)
+          Ret->getInternal()->constrainToWild(CS, "Internal constraint for generic function.");
+      }
+      }
+
+      for (unsigned I = 0; I < G->numParams(); I++) {
+        const FVComponentVariable *Param = G->getCombineParam(I);
+        bool IsGeneric = Param->getExternal()->getIsGeneric();
+        bool HasBounds = Param->getExternal()->srcHasBounds();
+        bool HasItype = Param->getExternal()->srcHasItype();
+        if (HasItype && (IsGeneric || HasBounds)) {
+          Param->equateWithItype(CS);
+          if (IsGeneric)
+            Param->getInternal()->constrainToWild(CS, "Internal constraint for generic function.");
+        }
       }
     }
   }

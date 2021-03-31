@@ -311,6 +311,11 @@ bool _3CInterface::addVariables() {
     Errs += TU->getDiagnostics().getClient()->getNumErrors();
   }
 
+  if (!GlobalProgramInfo.link()) {
+    errs() << "Linking failed!\n";
+    return false;
+  }
+
   return Errs == 0;
 }
 
@@ -328,11 +333,6 @@ bool _3CInterface::buildInitialConstraints() {
     Errs += TU->getDiagnostics().getClient()->getNumErrors();
   }
   if (Errs > 0) return false;
-
-  if (!GlobalProgramInfo.link()) {
-    errs() << "Linking failed!\n";
-    return false;
-  }
 
   ConstraintsBuilt = true;
 

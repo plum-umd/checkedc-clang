@@ -1812,7 +1812,10 @@ void PointerVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
       NewSrcAtoms.push_back(From->SrcVars[AtomIdx]);
     } else {
       NewVatoms.push_back(IAt);
-      NewSrcAtoms.push_back(SrcVars[AtomIdx]);
+      if (isa<WildAtom>(From->SrcVars[AtomIdx]))
+        NewSrcAtoms.push_back(SrcVars[AtomIdx]);
+      else
+        NewSrcAtoms.push_back(From->SrcVars[AtomIdx]);
     }
     if (ICAt && JCAt) {
       // Both are ConstAtoms, no need to equate them.
@@ -1830,6 +1833,7 @@ void PointerVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
   assert(Vars.size() == NewVatoms.size() &&
          "Merging error, pointer depth change");
   Vars = NewVatoms;
+  SrcVars = NewSrcAtoms;
   SrcHasItype = SrcHasItype || From->SrcHasItype;
   if (!From->ItypeStr.empty())
     ItypeStr = From->ItypeStr;
@@ -1868,15 +1872,11 @@ void PointerVariableConstraint::equateWithItype(Constraints &CS) {
   assert("Can't equate with itype if there's no itype." && srcHasItype());
   assert(SrcVars.size() == Vars.size());
   for (unsigned VarIdx = 0; VarIdx < Vars.size(); VarIdx++) {
-    // TODO: why doesn't this line work?
-    // Vars[VarIdx] = SrcVars[VarIdx];
-    if (auto *VA = dyn_cast<VarAtom>(Vars[VarIdx])) {
-      ConstAtom *CA = SrcVars[VarIdx];
-      if (!isa<WildAtom>(CA)) {
-        CS.addConstraint(CS.createGeq(CA, VA, false));
-        CS.addConstraint(CS.createGeq(VA, CA, false));
-      }
-    }
+    ConstAtom *CA = SrcVars[VarIdx];
+    if (isa<WildAtom>(CA))
+      CS.addConstraint(CS.createGeq(Vars[VarIdx], CA, true));
+    else
+      Vars[VarIdx] = SrcVars[VarIdx];
   }
 }
 
@@ -2004,30 +2004,7 @@ FVComponentVariable::FVComponentVariable(const QualType &QT,
   } else {
     InternalConstraint = new PVConstraint(QT, D, N, I, C, InFunc, -1, HasItype,
                                           nullptr, ITypeT);
-    Constraints &CS = I.getConstraints();
-    for (unsigned J = 0; J < InternalConstraint->getCvars().size(); J++) {
-      Atom *InternalA = InternalConstraint->getCvars()[J];
-      Atom *ExternalA = ExternalConstraint->getCvars()[J];
-      if (isa<VarAtom>(InternalA) || isa<VarAtom>(ExternalA)) {
-        // Equate pointer types for internal and external parameter constraint
-        // variables.
-        CS.addConstraint(CS.createGeq(InternalA, ExternalA, false));
-        CS.addConstraint(CS.createGeq(ExternalA, InternalA, false));
-        // Constrain Internal >= External. If external solves to wild, then so
-        // does the internal. Not that this doesn't mean any unsafe external
-        // use causes the internal variable to be wild because the external
-        // variable solves to WILD only when there is an unsafe use that
-        // cannot be resolved by inserting casts.
-        CS.addConstraint(CS.createGeq(InternalA, ExternalA, true));
-
-        // Atoms of return constraint variables are unified after the first
-        // level. This is because CheckedC does not allow assignment from e.g.
-        // a function return of type `int ** : itype(_Ptr<_Ptr<int>>)` to a
-        // variable with type `int **`.
-        if (!isa<ConstAtom>(ExternalA) && N == RETVAR && J > 0)
-          CS.addConstraint(CS.createGeq(ExternalA, InternalA, true));
-      }
-    }
+    linkInternalExternal(I.getConstraints());
   }
 
   // Save the original source for the declaration if this is a param
@@ -2037,6 +2014,39 @@ FVComponentVariable::FVComponentVariable(const QualType &QT,
   if (D && D->getType() == QT) {
     SourceRange SR = D->getSourceRange();
     SourceDeclaration = SR.isValid() ? getSourceText(SR, C) : "";
+  }
+}
+
+void FVComponentVariable::equateWithItype(Constraints &CS) const {
+  ExternalConstraint->equateWithItype(CS);
+  if (ExternalConstraint != InternalConstraint)
+    linkInternalExternal(CS);
+}
+
+void FVComponentVariable::linkInternalExternal(Constraints &CS) const {
+  for (unsigned J = 0; J < InternalConstraint->getCvars().size(); J++) {
+    Atom *InternalA = InternalConstraint->getCvars()[J];
+    Atom *ExternalA = ExternalConstraint->getCvars()[J];
+    if (isa<VarAtom>(InternalA) || isa<VarAtom>(ExternalA)) {
+      // Equate pointer types for internal and external parameter constraint
+      // variables.
+      CS.addConstraint(CS.createGeq(InternalA, ExternalA, false));
+      CS.addConstraint(CS.createGeq(ExternalA, InternalA, false));
+      // Constrain Internal >= External. If external solves to wild, then so
+      // does the internal. Not that this doesn't mean any unsafe external
+      // use causes the internal variable to be wild because the external
+      // variable solves to WILD only when there is an unsafe use that
+      // cannot be resolved by inserting casts.
+      CS.addConstraint(CS.createGeq(InternalA, ExternalA, true));
+
+      // Atoms of return constraint variables are unified after the first
+      // level. This is because CheckedC does not allow assignment from e.g.
+      // a function return of type `int ** : itype(_Ptr<_Ptr<int>>)` to a
+      // variable with type `int **`.
+      if (!isa<ConstAtom>(ExternalA) &&
+          ExternalConstraint->getName() == RETVAR && J > 0)
+        CS.addConstraint(CS.createGeq(ExternalA, InternalA, true));
+    }
   }
 }
 

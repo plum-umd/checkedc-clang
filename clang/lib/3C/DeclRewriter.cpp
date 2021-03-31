@@ -659,8 +659,8 @@ void FunctionDeclBuilder::buildCheckedDecl(
     PVConstraint *Defn, DeclaratorDecl *Decl, std::string &Type,
     std::string &IType, bool &RewriteParm, bool &RewriteRet) {
   Type = Defn->mkString(Info.getConstraints());
-  IType = getExistingIType(Defn);
-  IType += ABRewriter.getBoundsString(Defn, Decl, !IType.empty());
+  //IType = getExistingIType(Defn);
+  IType = ABRewriter.getBoundsString(Defn, Decl, !IType.empty());
   RewriteParm |= !IType.empty() || isa<ParmVarDecl>(Decl);
   RewriteRet |= isa<FunctionDecl>(Decl);
   return;

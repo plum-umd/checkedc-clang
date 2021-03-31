@@ -332,7 +332,6 @@ public:
 
   // Return true if this constraint had an itype in the original source code.
   bool srcHasItype() const override {
-    assert(!SrcHasItype || !ItypeStr.empty() || !BoundsAnnotationStr.empty());
     return SrcHasItype;
   }
 
@@ -473,6 +472,8 @@ private:
 
   std::string SourceDeclaration;
 
+  void linkInternalExternal(Constraints &CS) const;
+
 public:
   FVComponentVariable()
     : InternalConstraint(nullptr), ExternalConstraint(nullptr),
@@ -496,6 +497,8 @@ public:
 
   PVConstraint *getInternal() const { return InternalConstraint; }
   PVConstraint *getExternal() const { return ExternalConstraint; }
+
+  void equateWithItype(Constraints &CS) const;
 };
 
 // Constraints on a function type. Also contains a 'name' parameter for
