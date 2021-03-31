@@ -34,7 +34,7 @@ void foo2(_Ptr<int> a) {
 void bar(int *a : itype(_Ptr<int>) ) {
   *a = 0;
 }
-//CHECK: void bar(int *a : itype(_Ptr<int>) ) _Checked {
+//CHECK: void bar(_Ptr<int> a) _Checked {
 
 extern int* baz(void) : itype(_Ptr<int>);
 //CHECK: extern int*  baz(void) : itype(_Ptr<int>);

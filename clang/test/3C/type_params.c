@@ -163,7 +163,7 @@ void *example1(void * ptr, unsigned int size) {
 // Issue #349. Check that the parameter doesn't inherit the double pointer argument within do_doubleptr
 _Itype_for_any(T)
 void incoming_doubleptr(void* ptr : itype(_Array_ptr<T>)) {
-// CHECK_ALL: void incoming_doubleptr(_Array_ptr<T> ptr : itype(_Array_ptr<T>)) {
+// CHECK_ALL: void incoming_doubleptr(void *ptr : itype(_Array_ptr<T>)) {
   return;
 }
 
