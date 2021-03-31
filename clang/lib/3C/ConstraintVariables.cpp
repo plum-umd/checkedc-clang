@@ -1865,9 +1865,6 @@ void FunctionVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
   } else {
     // Standard merge.
     if (this->numParams() != From->numParams()) {
-      // TODO: This merges main() and main(argc,argv)
-      //   but will fail at line 578 of DeclRewriter.cpp due to trying
-      //   to rewrite main()'s parameter, which is not there
       if ((From->getName() == "main" && From->numParams() == 0) ||
           (this->getName() == "main" && this->numParams() == 0)) {
         return;
