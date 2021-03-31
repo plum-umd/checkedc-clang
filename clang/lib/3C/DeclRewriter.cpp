@@ -545,7 +545,10 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
 
   // Get rewritten parameter variable declarations.
   std::vector<std::string> ParmStrs;
-  if (FD->getParametersSourceRange().isValid()) {
+  if (isa<TypedefType>(FD->getTypeSourceInfo()->getType())) {
+    // typedef: do nothing
+  } else if (FD->getParametersSourceRange().isValid()) {
+    // has its own params: alter them as necessary
     for (unsigned I = 0; I < FD->getNumParams(); ++I) {
       ParmVarDecl *PVDecl = FD->getParamDecl(I);
       const FVComponentVariable *CV = FDConstraint->getCombineParam(I);
@@ -556,6 +559,7 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
       ParmStrs.push_back(Type + IType);
     }
   } else if (FDConstraint->numParams() != 0) {
+    // lacking params but the constraint has them: mirror the constraint
     for (unsigned I = 0; I < FDConstraint->numParams(); ++I) {
       ParmVarDecl *PVDecl = nullptr;
       const FVComponentVariable *CV = FDConstraint->getCombineParam(I);
@@ -565,17 +569,19 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
       ParmStrs.push_back(Type + IType);
       RewriteParams = true;
     }
-  } else { // No params and no param source
+  } else {
+    // No params and no param source: make explicit
     ParmStrs.push_back("void");
     QualType ReturnTy = FD->getReturnType();
-    QualType Ty = FD->getType();
+    QualType Ty = FD->getTypeSourceInfo()->getType();
     if (!Ty->isFunctionProtoType() && ReturnTy->isPointerType())
       RewriteParams = true;
   }
 
   // Get rewritten return variable.
-  std::string ReturnVar, ItypeStr;
-  this->buildDeclVar(FDConstraint->getCombineReturn(), FD, ReturnVar, ItypeStr,
+  std::string ReturnVar = "", ItypeStr = "";
+  if (!isa<TypedefType>(FD->getTypeSourceInfo()->getType()))
+    this->buildDeclVar(FDConstraint->getCombineReturn(), FD, ReturnVar, ItypeStr,
                      "", RewriteParams, RewriteReturn);
 
   // If the return is a function pointer, we need to rewrite the whole
