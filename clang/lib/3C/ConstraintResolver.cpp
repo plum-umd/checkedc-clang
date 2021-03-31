@@ -488,7 +488,7 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
         ConstraintVariable *NewCV;
         auto *PCV = dyn_cast<PVConstraint>(CV);
         if (!IsAllocator) {
-          if (PCV && PCV->getIsOriginallyChecked()) {
+          if (PCV && PCV->isOriginallyChecked()) {
             // Copying needs to be done differently if the constraint variable
             // had a checked type in the input program because the constraint
             // variables contain constant atoms that are reused by the copy

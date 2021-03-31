@@ -40,9 +40,6 @@ std::string ConstraintVariable::getRewritableOriginalTy() const {
   }
   return OrigTyString;
 }
-bool ConstraintVariable::isChecked(const EnvironmentMap &E) const {
-  return getIsOriginallyChecked() || anyChanges(E);
-}
 
 PointerVariableConstraint *PointerVariableConstraint::getWildPVConstraint(
     Constraints &CS, const std::string &Rsn, PersistentSourceLoc *PSL) {
@@ -1094,6 +1091,14 @@ bool FunctionVariableConstraint::anyChanges(const EnvironmentMap &E) const {
          });
 }
 
+bool
+FunctionVariableConstraint::isSolutionChecked(const EnvironmentMap &E) const {
+  return ReturnVar.ExternalConstraint->isSolutionChecked(E) ||
+         llvm::any_of(ParamVars, [&E](FVComponentVariable CV) {
+           return CV.ExternalConstraint->isSolutionChecked(E);
+         });
+}
+
 bool FunctionVariableConstraint::hasWild(const EnvironmentMap &E,
                                          int AIdx) const {
   return ReturnVar.ExternalConstraint->hasWild(E, AIdx);
@@ -1217,12 +1222,17 @@ void PointerVariableConstraint::constrainOuterTo(Constraints &CS, ConstAtom *C,
 }
 
 bool PointerVariableConstraint::anyArgumentIsWild(const EnvironmentMap &E) {
-  for (auto *ArgVal : ArgumentConstraints) {
-    if (!ArgVal->isChecked(E)) {
-      return true;
-    }
-  }
-  return false;
+  return llvm::any_of(ArgumentConstraints, [&E](ConstraintVariable *CV) {
+    return !CV->isSolutionChecked(E);
+  });
+}
+
+bool
+PointerVariableConstraint::isSolutionChecked(const EnvironmentMap &E) const {
+  return (FV && FV->isSolutionChecked(E)) ||
+         llvm::any_of(Vars, [this, &E](Atom *A){
+           return !isa<WildAtom>(getSolution(A, E));
+         });
 }
 
 bool PointerVariableConstraint::anyChanges(const EnvironmentMap &E) const {
@@ -1920,8 +1930,8 @@ void FunctionVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
   }
 }
 
-bool FunctionVariableConstraint::getIsOriginallyChecked() const {
-  return ReturnVar.ExternalConstraint->getIsOriginallyChecked();
+bool FunctionVariableConstraint::isOriginallyChecked() const {
+  return ReturnVar.ExternalConstraint->isOriginallyChecked();
 }
 
 void FVComponentVariable::mergeDeclaration(FVComponentVariable *From,
@@ -1974,8 +1984,10 @@ bool FVComponentVariable::hasCheckedSolution(Constraints &CS) const {
   // be advertised as checked to callers. If the internal and external
   // constraint variables solve to the same type, then they are both checked and
   // we can use a _Ptr type.
-  return ExternalConstraint->isChecked(CS.getVariables()) &&
-         ExternalConstraint->anyChanges(CS.getVariables()) &&
+  return ExternalConstraint->isSolutionChecked(CS.getVariables()) &&
+         ((ExternalConstraint->srcHasItype() &&
+           InternalConstraint->isSolutionChecked(CS.getVariables())) ||
+          ExternalConstraint->anyChanges(CS.getVariables())) &&
          InternalConstraint->solutionEqualTo(CS, ExternalConstraint);
 }
 
@@ -1984,7 +1996,7 @@ bool FVComponentVariable::hasItypeSolution(Constraints &CS) const {
   // if the external variable is checked. If the external is checked, but the
   // internal is not equal to the external, then the internal is unchecked, so
   // have to use an itype instead of a _Ptr type.
-  return ExternalConstraint->isChecked(CS.getVariables()) &&
+  return ExternalConstraint->isSolutionChecked(CS.getVariables()) &&
          ExternalConstraint->anyChanges(CS.getVariables()) &&
          !InternalConstraint->solutionEqualTo(CS, ExternalConstraint);
 }

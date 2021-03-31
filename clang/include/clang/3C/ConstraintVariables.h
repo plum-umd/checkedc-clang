@@ -114,17 +114,22 @@ public:
   virtual void constrainToWild(Constraints &CS, const std::string &Rsn,
                                PersistentSourceLoc *PL) const = 0;
 
+  // Return true if this variable was checked in the input. Checked variables
+  // might solve to WILD, and unchecked variables might solve to checked. Use
+  // isSolutionChecked if you want these final solved types.
+  virtual bool isOriginallyChecked() const = 0;
+
   // Returns true if any of the constraint variables 'within' this instance
   // have a binding in E other than top. E should be the EnvironmentMap that
   // results from running unification on the set of constraints and the
   // environment.
-  bool isChecked(const EnvironmentMap &E) const;
+  virtual bool isSolutionChecked(const EnvironmentMap &E) const = 0;
 
   // Returns true if this constraint variable has a different checked type after
   // running unification. Note that if the constraint variable had a checked
   // type in the input program, it will have the same checked type after solving
   // so, the type will not have changed. To test if the type is checked, use
-  // isChecked instead.
+  // isSolutionChecked instead.
   virtual bool anyChanges(const EnvironmentMap &E) const = 0;
 
   // Here, AIdx is the pointer level which needs to be checked.
@@ -154,8 +159,6 @@ public:
   virtual ConstraintVariable *getCopy(Constraints &CS) = 0;
 
   virtual ~ConstraintVariable(){};
-
-  virtual bool getIsOriginallyChecked() const = 0;
 };
 
 typedef std::set<ConstraintVariable *> CVarSet;
@@ -351,9 +354,11 @@ public:
   // This is important for two reasons: (1) externs that are checked should be
   // kept that way during solving, (2) nothing that was originally checked
   // should be modified during rewriting.
-  bool getIsOriginallyChecked() const override {
+  bool isOriginallyChecked() const override {
     return llvm::any_of(Vars, [](Atom *A) { return isa<ConstAtom>(A); });
   }
+
+  bool isSolutionChecked(const EnvironmentMap &E) const override;
 
   bool isVoidPtr() const { return IsVoidPtr; }
 
@@ -612,7 +617,8 @@ public:
 
   FunctionVariableConstraint *getCopy(Constraints &CS) override;
 
-  bool getIsOriginallyChecked() const override;
+  bool isOriginallyChecked() const override;
+  bool isSolutionChecked(const EnvironmentMap &E) const override;
 
   ~FunctionVariableConstraint() override {}
 };

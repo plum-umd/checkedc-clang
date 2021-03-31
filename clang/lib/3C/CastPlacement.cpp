@@ -112,7 +112,7 @@ CastPlacementVisitor::CastNeeded CastPlacementVisitor::needCasting(
   //if (!SrcExt->isChecked(CS.getVariables()) && DstInt->srcHasItype())
   //  return NO_CAST;
 
-  if (DstInt->isChecked(CS.getVariables()))
+  if (DstInt->isSolutionChecked(CS.getVariables()))
     return CAST_TO_CHECKED;
 
   return CAST_TO_WILD;
