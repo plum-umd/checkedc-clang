@@ -1866,11 +1866,7 @@ void FunctionVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
     return;
   }
 
-  // Does From add any information?
-  if (From->numParams() == 0)
-    return;
-
-  // Standard merge.
+  // Merge params.
   for (unsigned J = 0; J < From->numParams(); J++) {
     ParamVars[J].mergeDeclaration(&From->ParamVars[J], I, ReasonFailed);
     if (ReasonFailed != "") {

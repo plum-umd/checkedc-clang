@@ -543,9 +543,20 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
   bool RewriteParams = false;
   bool RewriteReturn = false;
 
-  // Get rewritten parameter variable declarations.
+  bool DeclIsTypedef = false;
+  if (TypeSourceInfo *TS = FD->getTypeSourceInfo()) {
+    // This still could possibly be a typedef type if TS was NULL.
+    // TypeSourceInfo is null for implicit function declarations, so if a
+    // implicit declaration uses a typedef, it will be missed. That's fine
+    // since an implicit declaration can't be rewritten anyways.
+    // There might be other ways it can be null that I'm not aware of.
+    DeclIsTypedef = isa<TypedefType>(TS->getType());
+  }
+
+  // Get rewritten parameter variable declarations. Try to use
+  // the source for as much as possible.
   std::vector<std::string> ParmStrs;
-  if (isa<TypedefType>(FD->getTypeSourceInfo()->getType())) {
+  if (DeclIsTypedef) {
     // typedef: do nothing
   } else if (FD->getParametersSourceRange().isValid()) {
     // has its own params: alter them as necessary
@@ -580,7 +591,7 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
 
   // Get rewritten return variable.
   std::string ReturnVar = "", ItypeStr = "";
-  if (!isa<TypedefType>(FD->getTypeSourceInfo()->getType()))
+  if (!DeclIsTypedef)
     this->buildDeclVar(FDConstraint->getCombineReturn(), FD, ReturnVar, ItypeStr,
                      "", RewriteParams, RewriteReturn);
 
@@ -591,20 +602,6 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
   // better, but getting the correct source locations is painful.
   if (FD->getReturnType()->isFunctionPointerType() && RewriteReturn)
     RewriteParams = true;
-
-  // If the function is declared using a typedef for the function type, then we
-  // need to rewrite parameters and the return if either would have been
-  // rewritten. What this does is expand the typedef to the full function type
-  // to avoid the problem of rewriting inside the typedef.
-  // FIXME: If issue #437 is fixed in way that preserves typedefs on function
-  //        declarations, then this conditional should be removed to enable
-  //        separate rewriting of return type and parameters on the
-  //        corresponding definition.
-  //        https://github.com/correctcomputation/checkedc-clang/issues/437
-  if ((RewriteReturn || RewriteParams) && hasDeclWithTypedef(FD)) {
-    RewriteParams = true;
-    RewriteReturn = true;
-  }
 
   // Combine parameter and return variables rewritings into a single rewriting
   // for the entire function declaration.
@@ -694,6 +691,7 @@ void FunctionDeclBuilder::buildDeclVar(const FVComponentVariable *CV,
   }
 
   // Variables that do not need to be rewritten fall through to here.
+  // Try to use the source.
   ParmVarDecl *PVD = dyn_cast_or_null<ParmVarDecl>(Decl);
   if (PVD && !PVD->getName().empty()) {
     SourceRange Range = PVD->getSourceRange();
@@ -727,37 +725,6 @@ std::string FunctionDeclBuilder::getExistingIType(ConstraintVariable *DeclC) {
 // Check if the function is handled by this visitor.
 bool FunctionDeclBuilder::isFunctionVisited(std::string FuncName) {
   return VisitedSet.find(FuncName) != VisitedSet.end();
-}
-
-// Given a function declaration figure out if this declaration or any other
-// declaration of the same function is declared using a typedefed function type.
-bool FunctionDeclBuilder::hasDeclWithTypedef(const FunctionDecl *FD) {
-  for (FunctionDecl *FDIter : FD->redecls()) {
-    // If the declaration type is TypedefType, then this is definitely declared
-    // using a typedef. This only happens when the typedefed declaration is the
-    // first declaration of a function.
-    if (isa_and_nonnull<TypedefType>(FDIter->getType().getTypePtrOrNull()))
-      return true;
-    // Next look for a TypeDefTypeLoc. This is present on the typedefed
-    // declaration even when it is not the first declaration.
-    TypeSourceInfo *TSI = FDIter->getTypeSourceInfo();
-    if (TSI) {
-      if (!TSI->getTypeLoc().getAs<TypedefTypeLoc>().isNull())
-        return true;
-    } else {
-      // This still could possibly be a typedef type if TSI was NULL.
-      // TypeSourceInfo is null for implicit function declarations, so if a
-      // implicit declaration uses a typedef, it will be missed. That's fine
-      // since an implicit declaration can't be rewritten anyways.
-      // There might be other ways it can be null that I'm not aware of.
-      if (Verbose) {
-        llvm::errs() << "Unable to conclusively determine if a function "
-                     << "declaration uses a typedef.\n";
-        FDIter->dump();
-      }
-    }
-  }
-  return false;
 }
 
 // K&R style function declarations can declare multiple parameter variables in
