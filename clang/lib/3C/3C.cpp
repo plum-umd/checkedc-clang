@@ -294,7 +294,15 @@ bool _3CInterface::parseASTs() {
     Tool->appendArgumentsAdjuster(addVerifyAdjuster());
 
   // load the ASTs
-  return !Tool->buildASTs(ASTs);
+  if (Tool->buildASTs(ASTs))
+    return false;
+
+  // check for compile errors
+  unsigned int Errs = 0;
+  for (auto &TU : ASTs)
+    Errs += TU->getDiagnostics().getClient()->getNumErrors();
+
+  return Errs == 0;
 }
 
 bool _3CInterface::addVariables() {
