@@ -570,26 +570,15 @@ ProgramInfo::insertNewFVConstraint(FunctionDecl *FD, FVConstraint *NewC,
 
   // Resolve conflicts
 
-  // We need to keep the version with a body, if it exists,
-  // so branch based on it
   auto *OldC = (*Map)[FuncName];
-  bool NewHasBody = NewC->hasBody();
-  bool OldHasBody = OldC->hasBody();
   std::string ReasonFailed = "";
 
-  if (OldHasBody && !NewHasBody) {
-    OldC->mergeDeclaration(NewC, *this, ReasonFailed);
-  } else if (NewHasBody && !OldHasBody) {
+  // merge short parameter lists into long ones
+  if (OldC->numParams() < NewC->numParams()) {
     NewC->mergeDeclaration(OldC, *this, ReasonFailed);
     (*Map)[FuncName] = NewC;
   } else {
-    // same number of bodies, we favor declared params
-    if (OldC->numParams() < NewC->numParams()) {
-      NewC->mergeDeclaration(OldC, *this, ReasonFailed);
-      (*Map)[FuncName] = NewC;
-    } else {
-      OldC->mergeDeclaration(NewC, *this, ReasonFailed);
-    }
+    OldC->mergeDeclaration(NewC, *this, ReasonFailed);
   }
 
   // If successful, we're done and can skip error reporting

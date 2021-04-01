@@ -477,7 +477,7 @@ public:
   std::string mkItypeStr(Constraints &CS) const;
   std::string mkTypeStr(Constraints &CS, bool EmitName,
                         std::string UseName = "") const;
-  std::string mkString(Constraints &CS) const;
+  std::string mkString(Constraints &CS, bool EmitName = true) const;
 
   bool hasItypeSolution(Constraints &CS) const;
   bool hasCheckedSolution(Constraints &CS) const;

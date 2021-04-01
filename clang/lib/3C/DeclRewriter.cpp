@@ -710,7 +710,8 @@ void FunctionDeclBuilder::buildDeclVar(const FVComponentVariable *CV,
     // TODO: Do we care about `register` or anything else this doesn't handle?
     Type = qtyToStr(PVD->getOriginalType(), PVD->getNameAsString());
   } else {
-    Type = CV->mkTypeStr(Info.getConstraints(),true,UseName);
+    Type = CV->mkTypeStr(Info.getConstraints(),true,
+                         CV->getExternal()->getName());
   }
   IType = getExistingIType(CV->getExternal());
   IType += ABRewriter.getBoundsString(CV->getExternal(), Decl, !IType.empty());

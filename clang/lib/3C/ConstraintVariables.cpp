@@ -805,7 +805,9 @@ std::string PointerVariableConstraint::mkString(Constraints &CS,
         assert(BaseType.size() > 0);
         EmittedBase = true;
         if (FV) {
-          Ss << FV->mkString(CS);
+          Ss << FV->mkString(CS, EmitName, ForItype,
+                             EmitPointee, UnmaskTypedef, UseName);
+          EmittedName |= EmitName;
         } else {
           Ss << BaseType << " *";
         }
@@ -839,7 +841,7 @@ std::string PointerVariableConstraint::mkString(Constraints &CS,
     // If we have a FV pointer, then our "base" type is a function pointer.
     // type.
     if (FV) {
-      Ss << FV->mkString(CS);
+      Ss << FV->mkString(CS, false);
     } else if (TypedefLevelInfo.HasTypedef) {
       std::ostringstream Buf;
       getQualString(TypedefLevelInfo.TypedefLevel, Buf);
@@ -856,7 +858,7 @@ std::string PointerVariableConstraint::mkString(Constraints &CS,
   }
 
   // No space after itype.
-  if (!EmittedName)
+  if (!EmittedName && !UseName.empty())
     Ss << " " << UseName;
 
   // Final array dropping.
@@ -1452,6 +1454,8 @@ std::string FunctionVariableConstraint::mkString(Constraints &CS,
   // This is done to rewrite the typedef of a function proto
   if (UnmaskTypedef && EmitName)
     Ret += UseName;
+  else if (EmitName)
+    Ret += "(*" + UseName + ")";
   Ret = Ret + "(";
   std::vector<std::string> ParmStrs;
   for (const auto &I : this->ParamVars)
@@ -1805,6 +1809,8 @@ void PointerVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
   assert(Vars.size() == NewVatoms.size() &&
          "Merging error, pointer depth change");
   Vars = NewVatoms;
+  if (Name.empty())
+    Name = From->Name;
   SrcHasItype = SrcHasItype || From->SrcHasItype;
   if (!From->ItypeStr.empty())
     ItypeStr = From->ItypeStr;
@@ -1846,6 +1852,12 @@ void FunctionVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
 
   FVConstraint *From = dyn_cast<FVConstraint>(FromCV);
   assert(From != nullptr);
+  assert("this should have more params" &&
+         this->numParams() >= From->numParams());
+
+  // transferable basic info
+  Hasbody |= From->Hasbody;
+  if (Name.empty()) Name = From->Name;
 
   // Merge returns.
   ReturnVar.mergeDeclaration(&From->ReturnVar, I, ReasonFailed);
@@ -1854,30 +1866,16 @@ void FunctionVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
     return;
   }
 
-  if (From->numParams() == 0 && !From->hasBody()) {
-    // From is an untyped declaration, and adds no information.
+  // Does From add any information?
+  if (From->numParams() == 0)
     return;
-  }
-  if (this->numParams() == 0 && !this->hasBody()) {
-    // This is an untyped declaration, we need to switch to the other
-    assert(false && "This merge should happen in reverse");
-    From->mergeDeclaration(this, I, ReasonFailed);
-  } else {
-    // Standard merge.
-    if (this->numParams() != From->numParams()) {
-      if ((From->getName() == "main" && From->numParams() == 0) ||
-          (this->getName() == "main" && this->numParams() == 0)) {
-        return;
-      }
-      ReasonFailed = "differing number of arguments";
+
+  // Standard merge.
+  for (unsigned J = 0; J < From->numParams(); J++) {
+    ParamVars[J].mergeDeclaration(&From->ParamVars[J], I, ReasonFailed);
+    if (ReasonFailed != "") {
+      ReasonFailed += " for parameter " + std::to_string(J);
       return;
-    }
-    for (unsigned J = 0; J < From->numParams(); J++) {
-      ParamVars[J].mergeDeclaration(&From->ParamVars[J], I, ReasonFailed);
-      if (ReasonFailed != "") {
-        ReasonFailed += " for parameter " + std::to_string(J);
-        return;
-      }
     }
   }
 }
@@ -1912,20 +1910,28 @@ void FVComponentVariable::mergeDeclaration(FVComponentVariable *From,
 }
 
 std::string
-FVComponentVariable::mkString(Constraints &CS) const {
-  return mkTypeStr(CS, true) + mkItypeStr(CS);
+FVComponentVariable::mkString(Constraints &CS, bool EmitName) const {
+  return mkTypeStr(CS, EmitName) + mkItypeStr(CS);
 }
 
 std::string
 FVComponentVariable::mkTypeStr(Constraints &CS, bool EmitName,
                                std::string UseName) const {
-  if (hasCheckedSolution(CS))
-    return ExternalConstraint->mkString(CS, EmitName);
-  if (!UseName.empty())
-    return ExternalConstraint->mkString(CS, true, false,
+  // if checked or given new name, generate type
+  if (hasCheckedSolution(CS) || (EmitName && !UseName.empty()))
+    return ExternalConstraint->mkString(CS, EmitName, false,
                                         false, false, UseName);
+  // if no need to generate type, try to use source
   if (!SourceDeclaration.empty())
     return SourceDeclaration;
+  // if no source and no name, generate nameless type
+  if (EmitName && ExternalConstraint->getName().empty())
+    return ExternalConstraint->getOriginalTy();
+  // if no source and a have a needed name, generate named type
+  if (EmitName)
+    return ExternalConstraint->getRewritableOriginalTy()
+           + ExternalConstraint->getName();
+  // if no source and don't need a name, generate type ready for one
   return ExternalConstraint->getRewritableOriginalTy();
 }
 
