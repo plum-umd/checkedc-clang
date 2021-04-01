@@ -1879,7 +1879,6 @@ Atom *PointerVariableConstraint::getAtom(unsigned AtomIdx, Constraints &CS) {
 }
 
 void PointerVariableConstraint::equateWithItype(Constraints &CS) {
-  assert("Can't equate with itype if there's no itype." && srcHasItype());
   assert(SrcVars.size() == Vars.size());
   for (unsigned VarIdx = 0; VarIdx < Vars.size(); VarIdx++) {
     ConstAtom *CA = SrcVars[VarIdx];
@@ -1932,6 +1931,12 @@ void FunctionVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
 
 bool FunctionVariableConstraint::isOriginallyChecked() const {
   return ReturnVar.ExternalConstraint->isOriginallyChecked();
+}
+
+void FunctionVariableConstraint::equateWithItype(Constraints &CS) {
+  ReturnVar.equateWithItype(CS, hasBody());
+  for (auto Param : ParamVars)
+    Param.equateWithItype(CS, hasBody());
 }
 
 void FVComponentVariable::mergeDeclaration(FVComponentVariable *From,
@@ -2029,10 +2034,17 @@ FVComponentVariable::FVComponentVariable(const QualType &QT,
   }
 }
 
-void FVComponentVariable::equateWithItype(Constraints &CS) const {
-  ExternalConstraint->equateWithItype(CS);
-  if (ExternalConstraint != InternalConstraint)
-    linkInternalExternal(CS);
+void FVComponentVariable::equateWithItype(Constraints &CS, bool HasBody) const {
+  bool IsGeneric = ExternalConstraint->getIsGeneric();
+  bool HasBounds = ExternalConstraint->srcHasBounds();
+  bool HasItype = ExternalConstraint->srcHasItype();
+  if (HasItype && (!HasBody || IsGeneric || HasBounds)) {
+    ExternalConstraint->equateWithItype(CS);
+    if (ExternalConstraint != InternalConstraint)
+      linkInternalExternal(CS);
+    if (IsGeneric)
+      InternalConstraint->constrainToWild(CS, "Internal constraint for generic function.");
+  }
 }
 
 void FVComponentVariable::linkInternalExternal(Constraints &CS) const {

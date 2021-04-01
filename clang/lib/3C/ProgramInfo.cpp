@@ -460,12 +460,17 @@ bool ProgramInfo::link() {
   for (const auto &U : ExternalFunctionFVCons) {
     std::string FuncName = U.first;
     FVConstraint *G = U.second;
+
+    // Handle the cases where itype parameters should not be treated as their
+    // unchecked type.
+    // TODO: function need better name
+    G->equateWithItype(CS);
+
     // If we've seen this symbol, but never seen a body for it, constrain
     // everything about it.
     // Some global symbols we don't need to constrain to wild, like
     // malloc and free. Check those here and skip if we find them.
     if (!G->hasBody()) {
-
       // If there was a checked type on a variable in the input program, it
       // should stay that way. Otherwise, we shouldn't be adding a checked type
       // to an extern function.
@@ -474,48 +479,20 @@ bool ProgramInfo::link() {
           FuncName;
       const FVComponentVariable *Ret = G->getCombineReturn();
       Ret->getInternal()->constrainToWild(CS, Rsn);
-      if (Ret->getExternal()->srcHasItype()) {
-        Ret->getExternal()->equateWithItype(CS);
-      } else if (!Ret->getExternal()->getIsGeneric())
-          Ret->getExternal()->constrainToWild(CS, Rsn);
+      if (!Ret->getExternal()->srcHasItype() &&
+          !Ret->getExternal()->getIsGeneric())
+        Ret->getExternal()->constrainToWild(CS, Rsn);
 
       for (unsigned I = 0; I < G->numParams(); I++) {
         const FVComponentVariable *Param = G->getCombineParam(I);
         Param->getInternal()->constrainToWild(CS, Rsn);
-        if (Param->getExternal()->srcHasItype()) {
-          Param->getExternal()->equateWithItype(CS);
-        } else if (!Param->getExternal()->getIsGeneric())
+        if (!Param->getExternal()->srcHasItype() &&
+            !Param->getExternal()->getIsGeneric())
           Param->getExternal()->constrainToWild(CS, Rsn);
-      }
-    } else {
-      // Generic functions  (_IType_for_any) should not be changed
-      // FIXME: de-duplicate with above
-      // FIXME: constraining internal to wild doesn't feel like the right thing
-      { // FIXME: scoped because I re-use variable names
-      const FVComponentVariable *Ret = G->getCombineReturn();
-      bool IsGeneric = Ret->getExternal()->getIsGeneric();
-      bool HasBounds = Ret->getExternal()->srcHasBounds();
-      bool HasItype = Ret->getExternal()->srcHasItype();
-      if (HasItype && (IsGeneric || HasBounds)) {
-        Ret->equateWithItype(CS);
-        if (IsGeneric)
-          Ret->getInternal()->constrainToWild(CS, "Internal constraint for generic function.");
-      }
-      }
-
-      for (unsigned I = 0; I < G->numParams(); I++) {
-        const FVComponentVariable *Param = G->getCombineParam(I);
-        bool IsGeneric = Param->getExternal()->getIsGeneric();
-        bool HasBounds = Param->getExternal()->srcHasBounds();
-        bool HasItype = Param->getExternal()->srcHasItype();
-        if (HasItype && (IsGeneric || HasBounds)) {
-          Param->equateWithItype(CS);
-          if (IsGeneric)
-            Param->getInternal()->constrainToWild(CS, "Internal constraint for generic function.");
-        }
       }
     }
   }
+  // FIXME: add new itype code for static functions
   // Repeat for static functions.
   //
   // Static functions that don't have a body will always cause a linking
@@ -799,6 +776,10 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
 
   assert("We shouldn't be adding a null CV to Variables map." && NewCV);
   if (!canWrite(PLoc.getFileName())) {
+    // FIXME: Potential bug here. What if we hit this branch for a
+    //        pre-declaration, but then later see a definition of the function?
+    //        might do the equate based on 
+    NewCV->equateWithItype(CS);
     NewCV->constrainToWild(CS, "Declaration in non-writable file", &PLoc);
   }
   constrainWildIfMacro(NewCV, D->getLocation());

@@ -156,6 +156,8 @@ public:
   void setValidDecl() { IsForDecl = true; }
   bool isForValidDecl() const { return IsForDecl; }
 
+  virtual void equateWithItype(Constraints &CS) = 0;
+
   virtual ConstraintVariable *getCopy(Constraints &CS) = 0;
 
   virtual ~ConstraintVariable(){};
@@ -453,7 +455,7 @@ public:
 
   ~PointerVariableConstraint() override{};
 
-  void equateWithItype(Constraints &CS);
+  void equateWithItype(Constraints &CS) override;
 };
 
 typedef PointerVariableConstraint PVConstraint;
@@ -503,7 +505,7 @@ public:
   PVConstraint *getInternal() const { return InternalConstraint; }
   PVConstraint *getExternal() const { return ExternalConstraint; }
 
-  void equateWithItype(Constraints &CS) const;
+  void equateWithItype(Constraints &CS, bool HasBody) const;
 };
 
 // Constraints on a function type. Also contains a 'name' parameter for
@@ -619,6 +621,8 @@ public:
 
   bool isOriginallyChecked() const override;
   bool isSolutionChecked(const EnvironmentMap &E) const override;
+
+  void equateWithItype(Constraints &CS) override;
 
   ~FunctionVariableConstraint() override {}
 };
