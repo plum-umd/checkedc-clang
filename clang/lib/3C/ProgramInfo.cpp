@@ -572,9 +572,13 @@ ProgramInfo::insertNewFVConstraint(FunctionDecl *FD, FVConstraint *NewC,
 
   auto *OldC = (*Map)[FuncName];
   std::string ReasonFailed = "";
+  int OldCount = OldC->numParams();
+  int NewCount = NewC->numParams();
 
   // merge short parameter lists into long ones
-  if (OldC->numParams() < NewC->numParams()) {
+  // Choose number of params, but favor definitions if available
+  if ((OldCount < NewCount) || (OldCount == NewCount &&
+                                !OldC->hasBody() && NewC->hasBody())) {
     NewC->mergeDeclaration(OldC, *this, ReasonFailed);
     (*Map)[FuncName] = NewC;
   } else {

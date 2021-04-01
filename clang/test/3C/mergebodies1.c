@@ -14,10 +14,10 @@ int safeBody(int a, int *b);
 // CHECK: int safeBody(int a, _Ptr<int> b);
 
 int safeBody(int,int*);
-// CHECK: int safeBody(int a, _Ptr<int> b);
+// CHECK: int safeBody(int x, _Ptr<int> y);
 
 int safeBody();
-// CHECK: int safeBody(int a, _Ptr<int> b);
+// CHECK: int safeBody(int x, _Ptr<int> y);
 
 int safeBody(int x, int *y) {
 // CHECK: int safeBody(int x, _Ptr<int> y) _Checked {
