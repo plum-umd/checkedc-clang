@@ -556,9 +556,14 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
   // Get rewritten parameter variable declarations. Try to use
   // the source for as much as possible.
   std::vector<std::string> ParmStrs;
-  if (DeclIsTypedef) {
-    // typedef: do nothing
-  } else if (FD->getParametersSourceRange().isValid()) {
+
+  // Typedefs must be expanded for now, so allow interpret them as rewritable
+  // by ignoring their special case code.
+  // See the FIXME below for more info.
+//  if (DeclIsTypedef) {
+//    // typedef: don't rewrite
+//  } else
+  if (FD->getParametersSourceRange().isValid()) {
     // has its own params: alter them as necessary
     for (unsigned I = 0; I < FD->getNumParams(); ++I) {
       ParmVarDecl *PVDecl = FD->getParamDecl(I);
@@ -578,7 +583,11 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
       this->buildDeclVar(CV, PVDecl, Type, IType, "",
                          RewriteParams, RewriteReturn);
       ParmStrs.push_back(Type + IType);
-      RewriteParams = true;
+      // FIXME: when the above FIXME is changed this condition will always
+      // be true. This is correct, always rewrite if there were no params
+      // in source but they exist in the constraint variable.
+      if (!DeclIsTypedef)
+        RewriteParams = true;
     }
   } else {
     // No params and no param source: make explicit
@@ -591,7 +600,8 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
 
   // Get rewritten return variable.
   std::string ReturnVar = "", ItypeStr = "";
-  if (!DeclIsTypedef)
+  // For now we still need to check if this needs rewriting, see FIXME below
+  // if (!DeclIsTypedef)
     this->buildDeclVar(FDConstraint->getCombineReturn(), FD, ReturnVar, ItypeStr,
                      "", RewriteParams, RewriteReturn);
 
@@ -602,6 +612,21 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
   // better, but getting the correct source locations is painful.
   if (FD->getReturnType()->isFunctionPointerType() && RewriteReturn)
     RewriteParams = true;
+
+  // If the function is declared using a typedef for the function type, then we
+  // need to rewrite parameters and the return if either would have been
+  // rewritten. What this does is expand the typedef to the full function type
+  // to avoid the problem of rewriting inside the typedef.
+  // FIXME: If issue #437 is fixed in way that preserves typedefs on function
+  //        declarations, then this conditional should be removed to enable
+  //        separate rewriting of return type and parameters on the
+  //        corresponding definition.
+  //        https://github.com/correctcomputation/checkedc-clang/issues/437
+  if ((RewriteReturn || RewriteParams) && DeclIsTypedef) {
+    RewriteParams = true;
+    RewriteReturn = true;
+  }
+
 
   // Combine parameter and return variables rewritings into a single rewriting
   // for the entire function declaration.

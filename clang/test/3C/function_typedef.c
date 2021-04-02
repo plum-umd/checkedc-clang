@@ -18,11 +18,11 @@ void foo_imp(int *a) {}
 typedef int *bar();
 bar bar_impl;
 int *bar_impl() { return 0; }
-//CHECK: bar bar_impl;
+//CHECK: _Ptr<int> bar_impl(void);
 //CHECK: _Ptr<int> bar_impl(void) _Checked { return 0; }
 
 typedef int *baz(int *);
 baz baz_impl;
 int *baz_impl(int *a) { return 0; }
-//CHECK: baz baz_impl;
+//CHECK: _Ptr<int> baz_impl(_Ptr<int> a);
 //CHECK: _Ptr<int> baz_impl(_Ptr<int> a) _Checked { return 0; }
