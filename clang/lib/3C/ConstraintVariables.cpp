@@ -1878,7 +1878,8 @@ Atom *PointerVariableConstraint::getAtom(unsigned AtomIdx, Constraints &CS) {
   return nullptr;
 }
 
-void PointerVariableConstraint::equateWithItype(Constraints &CS) {
+void
+PointerVariableConstraint::equateWithItype(Constraints &CS, bool ForceEquate) {
   assert(SrcVars.size() == Vars.size());
   for (unsigned VarIdx = 0; VarIdx < Vars.size(); VarIdx++) {
     ConstAtom *CA = SrcVars[VarIdx];
@@ -1886,6 +1887,9 @@ void PointerVariableConstraint::equateWithItype(Constraints &CS) {
       CS.addConstraint(CS.createGeq(Vars[VarIdx], CA, true));
     else
       Vars[VarIdx] = SrcVars[VarIdx];
+  }
+  if (FV) {
+    FV->equateWithItype(CS, ForceEquate);
   }
 }
 
@@ -1933,10 +1937,11 @@ bool FunctionVariableConstraint::isOriginallyChecked() const {
   return ReturnVar.ExternalConstraint->isOriginallyChecked();
 }
 
-void FunctionVariableConstraint::equateWithItype(Constraints &CS) {
-  ReturnVar.equateWithItype(CS, hasBody());
+void
+FunctionVariableConstraint::equateWithItype(Constraints &CS, bool ForceEquate) {
+  ReturnVar.equateWithItype(CS, ForceEquate);
   for (auto Param : ParamVars)
-    Param.equateWithItype(CS, hasBody());
+    Param.equateWithItype(CS, ForceEquate);
 }
 
 void FVComponentVariable::mergeDeclaration(FVComponentVariable *From,
@@ -2014,15 +2019,17 @@ FVComponentVariable::FVComponentVariable(const QualType &QT,
                                          std::string *InFunc, bool HasItype) {
   ExternalConstraint = new PVConstraint(QT, D, N, I, C, InFunc, -1, HasItype,
                                         nullptr, ITypeT);
-  if ((QT->isVoidPointerType() || QT->isFunctionPointerType()) && !HasItype) {
-    // For void pointers and function pointers, internal and external would need
-    // to be equated, so can we avoid allocating extra constraints.
-    InternalConstraint = ExternalConstraint;
-  } else {
+  //if ( && !HasItype) {
+  //  // For void pointers and function pointers, internal and external would need
+  //  // to be equated, so can we avoid allocating extra constraints.
+  //  InternalConstraint = ExternalConstraint;
+  //} else {
     InternalConstraint = new PVConstraint(QT, D, N, I, C, InFunc, -1, HasItype,
                                           nullptr, ITypeT);
-    linkInternalExternal(I.getConstraints());
-  }
+    bool EquateChecked = (QT->isVoidPointerType() ||
+                          QT->isFunctionPointerType());
+    linkInternalExternal(I.getConstraints(), EquateChecked);
+  //}
 
   // Save the original source for the declaration if this is a param
   // declaration. This lets us avoid macro expansion in function pointer
@@ -2034,20 +2041,21 @@ FVComponentVariable::FVComponentVariable(const QualType &QT,
   }
 }
 
-void FVComponentVariable::equateWithItype(Constraints &CS, bool HasBody) const {
+void
+FVComponentVariable::equateWithItype(Constraints &CS, bool ForceEquate) const {
   bool IsGeneric = ExternalConstraint->getIsGeneric();
   bool HasBounds = ExternalConstraint->srcHasBounds();
   bool HasItype = ExternalConstraint->srcHasItype();
-  if (HasItype && (!HasBody || IsGeneric || HasBounds)) {
-    ExternalConstraint->equateWithItype(CS);
+  if (HasItype && (ForceEquate || IsGeneric || HasBounds)) {
+    ExternalConstraint->equateWithItype(CS, ForceEquate);
     if (ExternalConstraint != InternalConstraint)
-      linkInternalExternal(CS);
+      linkInternalExternal(CS, false);
     if (IsGeneric)
       InternalConstraint->constrainToWild(CS, "Internal constraint for generic function.");
   }
 }
 
-void FVComponentVariable::linkInternalExternal(Constraints &CS) const {
+void FVComponentVariable::linkInternalExternal(Constraints &CS, bool EquateChecked) const {
   for (unsigned J = 0; J < InternalConstraint->getCvars().size(); J++) {
     Atom *InternalA = InternalConstraint->getCvars()[J];
     Atom *ExternalA = ExternalConstraint->getCvars()[J];
@@ -2067,8 +2075,8 @@ void FVComponentVariable::linkInternalExternal(Constraints &CS) const {
       // level. This is because CheckedC does not allow assignment from e.g.
       // a function return of type `int ** : itype(_Ptr<_Ptr<int>>)` to a
       // variable with type `int **`.
-      if (!isa<ConstAtom>(ExternalA) &&
-          ExternalConstraint->getName() == RETVAR && J > 0)
+      if (EquateChecked || (!isa<ConstAtom>(ExternalA) &&
+          ExternalConstraint->getName() == RETVAR && J > 0))
         CS.addConstraint(CS.createGeq(ExternalA, InternalA, true));
     }
   }
