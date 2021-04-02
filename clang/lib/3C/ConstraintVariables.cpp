@@ -676,12 +676,17 @@ std::string PointerVariableConstraint::mkString(Constraints &CS,
                                                 bool EmitPointee,
                                                 bool UnmaskTypedef,
                                                 std::string UseName) const {
+
+  // The name field encodes if this variable is the return type for a function.
+  // TODO: store this information in a separate field.
+  bool IsReturn = getName() == RETVAR;
+
   if (UseName.empty())
     UseName = getName();
 
   if (IsTypedef && !UnmaskTypedef) {
     return gatherQualStrings() + TypedefString +
-           (EmitName && UseName != RETVAR ? (" " + UseName) : " ");
+           (EmitName && !IsReturn ? (" " + UseName) : " ");
   }
 
   std::ostringstream Ss;
@@ -703,7 +708,7 @@ std::string PointerVariableConstraint::mkString(Constraints &CS,
   bool AllArrays = true;
   // Are we in a sequence of arrays
   bool ArrayRun = false;
-  if (!EmitName || UseName == RETVAR)
+  if (!EmitName || IsReturn)
     EmittedName = true;
   uint32_t TypeIdx = 0;
 
@@ -869,8 +874,7 @@ std::string PointerVariableConstraint::mkString(Constraints &CS,
       Ss << Str;
   }
 
-  // TODO Remove comparison to RETVAR.
-  if (UseName == RETVAR && !ForItype)
+  if (IsReturn && !ForItype)
     Ss << " ";
 
   return Ss.str();
@@ -1451,11 +1455,13 @@ std::string FunctionVariableConstraint::mkString(Constraints &CS,
     UseName = Name;
   std::string Ret = ReturnVar.mkTypeStr(CS, false);
   std::string Itype = ReturnVar.mkItypeStr(CS);
-  // This is done to rewrite the typedef of a function proto
-  if (UnmaskTypedef && EmitName)
-    Ret += UseName;
-  else if (EmitName)
-    Ret += "(*" + UseName + ")";
+  if (EmitName) {
+    if (UnmaskTypedef)
+      // This is done to rewrite the typedef of a function proto
+      Ret += UseName;
+    else
+      Ret += "(*" + UseName + ")";
+  }
   Ret = Ret + "(";
   std::vector<std::string> ParmStrs;
   for (const auto &I : this->ParamVars)

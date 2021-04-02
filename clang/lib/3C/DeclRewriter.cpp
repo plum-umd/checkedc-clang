@@ -655,7 +655,7 @@ void FunctionDeclBuilder::buildItypeDecl(PVConstraint *Defn,
                                          bool &RewriteParm, bool &RewriteRet) {
   Type = Defn->getRewritableOriginalTy();
   if (isa_and_nonnull<ParmVarDecl>(Decl)) {
-    if (Decl->getName() == "")
+    if (Decl->getName().empty())
       Type += Defn->getName();
     else
       Type += Decl->getQualifiedNameAsString();
