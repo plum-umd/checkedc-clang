@@ -109,8 +109,10 @@ CastPlacementVisitor::CastNeeded CastPlacementVisitor::needCasting(
   // in the file. Because the function is defined, the internal type can solve
   // to checked, causing to appear fully checked (without itype). This would
   // cause a bounds cast to be inserted on unchecked calls to the function.
-  //if (!SrcExt->isChecked(CS.getVariables()) && DstInt->srcHasItype())
-  //  return NO_CAST;
+  if (!SrcExt->isSolutionChecked(CS.getVariables()) &&
+      !DstInt->isSolutionChecked(CS.getVariables()) &&
+      DstInt->srcHasItype())
+    return NO_CAST;
 
   if (DstInt->isSolutionChecked(CS.getVariables()))
     return CAST_TO_CHECKED;

@@ -133,6 +133,8 @@ public:
   // isSolutionChecked instead.
   virtual bool anyChanges(const EnvironmentMap &E) const = 0;
 
+  virtual bool isSolutionFullyChecked( const EnvironmentMap &E) const = 0;
+
   // Here, AIdx is the pointer level which needs to be checked.
   // By default, we check for all pointer levels (or VarAtoms)
   virtual bool hasWild(const EnvironmentMap &E, int AIdx = -1) const = 0;
@@ -362,6 +364,7 @@ public:
   }
 
   bool isSolutionChecked(const EnvironmentMap &E) const override;
+  bool isSolutionFullyChecked(const EnvironmentMap &E) const override;
 
   bool isVoidPtr() const { return IsVoidPtr; }
 
@@ -511,6 +514,9 @@ public:
   PVConstraint *getExternal() const { return ExternalConstraint; }
 
   void equateWithItype(ProgramInfo &CS, bool ForceEquate) const;
+
+  bool solutionEqualTo(Constraints &CS, const FVComponentVariable *CV,
+                       bool ComparePtyp) const;
 };
 
 // Constraints on a function type. Also contains a 'name' parameter for
@@ -627,6 +633,7 @@ public:
 
   bool isOriginallyChecked() const override;
   bool isSolutionChecked(const EnvironmentMap &E) const override;
+  bool isSolutionFullyChecked(const EnvironmentMap &E) const override;
 
   void equateWithItype(ProgramInfo &CS, bool ForceEquate) override;
 

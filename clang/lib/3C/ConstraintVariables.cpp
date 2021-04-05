@@ -1109,6 +1109,14 @@ FunctionVariableConstraint::isSolutionChecked(const EnvironmentMap &E) const {
          });
 }
 
+bool FunctionVariableConstraint::isSolutionFullyChecked(
+  const EnvironmentMap &E) const {
+  return ReturnVar.ExternalConstraint->isSolutionChecked(E) &&
+         llvm::all_of(ParamVars, [&E](FVComponentVariable CV) {
+           return CV.ExternalConstraint->isSolutionChecked(E);
+         });
+}
+
 bool FunctionVariableConstraint::hasWild(const EnvironmentMap &E,
                                          int AIdx) const {
   return ReturnVar.ExternalConstraint->hasWild(E, AIdx);
@@ -1246,6 +1254,14 @@ bool
 PointerVariableConstraint::isSolutionChecked(const EnvironmentMap &E) const {
   return (FV && FV->isSolutionChecked(E)) ||
          llvm::any_of(Vars, [this, &E](Atom *A){
+           return !isa<WildAtom>(getSolution(A, E));
+         });
+}
+
+bool PointerVariableConstraint::isSolutionFullyChecked(
+  const EnvironmentMap &E) const {
+  return (FV && FV->isSolutionChecked(E)) &&
+         llvm::all_of(Vars, [this, &E](Atom *A){
            return !isa<WildAtom>(getSolution(A, E));
          });
 }
@@ -1479,11 +1495,11 @@ bool FunctionVariableConstraint::solutionEqualTo(Constraints &CS,
       PVConstraint *ThisRet = ReturnVar.ExternalConstraint;
       PVConstraint *OtherRet = OtherFV->ReturnVar.ExternalConstraint;
       Ret = (numParams() == OtherFV->numParams()) &&
-            ThisRet->solutionEqualTo(CS, OtherRet, ComparePtyp);
+        ReturnVar.solutionEqualTo(CS, OtherFV->getCombineReturn(), ComparePtyp);
       for (unsigned I = 0; I < numParams(); I++) {
-        PVConstraint *ThisParam = getExternalParam(I);
-        PVConstraint *OtherParam = OtherFV->getExternalParam(I);
-        Ret &= ThisParam->solutionEqualTo(CS, OtherParam, ComparePtyp);
+        Ret &= getCombineParam(I)->solutionEqualTo(CS,
+                                                   OtherFV->getCombineParam(I),
+                                                   ComparePtyp);
       }
     } else if (const auto *OtherPV = dyn_cast<PVConstraint>(CV)) {
       // When comparing to a pointer variable, it might be that the pointer is a
@@ -2119,6 +2135,16 @@ void FVComponentVariable::linkInternalExternal(ProgramInfo &I,
     assert(IntFV != nullptr);
     constrainConsVarGeq(ExtFV, IntFV, CS, nullptr, Same_to_Same, true,&I);
   }
+}
+
+bool FVComponentVariable::solutionEqualTo(Constraints &CS,
+                                          const FVComponentVariable *Other,
+                                          bool ComparePtyp) const {
+  bool InternalEq = getInternal()->solutionEqualTo(CS, Other->getInternal(),
+                                                   ComparePtyp);
+  bool ExternalEq = getExternal()->solutionEqualTo(CS, Other->getExternal(),
+                                                   ComparePtyp);
+  return InternalEq || ExternalEq;
 }
 
 FVComponentVariable::FVComponentVariable(FVComponentVariable *Ot,
