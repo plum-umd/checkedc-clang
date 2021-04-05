@@ -156,7 +156,7 @@ public:
   void setValidDecl() { IsForDecl = true; }
   bool isForValidDecl() const { return IsForDecl; }
 
-  virtual void equateWithItype(Constraints &CS, bool ForceEquate) = 0;
+  virtual void equateWithItype(ProgramInfo &CS, bool ForceEquate) = 0;
 
   virtual ConstraintVariable *getCopy(Constraints &CS) = 0;
 
@@ -455,7 +455,7 @@ public:
 
   ~PointerVariableConstraint() override{};
 
-  void equateWithItype(Constraints &CS, bool ForceEquate) override;
+  void equateWithItype(ProgramInfo &CS, bool ForceEquate) override;
 };
 
 typedef PointerVariableConstraint PVConstraint;
@@ -479,7 +479,7 @@ private:
 
   std::string SourceDeclaration;
 
-  void linkInternalExternal(Constraints &CS, bool EquateChecked) const;
+  void linkInternalExternal(ProgramInfo &I, bool EquateChecked) const;
 
 public:
   FVComponentVariable()
@@ -505,7 +505,7 @@ public:
   PVConstraint *getInternal() const { return InternalConstraint; }
   PVConstraint *getExternal() const { return ExternalConstraint; }
 
-  void equateWithItype(Constraints &CS, bool ForceEquate) const;
+  void equateWithItype(ProgramInfo &CS, bool ForceEquate) const;
 };
 
 // Constraints on a function type. Also contains a 'name' parameter for
@@ -622,7 +622,7 @@ public:
   bool isOriginallyChecked() const override;
   bool isSolutionChecked(const EnvironmentMap &E) const override;
 
-  void equateWithItype(Constraints &CS, bool ForceEquate) override;
+  void equateWithItype(ProgramInfo &CS, bool ForceEquate) override;
 
   ~FunctionVariableConstraint() override {}
 };

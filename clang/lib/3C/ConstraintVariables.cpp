@@ -1879,7 +1879,8 @@ Atom *PointerVariableConstraint::getAtom(unsigned AtomIdx, Constraints &CS) {
 }
 
 void
-PointerVariableConstraint::equateWithItype(Constraints &CS, bool ForceEquate) {
+PointerVariableConstraint::equateWithItype(ProgramInfo &I, bool ForceEquate) {
+  Constraints &CS = I.getConstraints();
   assert(SrcVars.size() == Vars.size());
   for (unsigned VarIdx = 0; VarIdx < Vars.size(); VarIdx++) {
     ConstAtom *CA = SrcVars[VarIdx];
@@ -1889,7 +1890,7 @@ PointerVariableConstraint::equateWithItype(Constraints &CS, bool ForceEquate) {
       Vars[VarIdx] = SrcVars[VarIdx];
   }
   if (FV) {
-    FV->equateWithItype(CS, ForceEquate);
+    FV->equateWithItype(I, ForceEquate);
   }
 }
 
@@ -1938,10 +1939,10 @@ bool FunctionVariableConstraint::isOriginallyChecked() const {
 }
 
 void
-FunctionVariableConstraint::equateWithItype(Constraints &CS, bool ForceEquate) {
-  ReturnVar.equateWithItype(CS, ForceEquate);
+FunctionVariableConstraint::equateWithItype(ProgramInfo &I, bool ForceEquate) {
+  ReturnVar.equateWithItype(I, ForceEquate);
   for (auto Param : ParamVars)
-    Param.equateWithItype(CS, ForceEquate);
+    Param.equateWithItype(I, ForceEquate);
 }
 
 void FVComponentVariable::mergeDeclaration(FVComponentVariable *From,
@@ -2028,7 +2029,7 @@ FVComponentVariable::FVComponentVariable(const QualType &QT,
                                           nullptr, ITypeT);
     bool EquateChecked = (QT->isVoidPointerType() ||
                           QT->isFunctionPointerType());
-    linkInternalExternal(I.getConstraints(), EquateChecked);
+    linkInternalExternal(I, EquateChecked);
   //}
 
   // Save the original source for the declaration if this is a param
@@ -2042,20 +2043,23 @@ FVComponentVariable::FVComponentVariable(const QualType &QT,
 }
 
 void
-FVComponentVariable::equateWithItype(Constraints &CS, bool ForceEquate) const {
+FVComponentVariable::equateWithItype(ProgramInfo &I, bool ForceEquate) const {
+  Constraints &CS = I.getConstraints();
   bool IsGeneric = ExternalConstraint->getIsGeneric();
   bool HasBounds = ExternalConstraint->srcHasBounds();
   bool HasItype = ExternalConstraint->srcHasItype();
   if (HasItype && (ForceEquate || IsGeneric || HasBounds)) {
-    ExternalConstraint->equateWithItype(CS, ForceEquate);
+    ExternalConstraint->equateWithItype(I, ForceEquate);
     if (ExternalConstraint != InternalConstraint)
-      linkInternalExternal(CS, false);
+      linkInternalExternal(I, false);
     if (IsGeneric)
       InternalConstraint->constrainToWild(CS, "Internal constraint for generic function.");
   }
 }
 
-void FVComponentVariable::linkInternalExternal(Constraints &CS, bool EquateChecked) const {
+void FVComponentVariable::linkInternalExternal(ProgramInfo &I,
+                                               bool EquateChecked) const {
+  Constraints &CS = I.getConstraints();
   for (unsigned J = 0; J < InternalConstraint->getCvars().size(); J++) {
     Atom *InternalA = InternalConstraint->getCvars()[J];
     Atom *ExternalA = ExternalConstraint->getCvars()[J];
@@ -2064,21 +2068,28 @@ void FVComponentVariable::linkInternalExternal(Constraints &CS, bool EquateCheck
       // variables.
       CS.addConstraint(CS.createGeq(InternalA, ExternalA, false));
       CS.addConstraint(CS.createGeq(ExternalA, InternalA, false));
-      // Constrain Internal >= External. If external solves to wild, then so
-      // does the internal. Not that this doesn't mean any unsafe external
-      // use causes the internal variable to be wild because the external
-      // variable solves to WILD only when there is an unsafe use that
-      // cannot be resolved by inserting casts.
-      CS.addConstraint(CS.createGeq(InternalA, ExternalA, true));
 
-      // Atoms of return constraint variables are unified after the first
-      // level. This is because CheckedC does not allow assignment from e.g.
-      // a function return of type `int ** : itype(_Ptr<_Ptr<int>>)` to a
-      // variable with type `int **`.
-      if (EquateChecked || (!isa<ConstAtom>(ExternalA) &&
-          ExternalConstraint->getName() == RETVAR && J > 0))
-        CS.addConstraint(CS.createGeq(ExternalA, InternalA, true));
+      if (!isa<ConstAtom>(ExternalA)) {
+        // Constrain Internal >= External. If external solves to wild, then so
+        // does the internal. Not that this doesn't mean any unsafe external
+        // use causes the internal variable to be wild because the external
+        // variable solves to WILD only when there is an unsafe use that
+        // cannot be resolved by inserting casts.
+        CS.addConstraint(CS.createGeq(InternalA, ExternalA, true));
+
+        // Atoms of return constraint variables are unified after the first
+        // level. This is because CheckedC does not allow assignment from e.g.
+        // a function return of type `int ** : itype(_Ptr<_Ptr<int>>)` to a
+        // variable with type `int **`.
+        if (EquateChecked || (ExternalConstraint->getName() == RETVAR && J > 0))
+          CS.addConstraint(CS.createGeq(ExternalA, InternalA, true));
+      }
     }
+  }
+  if (FVConstraint *ExtFV = ExternalConstraint->getFV()) {
+    FVConstraint *IntFV = InternalConstraint->getFV();
+    assert(IntFV != nullptr);
+    constrainConsVarGeq(ExtFV, IntFV, CS, nullptr, Same_to_Same, true,&I);
   }
 }
 

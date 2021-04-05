@@ -464,7 +464,7 @@ bool ProgramInfo::link() {
     // Handle the cases where itype parameters should not be treated as their
     // unchecked type.
     // TODO: function need better name
-    G->equateWithItype(CS, !G->hasBody());
+    G->equateWithItype(*this, !G->hasBody());
 
     // If we've seen this symbol, but never seen a body for it, constrain
     // everything about it.
@@ -778,7 +778,7 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
   if (!canWrite(PLoc.getFileName())) {
     // FIXME: Potential bug here. What if we hit this branch for a
     //        pre-declaration, but then later see a definition of the function?
-    NewCV->equateWithItype(CS, true);
+    NewCV->equateWithItype(*this, true);
     NewCV->constrainToWild(CS, "Declaration in non-writable file", &PLoc);
   }
   constrainWildIfMacro(NewCV, D->getLocation());
