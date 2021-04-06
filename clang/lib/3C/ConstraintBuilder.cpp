@@ -552,6 +552,7 @@ public:
   explicit VariableAdderVisitor(ASTContext *Context, ProgramVariableAdder &VA)
     : Context(Context), VarAdder(VA) {}
 
+  bool shouldVisitImplicitCode() const { return true; }
 
   bool VisitTypedefDecl(TypedefDecl* TD) {
     CVarSet empty;

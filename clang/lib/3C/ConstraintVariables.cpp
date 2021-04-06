@@ -1260,7 +1260,7 @@ PointerVariableConstraint::isSolutionChecked(const EnvironmentMap &E) const {
 
 bool PointerVariableConstraint::isSolutionFullyChecked(
   const EnvironmentMap &E) const {
-  return (FV && FV->isSolutionChecked(E)) &&
+  return (!FV || FV->isSolutionChecked(E)) &&
          llvm::all_of(Vars, [this, &E](Atom *A){
            return !isa<WildAtom>(getSolution(A, E));
          });
@@ -1492,8 +1492,6 @@ bool FunctionVariableConstraint::solutionEqualTo(Constraints &CS,
   bool Ret = false;
   if (CV != nullptr) {
     if (const auto *OtherFV = dyn_cast<FVConstraint>(CV)) {
-      PVConstraint *ThisRet = ReturnVar.ExternalConstraint;
-      PVConstraint *OtherRet = OtherFV->ReturnVar.ExternalConstraint;
       Ret = (numParams() == OtherFV->numParams()) &&
         ReturnVar.solutionEqualTo(CS, OtherFV->getCombineReturn(), ComparePtyp);
       for (unsigned I = 0; I < numParams(); I++) {

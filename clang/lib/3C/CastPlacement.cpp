@@ -110,7 +110,7 @@ CastPlacementVisitor::CastNeeded CastPlacementVisitor::needCasting(
   // to checked, causing to appear fully checked (without itype). This would
   // cause a bounds cast to be inserted on unchecked calls to the function.
   if (!SrcExt->isSolutionChecked(CS.getVariables()) &&
-      !DstInt->isSolutionChecked(CS.getVariables()) &&
+      !DstInt->isSolutionFullyChecked(CS.getVariables()) &&
       DstInt->srcHasItype())
     return NO_CAST;
 
