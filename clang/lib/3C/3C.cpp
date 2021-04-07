@@ -110,9 +110,9 @@ ArgumentsAdjuster canonicalizeSourceFilePathAdjuster() {
         // argument should be replaced with the canonical file path. It might be
         // safer to only match the argument that represents the input file.
         // Unfortunately, it's hard to do here short of reimplementing compiler
-        // command line parsing. It would be better if LibTooling let us adjust
-        // the parsed option data structures, like we did with the diagnostic
-        // verification options before PR #488.
+        // command line parsing. It would be better to adjust the parsed option
+        // data structures instead
+        // (https://github.com/correctcomputation/checkedc-clang/issues/536).
         AdjustedArgs.push_back(AbsoluteFp);
       } else {
         AdjustedArgs.push_back(Arg);
