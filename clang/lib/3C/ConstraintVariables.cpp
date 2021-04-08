@@ -1026,7 +1026,6 @@ FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
     // If we don't have a function declaration, but the return does have an
     // itype, then use the itype as the return type. This is so that we don't
     // drop itype annotation on function pointer return types.
-    // TODO: record the itype and pass it into the PVConstraint constructor
     RT = FT->getReturnType();
     ReturnHasItype = FT->getReturnAnnots().getInteropTypeExpr();
     if (ReturnHasItype)
@@ -1044,7 +1043,6 @@ FunctionVariableConstraint::FunctionVariableConstraint(const Type *Ty,
       // Same conditional as we had for the return type. If we don't have a
       // function declaration then the itype for the parameter is used as if it
       // were the parameter's primary type.
-      // TODO: also record itype here
       QualType QT = FT->getParamType(J);
       QualType ITypeT;
       bool ParamHasItype = FT->getParamAnnots(J).getInteropTypeExpr();
@@ -1389,8 +1387,8 @@ bool PointerVariableConstraint::solutionEqualTo(Constraints &CS,
         // ARR or PTR.
         if (ComparePtyp && IsZeroWidthArray) {
           assert(I != Vars.end() && "Zero width array cannot be base type.");
-          //assert("Zero width arrays should be encoded as PTR." &&
-          //       CS.getAssignment(*I) == CS.getPtr());
+          assert("Zero width arrays should be encoded as PTR." &&
+                 CS.getAssignment(*I) == CS.getPtr());
           ConstAtom *JAtom = CS.getAssignment(*J);
           // Zero width array can compare as either ARR or PTR
           if (JAtom != CS.getArr() && JAtom != CS.getPtr())
