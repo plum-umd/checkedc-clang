@@ -669,7 +669,8 @@ void FunctionDeclBuilder::buildCheckedDecl(
                         false,false,UseName);
   //IType = getExistingIType(Defn);
   IType = ABRewriter.getBoundsString(Defn, Decl, !IType.empty());
-  RewriteParm |= !IType.empty() || isa_and_nonnull<ParmVarDecl>(Decl);
+  RewriteParm |= getExistingIType(Defn).empty() != IType.empty() ||
+                 isa_and_nonnull<ParmVarDecl>(Decl);
   RewriteRet |= isa_and_nonnull<FunctionDecl>(Decl);
 }
 
