@@ -2065,17 +2065,10 @@ FVComponentVariable::FVComponentVariable(const QualType &QT,
                                          std::string *InFunc, bool HasItype) {
   ExternalConstraint = new PVConstraint(QT, D, N, I, C, InFunc, -1, HasItype,
                                         nullptr, ITypeT);
-  //if ( && !HasItype) {
-  //  // For void pointers and function pointers, internal and external would need
-  //  // to be equated, so can we avoid allocating extra constraints.
-  //  InternalConstraint = ExternalConstraint;
-  //} else {
-    InternalConstraint = new PVConstraint(QT, D, N, I, C, InFunc, -1, HasItype,
-                                          nullptr, ITypeT);
-    bool EquateChecked = (QT->isVoidPointerType() ||
-                          QT->isFunctionPointerType());
-    linkInternalExternal(I, EquateChecked);
-  //}
+  InternalConstraint = new PVConstraint(QT, D, N, I, C, InFunc, -1, HasItype,
+                                        nullptr, ITypeT);
+  bool EquateChecked = (QT->isVoidPointerType() || QT->isFunctionPointerType());
+  linkInternalExternal(I, EquateChecked);
 
   // Save the original source for the declaration if this is a param
   // declaration. This lets us avoid macro expansion in function pointer
