@@ -55,7 +55,7 @@ int *bar() {
 
 char *sus(int *x, int *y) {
   //CHECK_NOALL: _Ptr<char> sus(int *x : itype(_Ptr<int>), _Ptr<int> y) {
-  //CHECK_ALL: _Ptr<char> sus(_Array_ptr<int> x, _Ptr<int> y) {
+  //CHECK_ALL: _Ptr<char> sus(_Array_ptr<int> x, _Ptr<int> y) _Checked {
   char *z = malloc(sizeof(char));
   //CHECK: _Ptr<char> z = malloc<char>(sizeof(char));
   *z = 1;

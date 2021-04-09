@@ -31,7 +31,8 @@ struct Graph {
 /*Constructs a graph with V vertices and E edges*/
 
 void createGraph(struct Graph *G, int V) {
-  //CHECK: void createGraph(_Ptr<struct Graph> G, int V) {
+  //CHECK_NOALL: void createGraph(_Ptr<struct Graph> G, int V) {
+  //CHECK_ALL: void createGraph(_Ptr<struct Graph> G, int V) _Checked {
 
   G->vertexNum = V;
 

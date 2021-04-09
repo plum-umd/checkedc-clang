@@ -14,7 +14,8 @@ extern _Itype_for_any(T) void *realloc(void *pointer
     : itype(_Array_ptr<T>) byte_count(size);
 
 void foo(int *w) {
-  //CHECK: void foo(_Ptr<int> w) {
+  //CHECK_NOALL: void foo(_Ptr<int> w) {
+  //CHECK_ALL: void foo(_Ptr<int> w) _Checked {
   int *y = malloc(2 * sizeof(int));
   //CHECK_NOALL: int *y = malloc<int>(2 * sizeof(int));
   //CHECK_ALL: _Array_ptr<int> y : count(2) = malloc<int>(2 * sizeof(int));

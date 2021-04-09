@@ -274,6 +274,8 @@ struct Graph *createGraph(int vertices)
 //CHECK: _Ptr<struct Graph> createGraph(int vertices)
 
 {
+  //CHECK_NOALL: {
+  //CHECK_ALL: _Checked {
 
   struct Graph *graph = malloc(sizeof(struct Graph));
   //CHECK: _Ptr<struct Graph> graph = malloc<struct Graph>(sizeof(struct Graph));
@@ -290,6 +292,8 @@ struct Graph *createGraph(int vertices)
   int i;
 
   for (i = 0; i < vertices; i++) {
+    //CHECK_NOALL: for (i = 0; i < vertices; i++) {
+    //CHECK_ALL: for (i = 0; i < vertices; i++) _Unchecked {
 
     graph->adjLists[i] = NULL;
 
@@ -365,6 +369,8 @@ struct Stack *createStack()
 //CHECK: _Ptr<struct Stack> createStack(void)
 
 {
+  //CHECK_NOALL: {
+  //CHECK_ALL: _Checked {
 
   struct Stack *stack = malloc(sizeof(struct Stack));
   //CHECK: _Ptr<struct Stack> stack = malloc<struct Stack>(sizeof(struct Stack));

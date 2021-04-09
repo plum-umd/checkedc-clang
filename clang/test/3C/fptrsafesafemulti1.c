@@ -133,6 +133,7 @@ int *foo() {
   //CHECK: _Ptr<struct general> curr = y;
   int i;
   for (i = 1; i < 5; i++, curr = curr->next) {
+    //CHECK: for (i = 1; i < 5; i++, curr = curr->next) _Checked {
     curr->data = i;
     curr->next = malloc(sizeof(struct general));
     curr->next->data = i + 1;
@@ -159,6 +160,7 @@ int *bar() {
   //CHECK: _Ptr<struct general> curr = y;
   int i;
   for (i = 1; i < 5; i++, curr = curr->next) {
+    //CHECK: for (i = 1; i < 5; i++, curr = curr->next) _Checked {
     curr->data = i;
     curr->next = malloc(sizeof(struct general));
     curr->next->data = i + 1;

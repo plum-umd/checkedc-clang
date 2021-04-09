@@ -137,7 +137,7 @@ int **sus(int *x, int *y) {
 
 int **foo() {
   //CHECK_NOALL: _Ptr<int *> foo(void) {
-  //CHECK_ALL: _Array_ptr<_Ptr<int>> foo(void) {
+  //CHECK_ALL: _Array_ptr<_Ptr<int>> foo(void) _Checked {
 
   int *x = malloc(sizeof(int));
   //CHECK: _Ptr<int> x = malloc<int>(sizeof(int));
@@ -146,8 +146,6 @@ int **foo() {
   //CHECK_ALL: _Array_ptr<int> y : count(5) = calloc<int>(5, sizeof(int));
   int i;
   for (i = 0; i < 5; i++) {
-    //CHECK_NOALL: for (i = 0; i < 5; i++) {
-    //CHECK_ALL: for (i = 0; i < 5; i++) _Checked {
     y[i] = i + 1;
   }
   int **z = sus(x, y);
@@ -159,7 +157,7 @@ int **foo() {
 
 int **bar() {
   //CHECK_NOALL: int **bar(void) : itype(_Ptr<int *>) {
-  //CHECK_ALL: _Array_ptr<_Ptr<int>> bar(void) {
+  //CHECK_ALL: _Array_ptr<_Ptr<int>> bar(void) _Checked {
 
   int *x = malloc(sizeof(int));
   //CHECK: _Ptr<int> x = malloc<int>(sizeof(int));
@@ -168,8 +166,6 @@ int **bar() {
   //CHECK_ALL: _Array_ptr<int> y : count(5) = calloc<int>(5, sizeof(int));
   int i;
   for (i = 0; i < 5; i++) {
-    //CHECK_NOALL: for (i = 0; i < 5; i++) {
-    //CHECK_ALL: for (i = 0; i < 5; i++) _Checked {
     y[i] = i + 1;
   }
   int **z = sus(x, y);

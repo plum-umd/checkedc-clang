@@ -16,6 +16,7 @@
 #include "llvm/ADT/StringSwitch.h"
 #include "llvm/Support/CommandLine.h"
 #include <sstream>
+#include <algorithm>
 
 using namespace clang;
 // Macro for boolean implication.
@@ -1059,11 +1060,15 @@ bool FunctionVariableConstraint::anyChanges(const EnvironmentMap &E) const {
            return CV.ExternalConstraint->anyChanges(E);
          });
 }
-
 bool FunctionVariableConstraint::hasWild(const EnvironmentMap &E,
                                          int AIdx) const {
   return ReturnVar.ExternalConstraint->hasWild(E, AIdx);
 }
+bool FunctionVariableConstraint::hasParamWild(const EnvironmentMap &E) const {
+  return std::any_of(this->ParamVars.begin(), this->ParamVars.end(),
+                [&E](const auto V) { return V.hasWild(E); } );
+}
+
 
 bool FunctionVariableConstraint::hasArr(const EnvironmentMap &E,
                                         int AIdx) const {
@@ -1254,6 +1259,13 @@ bool PointerVariableConstraint::hasWild(const EnvironmentMap &E,
     return FV->hasWild(E, AIdx);
 
   return false;
+}
+
+bool PointerVariableConstraint::hasParamWild(const EnvironmentMap &E) const {
+  if (const auto *TFV = this->getFV())
+    return TFV->hasParamWild(E);
+  else
+    return false;
 }
 
 bool PointerVariableConstraint::hasArr(const EnvironmentMap &E,
@@ -1946,6 +1958,10 @@ std::string FVComponentVariable::mkItypeStr(Constraints &CS) const {
   if (hasItypeSolution(CS))
     return " : itype(" + ExternalConstraint->mkString(CS, false, true) + ")";
   return "";
+}
+
+bool FVComponentVariable::hasWild(const EnvironmentMap &E) const {
+  return InternalConstraint->hasWild(E);
 }
 
 bool FVComponentVariable::hasCheckedSolution(Constraints &CS) const {

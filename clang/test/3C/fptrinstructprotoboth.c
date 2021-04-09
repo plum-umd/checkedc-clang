@@ -120,7 +120,7 @@ struct fptr *sus(struct fptr *, struct fptr *);
 //CHECK_ALL: struct fptr *sus(struct fptr *x : itype(_Ptr<struct fptr>), _Ptr<struct fptr> y) : itype(_Array_ptr<struct fptr>);
 
 struct fptr *foo() {
-  //CHECK: _Ptr<struct fptr> foo(void) {
+  //CHECK: _Ptr<struct fptr> foo(void) _Checked {
 
   struct fptr *x = malloc(sizeof(struct fptr));
   //CHECK: _Ptr<struct fptr> x = malloc<struct fptr>(sizeof(struct fptr));
@@ -134,7 +134,7 @@ struct fptr *foo() {
 
 struct fptr *bar() {
   //CHECK_NOALL: struct fptr *bar(void) : itype(_Ptr<struct fptr>) {
-  //CHECK_ALL: _Ptr<struct fptr> bar(void) {
+  //CHECK_ALL: _Ptr<struct fptr> bar(void) _Checked {
 
   struct fptr *x = malloc(sizeof(struct fptr));
   //CHECK: _Ptr<struct fptr> x = malloc<struct fptr>(sizeof(struct fptr));

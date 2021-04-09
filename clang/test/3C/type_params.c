@@ -1,7 +1,7 @@
 // RUN: rm -rf %t*
 // RUN: 3c -base-dir=%S -addcr -alltypes %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_ALL","CHECK" %s
-// RUN: 3c -base-dir=%S -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" %s
-// RUN: 3c -base-dir=%S -addcr %s -- | %clang -c -fcheckedc-extension -x c -o %t1.unused -
+// : 3c -base-dir=%S -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" %s
+// : 3c -base-dir=%S -addcr %s -- | %clang -c -fcheckedc-extension -x c -o %t1.unused -
 
 // General demonstration
 _Itype_for_any(T) void *test_single(void *a
@@ -10,7 +10,7 @@ _Itype_for_any(T) void *test_single(void *a
     : itype(_Ptr<T>);
 
 void t0(int *a, int *b) {
-  //CHECK: void t0(_Ptr<int> a, _Ptr<int> b) {
+  //CHECK: void t0(_Ptr<int> a, _Ptr<int> b) _Checked {
   test_single(a, b);
   //CHECK: test_single<int>(a, b);
 }
@@ -23,7 +23,7 @@ void t1(int *a, int *b) {
 }
 
 void t10(int **a, int **b) {
-  //CHECK: void t10(_Ptr<_Ptr<int>> a, _Ptr<_Ptr<int>> b) {
+  //CHECK: void t10(_Ptr<_Ptr<int>> a, _Ptr<_Ptr<int>> b) _Checked {
   test_single(a, b);
   //CHECK: test_single<_Ptr<int>>(a, b);
 }
@@ -36,7 +36,7 @@ _Itype_for_any(T, U) void *test_double(void *a
     : itype(_Ptr<T>);
 
 void t2(int *a, int *b, float *c, float *d) {
-  //CHECK: void t2(_Ptr<int> a, _Ptr<int> b, _Ptr<float> c, _Ptr<float> d) {
+  //CHECK: void t2(_Ptr<int> a, _Ptr<int> b, _Ptr<float> c, _Ptr<float> d) _Checked {
   test_double(a, b, c, d);
   //CHECK: test_double<int,float>(a, b, c, d);
 }
@@ -111,6 +111,7 @@ void foo(int *p2) {
 
 // Array types can be used to instantiate type params
 void arrs() {
+// CHECK_ALL: void arrs() _Checked {
   int *p = malloc(10 * sizeof(int));
   // CHECK_ALL: _Array_ptr<int> p : count(10) = malloc<int>(10 * sizeof(int));
   int q[10];
@@ -130,7 +131,7 @@ void f0() {
 }
 
 void f1(int **a, float **b) {
-  // CHECK: void f1(_Ptr<_Ptr<int>> a, _Ptr<_Ptr<float>> b) {
+  // CHECK: void f1(_Ptr<_Ptr<int>> a, _Ptr<_Ptr<float>> b) _Checked {
   int **c = test1(a);
   float **d = test1(b);
   // CHECK: _Ptr<_Ptr<int>> c =  test1<_Ptr<int>>(a);

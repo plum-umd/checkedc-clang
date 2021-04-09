@@ -121,7 +121,8 @@ struct warr *sus(struct warr *, struct warr *);
 //CHECK: _Ptr<struct warr> sus(struct warr *x : itype(_Ptr<struct warr>), _Ptr<struct warr> y);
 
 struct warr *foo() {
-  //CHECK: _Ptr<struct warr> foo(void) {
+  //CHECK_NOALL: _Ptr<struct warr> foo(void) {
+  //CHECK_ALL: _Ptr<struct warr> foo(void) _Checked {
   struct warr *x = malloc(sizeof(struct warr));
   //CHECK: _Ptr<struct warr> x = malloc<struct warr>(sizeof(struct warr));
   struct warr *y = malloc(sizeof(struct warr));
@@ -132,7 +133,8 @@ struct warr *foo() {
 }
 
 struct warr *bar() {
-  //CHECK: _Ptr<struct warr> bar(void) {
+  //CHECK_NOALL: _Ptr<struct warr> bar(void) {
+  //CHECK_ALL: _Ptr<struct warr> bar(void) _Checked {
   struct warr *x = malloc(sizeof(struct warr));
   //CHECK: _Ptr<struct warr> x = malloc<struct warr>(sizeof(struct warr));
   struct warr *y = malloc(sizeof(struct warr));

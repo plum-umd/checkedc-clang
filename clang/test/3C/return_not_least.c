@@ -46,7 +46,7 @@ extern _Itype_for_any(T) void *calloc(size_t nmemb, size_t size)
 
 int *bar() {
   //CHECK_NOALL: int *bar(void) : itype(_Ptr<int>) {
-  //CHECK_ALL: _Array_ptr<int> bar(void) {
+  //CHECK_ALL: _Array_ptr<int> bar(void) _Checked {
   int *z = calloc(2, sizeof(int));
   //CHECK_NOALL: int *z = calloc<int>(2, sizeof(int));
   //CHECK_ALL: _Array_ptr<int> z = calloc<int>(2, sizeof(int));

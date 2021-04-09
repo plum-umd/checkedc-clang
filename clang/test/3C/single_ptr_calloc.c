@@ -10,7 +10,8 @@ extern _Itype_for_any(T) void *calloc(size_t nmemb, size_t size)
     : itype(_Array_ptr<T>) byte_count(nmemb * size);
 
 void foo(int *w) {
-  //CHECK: void foo(_Ptr<int> w) {
+  //CHECK_NOALL: void foo(_Ptr<int> w) {
+  //CHECK_ALL: void foo(_Ptr<int> w) _Checked {
   /*only allocating 1 thing, so should be converted even without alltypes*/
   int *x = calloc(1, sizeof(int));
   //CHECK: _Ptr<int> x = calloc<int>(1, sizeof(int));

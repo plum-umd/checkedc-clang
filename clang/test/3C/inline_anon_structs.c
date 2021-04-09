@@ -81,7 +81,8 @@ struct {
 
 /*ensure trivial conversion*/
 void foo1(int *w) {
-  //CHECK: void foo1(_Ptr<int> w) {
+  //CHECK_NOALL: void foo1(_Ptr<int> w) {
+  //CHECK_ALL: void foo1(_Ptr<int> w) _Checked {
   x->data = malloc(sizeof(int) * 4);
   x->data[1] = 4;
 }

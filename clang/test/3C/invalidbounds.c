@@ -1,6 +1,6 @@
 // RUN: 3c -base-dir=%S -alltypes -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_ALL","CHECK" %s
-// RUN: 3c -base-dir=%S -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" %s
-// RUN: 3c -base-dir=%S -addcr %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -
+// : 3c -base-dir=%S -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" %s
+// : 3c -base-dir=%S -addcr %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -
 
 /*
 Regression test for the issue:
@@ -15,6 +15,8 @@ extern _Itype_for_any(T) void *malloc(size_t size)
 unsigned long strlen(const char *s : itype(_Nt_array_ptr<const char>));
 
 int foo() {
+//CHECK_ALL: int foo() _Checked {
+//CHECK_NOALL: int foo() {
   const char *invalstr = "%b %d %H:%M";
   const char *valstr = "%b %d %H";
   //CHECK_ALL: _Nt_array_ptr<const char> invalstr = "%b %d %H:%M";
@@ -27,12 +29,8 @@ int foo() {
   //CHECK_ALL: _Array_ptr<char> arr1inval = malloc<char>(n * sizeof(char));
   //CHECK_NOALL: char *arr1inval = malloc<char>(n * sizeof(char));
   if (n > 0) {
-    //CHECK_ALL: if (n > 0) _Checked {
-    //CHECK_NOALL: if (n > 0) {
     invalstr = "%b %d %H";
   } else {
-    //CHECK_ALL: } else _Checked {
-    //CHECK_NOALL: } else {
     valstr = "%b %d %M";
   }
   strlen(invalstr);

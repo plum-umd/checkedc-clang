@@ -123,8 +123,8 @@ int *sus(int *, int *);
 //CHECK_ALL: _Array_ptr<int> sus(int *x : itype(_Ptr<int>), _Ptr<int> y);
 
 int *foo() {
-  //CHECK_NOALL: _Ptr<int> foo(void) {
-  //CHECK_ALL: _Array_ptr<int> foo(void) {
+  //CHECK_NOALL: _Ptr<int> foo(void) _Checked {
+  //CHECK_ALL: _Array_ptr<int> foo(void) _Checked {
   int *x = malloc(sizeof(int));
   //CHECK: _Ptr<int> x = malloc<int>(sizeof(int));
   int *y = malloc(sizeof(int));
@@ -137,7 +137,7 @@ int *foo() {
 
 int *bar() {
   //CHECK_NOALL: int *bar(void) : itype(_Ptr<int>) {
-  //CHECK_ALL: _Array_ptr<int> bar(void) {
+  //CHECK_ALL: _Array_ptr<int> bar(void) _Checked {
   int *x = malloc(sizeof(int));
   //CHECK: _Ptr<int> x = malloc<int>(sizeof(int));
   int *y = malloc(sizeof(int));

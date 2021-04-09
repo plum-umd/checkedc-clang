@@ -40,6 +40,8 @@ struct r {
 };
 
 struct p sus(struct p x) {
+  //CHECK_NOALL: struct p sus(struct p x) {
+  //CHECK_ALL: struct p sus(struct p x) _Checked {
   x.x += 1;
   struct p *n = malloc(sizeof(struct p));
   //CHECK: _Ptr<struct p> n = malloc<struct p>(sizeof(struct p));

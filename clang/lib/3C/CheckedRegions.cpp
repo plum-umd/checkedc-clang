@@ -227,9 +227,10 @@ bool CheckedRegionFinder::VisitCallExpr(CallExpr *C) {
       if (Info.hasTypeParamBindings(C,Context))
         for (auto Entry : Info.getTypeParamBindings(C, Context))
           Wild |= (Entry.second == nullptr);
-      auto Type = FD->getReturnType();
+      const auto IT = FD->getInteropType();
+      const auto Type = FD->getReturnType();
       Wild |= (!(FD->hasPrototype() || FD->doesThisDeclarationHaveABody())) ||
-              containsUncheckedPtr(Type);
+              containsUncheckedPtr(IT.getTypePtrOrNull() ? IT : Type);
       auto *FV = Info.getFuncConstraint(FD, Context);
       for (unsigned I = 0; I < FV->numParams(); I++)
         Wild |= isWild(*FV->getExternalParam(I));
@@ -272,8 +273,7 @@ bool CheckedRegionFinder::VisitDeclRefExpr(DeclRefExpr *DR) {
   auto T = DR->getType();
   auto *D = DR->getDecl();
   CVarOption CV = Info.getVariable(D, Context);
-  bool IW = isWild(CV) || containsUncheckedPtr(T);
-
+  bool IW = false;
   if (auto *FD = dyn_cast<FunctionDecl>(D)) {
     auto *FV = Info.getFuncConstraint(FD, Context);
     IW |= FV->hasWild(Info.getConstraints().getVariables());
@@ -281,7 +281,8 @@ bool CheckedRegionFinder::VisitDeclRefExpr(DeclRefExpr *DR) {
       PVConstraint *ParamCV = FV->getExternalParam(I);
       IW |= isWild(*ParamCV);
     }
-  }
+  } else
+    IW = isWild(CV) || containsUncheckedPtr(T);
 
   Wild |= IW;
   return true;
@@ -340,10 +341,11 @@ bool CheckedRegionFinder::isInStatementPosition(CallExpr *C) {
 }
 
 bool CheckedRegionFinder::isWild(CVarOption Cv) {
-  if (Cv.hasValue() &&
-      Cv.getValue().hasWild(Info.getConstraints().getVariables()))
-    return true;
-  return false;
+  const auto &E = Info.getConstraints().getVariables();
+  if (Cv.hasValue())
+    return Cv.getValue().hasWild(E) || Cv.getValue().hasParamWild(E);
+  else
+    return false;
 }
 
 bool CheckedRegionFinder::containsUncheckedPtr(QualType Qt) {

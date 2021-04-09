@@ -80,7 +80,8 @@ struct np *bar() {
 }
 
 struct np *sus(struct r *x, struct r *y) {
-  //CHECK: _Ptr<struct np> sus(_Ptr<struct r> x, _Ptr<struct r> y) {
+  //CHECK_NOALL: _Ptr<struct np> sus(_Ptr<struct r> x, _Ptr<struct r> y) {
+  //CHECK_ALL: _Ptr<struct np> sus(_Ptr<struct r> x, _Ptr<struct r> y) _Checked {
   x->next += 1;
   struct np *z = malloc(sizeof(struct np));
   //CHECK: _Ptr<struct np> z = malloc<struct np>(sizeof(struct np));

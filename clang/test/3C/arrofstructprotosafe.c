@@ -121,7 +121,7 @@ struct general **sus(struct general *, struct general *);
 
 struct general **foo() {
   //CHECK_NOALL: _Ptr<struct general *> foo(void) {
-  //CHECK_ALL: _Array_ptr<_Ptr<struct general>> foo(void) : count(5) {
+  //CHECK_ALL: _Array_ptr<_Ptr<struct general>> foo(void) : count(5) _Checked {
   struct general *x = malloc(sizeof(struct general));
   //CHECK: _Ptr<struct general> x = malloc<struct general>(sizeof(struct general));
   struct general *y = malloc(sizeof(struct general));
@@ -145,7 +145,7 @@ struct general **foo() {
 
 struct general **bar() {
   //CHECK_NOALL: _Ptr<struct general *> bar(void) {
-  //CHECK_ALL: _Array_ptr<_Ptr<struct general>> bar(void) : count(5) {
+  //CHECK_ALL: _Array_ptr<_Ptr<struct general>> bar(void) : count(5) _Checked {
   struct general *x = malloc(sizeof(struct general));
   //CHECK: _Ptr<struct general> x = malloc<struct general>(sizeof(struct general));
   struct general *y = malloc(sizeof(struct general));

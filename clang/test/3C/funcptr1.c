@@ -22,6 +22,5 @@ int *g(int *x) {
   return 0;
 }
 void h() {
-  //CHECK: void h() _Checked {
   f(g);
 }
