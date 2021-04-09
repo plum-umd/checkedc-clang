@@ -492,7 +492,7 @@ bool ProgramInfo::link() {
       }
     }
   }
-  // FIXME: add new itype code for static functions
+
   // Repeat for static functions.
   //
   // Static functions that don't have a body will always cause a linking
@@ -505,6 +505,9 @@ bool ProgramInfo::link() {
       std::string FileName = U.first;
       std::string FuncName = V.first;
       FVConstraint *G = V.second;
+
+      G->equateWithItype(*this, !G->hasBody());
+
       if (!G->hasBody()) {
 
         std::string Rsn =

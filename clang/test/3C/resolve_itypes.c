@@ -54,3 +54,8 @@ void paper_bar(int *q : itype(_Ptr<int>), int n) {
   q = malloc<int>(sizeof(int)*n);
   paper_foo(q);
 }
+
+static int static_foo(int *a : itype(_Array_ptr<int>) count(4)) {
+//CHECK_ALL: static int static_foo(_Array_ptr<int> a : count(4)) _Checked {
+  return *a;
+}
