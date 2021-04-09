@@ -107,9 +107,10 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
     if (Decl *D = std::get<1>(PSLMap[PLoc])) {
       ConstraintVariable *CV = V.second;
       PVConstraint *PV = dyn_cast<PVConstraint>(CV);
-
-      if (PV && PV->anyChanges(Info.getConstraints().getVariables()) &&
-          !PV->isPartOfFunctionPrototype()) {
+      bool PVChanged = PV &&
+                       (PV->anyChanges(Info.getConstraints().getVariables()) ||
+                        ABRewriter.hasNewBoundsString(PV, D));
+      if (PVChanged && !PV->isPartOfFunctionPrototype()) {
         // Rewrite a declaration, only if it is not part of function prototype.
         DeclStmt *DS = nullptr;
         if (VDLToStmtMap.find(D) != VDLToStmtMap.end())
