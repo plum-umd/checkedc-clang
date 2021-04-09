@@ -159,6 +159,11 @@ public:
   void setValidDecl() { IsForDecl = true; }
   bool isForValidDecl() const { return IsForDecl; }
 
+  // Copies ConstAtoms from SrcVars vector into the main VarAtoms vector. This
+  // causes the solved type for the variable to be the same as the the type in
+  // source. This is currently called on function parameters with itypes when
+  // we don't want to allow the itype to solve to a fully checked type or an
+  // itype with a different pointer type.
   virtual void equateWithItype(ProgramInfo &CS, bool ForceEquate) = 0;
 
   virtual ConstraintVariable *getCopy(Constraints &CS) = 0;

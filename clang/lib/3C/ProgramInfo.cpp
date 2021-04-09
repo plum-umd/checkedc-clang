@@ -463,7 +463,6 @@ bool ProgramInfo::link() {
 
     // Handle the cases where itype parameters should not be treated as their
     // unchecked type.
-    // TODO: function need better name
     G->equateWithItype(*this, !G->hasBody());
 
     // If we've seen this symbol, but never seen a body for it, constrain
