@@ -362,10 +362,6 @@ bool _3CInterface::addVariables() {
     Errs += TU->getDiagnostics().getClient()->getNumErrors();
   }
 
-  if (!GlobalProgramInfo.link()) {
-    errs() << "Linking failed!\n";
-    return false;
-  }
 
   return Errs == 0;
 }
@@ -373,6 +369,11 @@ bool _3CInterface::addVariables() {
 bool _3CInterface::buildInitialConstraints() {
 
   std::lock_guard<std::mutex> Lock(InterfaceMutex);
+
+  if (!GlobalProgramInfo.link()) {
+    errs() << "Linking failed!\n";
+    return false;
+  }
 
   // 2. Gather constraints.
   ConstraintBuilderConsumer CB = ConstraintBuilderConsumer(GlobalProgramInfo, nullptr);
