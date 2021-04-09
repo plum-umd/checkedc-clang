@@ -133,7 +133,10 @@ public:
   // isSolutionChecked instead.
   virtual bool anyChanges(const EnvironmentMap &E) const = 0;
 
-  virtual bool isSolutionFullyChecked( const EnvironmentMap &E) const = 0;
+  // Return true if all atoms (pointer levels) in this variable are checked.
+  // This is in contrast to isSolutionChecked which will return true if any atom
+  // is checked.
+  virtual bool isSolutionFullyChecked(const EnvironmentMap &E) const = 0;
 
   // Here, AIdx is the pointer level which needs to be checked.
   // By default, we check for all pointer levels (or VarAtoms)

@@ -362,7 +362,6 @@ bool _3CInterface::addVariables() {
     Errs += TU->getDiagnostics().getClient()->getNumErrors();
   }
 
-
   return Errs == 0;
 }
 
