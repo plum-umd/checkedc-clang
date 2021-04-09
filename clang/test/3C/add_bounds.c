@@ -23,3 +23,24 @@ void fuz(int * a : itype(_Array_ptr<int>)) {
   fiz(a, 4);
   buz(a);
 }
+
+void biz(){
+  _Array_ptr<int> x : count(1) = 0;
+  _Array_ptr<int> y  = x;
+  //CHECK_ALL: _Array_ptr<int> y : count(1) = x;
+
+  int a[10];
+  _Array_ptr<int> b = a;
+  //CHECK_ALL:  int a _Checked[10];
+  //CHECK_ALL: _Array_ptr<int> b : count(10) = a;
+}
+
+#include<stddef.h>
+_Itype_for_any(T) void *malloc(size_t size) : itype(_Array_ptr<T>) byte_count(size);
+_Array_ptr<int> faz(void) {
+//CHECK_ALL: _Array_ptr<int> faz(void) : count(100) {
+  int *c = malloc(100 * sizeof(int));
+  //CHECK_ALL: _Array_ptr<int> c : count(100) = malloc<int>(100 * sizeof(int));
+
+  return c;
+}
