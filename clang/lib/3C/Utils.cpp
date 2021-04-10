@@ -563,3 +563,10 @@ void getPrintfStringArgIndices(const CallExpr *CE, const FunctionDecl *Callee,
         Context.getTargetInfo(), false);
   }
 }
+
+int64_t getStmtIdWorkaround(const Stmt *St, const ASTContext &Context) {
+  // XXX If we wanted to produce IDs of smaller absolute value, we could
+  // probably fix the alignment of negative values returned by
+  // identifyKnownObject so we can successfully divide them by alignof(Stmt).
+  return Context.getAllocator().identifyKnownObject(St);
+}
