@@ -379,13 +379,12 @@ PointerVariableConstraint::PointerVariableConstraint(
       VarCreated = true;
       assert(CAtom != nullptr && "Unable to find the type "
                                  "of the checked pointer.");
-      if (VarAtomForChecked) {
-        VarAtom *VA = CS.getFreshVar(Npre + N, VK);
-        //CS.addConstraint(CS.createGeq(CAtom, VA, false));
-        Vars.push_back(VA);
-      } else {
-        Vars.push_back(CAtom);
-      }
+      Atom *NewAtom;
+      if (VarAtomForChecked)
+        NewAtom = CS.getFreshVar(Npre + N, VK);
+      else
+        NewAtom = CAtom;
+      Vars.push_back(NewAtom);
       SrcVars.push_back(CAtom);
     }
 
