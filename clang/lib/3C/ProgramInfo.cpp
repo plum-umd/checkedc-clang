@@ -460,28 +460,38 @@ bool ProgramInfo::link() {
   for (const auto &U : ExternalFunctionFVCons) {
     std::string FuncName = U.first;
     FVConstraint *G = U.second;
+
+    // Handle the cases where itype parameters should not be treated as their
+    // unchecked type.
+    G->equateWithItype(*this, !G->hasBody());
+
     // If we've seen this symbol, but never seen a body for it, constrain
     // everything about it.
     // Some global symbols we don't need to constrain to wild, like
     // malloc and free. Check those here and skip if we find them.
     if (!G->hasBody()) {
-
       // If there was a checked type on a variable in the input program, it
       // should stay that way. Otherwise, we shouldn't be adding a checked type
       // to an extern function.
       std::string Rsn =
           "Unchecked pointer in parameter or return of external function " +
           FuncName;
-      G->getInternalReturn()->constrainToWild(CS, Rsn);
-      if (!G->getExternalReturn()->getIsGeneric())
-        G->getExternalReturn()->constrainToWild(CS, Rsn);
+      const FVComponentVariable *Ret = G->getCombineReturn();
+      Ret->getInternal()->constrainToWild(CS, Rsn);
+      if (!Ret->getExternal()->srcHasItype() &&
+          !Ret->getExternal()->getIsGeneric())
+        Ret->getExternal()->constrainToWild(CS, Rsn);
+
       for (unsigned I = 0; I < G->numParams(); I++) {
-        G->getInternalParam(I)->constrainToWild(CS, Rsn);
-        if (!G->getExternalParam(I)->getIsGeneric())
-          G->getExternalParam(I)->constrainToWild(CS, Rsn);
+        const FVComponentVariable *Param = G->getCombineParam(I);
+        Param->getInternal()->constrainToWild(CS, Rsn);
+        if (!Param->getExternal()->srcHasItype() &&
+            !Param->getExternal()->getIsGeneric())
+          Param->getExternal()->constrainToWild(CS, Rsn);
       }
     }
   }
+
   // Repeat for static functions.
   //
   // Static functions that don't have a body will always cause a linking
@@ -494,6 +504,9 @@ bool ProgramInfo::link() {
       std::string FileName = U.first;
       std::string FuncName = V.first;
       FVConstraint *G = V.second;
+
+      G->equateWithItype(*this, !G->hasBody());
+
       if (!G->hasBody()) {
 
         std::string Rsn =
@@ -570,29 +583,19 @@ ProgramInfo::insertNewFVConstraint(FunctionDecl *FD, FVConstraint *NewC,
 
   // Resolve conflicts
 
-  // We need to keep the version with a body, if it exists,
-  // so branch based on it
   auto *OldC = (*Map)[FuncName];
-  bool NewHasBody = NewC->hasBody();
-  bool OldHasBody = OldC->hasBody();
   std::string ReasonFailed = "";
+  int OldCount = OldC->numParams();
+  int NewCount = NewC->numParams();
 
-  if (OldHasBody && NewHasBody) {
-    // Two separate bodies for a function is irreconcilable
-    ReasonFailed = "multiple function bodies";
-  } else if (OldHasBody && !NewHasBody) {
-    OldC->mergeDeclaration(NewC, *this, ReasonFailed);
-  } else if (!OldHasBody && NewHasBody) {
+  // merge short parameter lists into long ones
+  // Choose number of params, but favor definitions if available
+  if ((OldCount < NewCount) || (OldCount == NewCount &&
+                                !OldC->hasBody() && NewC->hasBody())) {
     NewC->mergeDeclaration(OldC, *this, ReasonFailed);
     (*Map)[FuncName] = NewC;
-  } else if (!OldHasBody && !NewHasBody) {
-    // lacking bodies, we favor declared params
-    if (OldC->numParams() == 0 && NewC->numParams() != 0) {
-      NewC->mergeDeclaration(OldC, *this, ReasonFailed);
-      (*Map)[FuncName] = NewC;
-    } else {
-      OldC->mergeDeclaration(NewC, *this, ReasonFailed);
-    }
+  } else {
+    OldC->mergeDeclaration(NewC, *this, ReasonFailed);
   }
 
   // If successful, we're done and can skip error reporting
@@ -670,6 +673,7 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
 
   if (FunctionDecl *FD = dyn_cast<FunctionDecl>(D)) {
     // Function Decls have FVConstraints.
+    std::string FuncName = FD->getNameAsString();
     FVConstraint *F = new FVConstraint(D, *this, *AstContext);
     F->setValidDecl();
 
@@ -719,8 +723,12 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
       // constrain to WILD even if we don't end up storing this in the map.
       constrainWildIfMacro(PVExternal, PVD->getLocation());
       specialCaseVarIntros(PVD, AstContext);
-      // It is possible to have a parameter decl in a macro when the function is
-      // not.
+      // If this is "main", constrain its argv parameter to a nested arr
+      if (AllTypes && FuncName == "main" && FD->isGlobal() && I == 1) {
+        PVInternal->constrainOuterTo(CS, CS.getArr());
+        PVInternal->constrainIdxTo(CS, CS.getNTArr(), 1);
+      }
+      // It is possible to have a param decl in a macro when the function is not.
       if (Variables.find(PSL) != Variables.end())
         continue;
       Variables[PSL] = PVInternal;
@@ -765,6 +773,7 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
 
   assert("We shouldn't be adding a null CV to Variables map." && NewCV);
   if (!canWrite(PLoc.getFileName())) {
+    NewCV->equateWithItype(*this, true);
     NewCV->constrainToWild(CS, "Declaration in non-writable file", &PLoc);
   }
   constrainWildIfMacro(NewCV, D->getLocation());
