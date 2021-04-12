@@ -1838,7 +1838,7 @@ void PointerVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
                                                  ProgramInfo &Info,
                                                  std::string &ReasonFailed) {
   PVConstraint *From = dyn_cast<PVConstraint>(FromCV);
-  std::vector<Atom *> NewVatoms;
+  std::vector<Atom *> NewVAtoms;
   std::vector<ConstAtom *> NewSrcAtoms;
   CAtoms CFrom = From->getCvars();
   if (CFrom.size() != Vars.size()) {
@@ -1846,36 +1846,30 @@ void PointerVariableConstraint::mergeDeclaration(ConstraintVariable *FromCV,
     return;
   }
   for (unsigned AtomIdx = 0; AtomIdx < Vars.size(); AtomIdx++) {
-    Atom *IAt = Vars[AtomIdx];
-    Atom *JAt = CFrom[AtomIdx];
-    ConstAtom *ICAt = dyn_cast<ConstAtom>(IAt);
-    ConstAtom *JCAt = dyn_cast<ConstAtom>(JAt);
-    if (JCAt && !ICAt) {
-      NewVatoms.push_back(JAt);
-      NewSrcAtoms.push_back(From->SrcVars[AtomIdx]);
-    } else {
-      NewVatoms.push_back(IAt);
-      if (isa<WildAtom>(From->SrcVars[AtomIdx]))
-        NewSrcAtoms.push_back(SrcVars[AtomIdx]);
-      else
-        NewSrcAtoms.push_back(From->SrcVars[AtomIdx]);
-    }
-    if (ICAt && JCAt) {
-      // Both are ConstAtoms, no need to equate them.
+    // Take the ConstAtom if merging from a constraint variable with ConstAtoms
+    // into a variable with VarAtoms. This case shows up less often with the
+    // changes made to allow updating itype pointer types, but it can still
+    // happen whenever a pointer other than a function parameter is redeclared
+    // with a checked type after an unchecked declaration. For example, an
+    // extern global can be redeclared with an itype.
+    if (!isa<ConstAtom>(Vars[AtomIdx]) && isa<ConstAtom>(From->Vars[AtomIdx]))
+      NewVAtoms.push_back(From->Vars[AtomIdx]);
+    else
+      NewVAtoms.push_back(Vars[AtomIdx]);
 
-      // Sanity: If both are ConstAtoms and they are not same,
-      // Make sure that current ConstAtom is WILD. This ensure that
-      // we are moving towards checked types.
-      if (ICAt != JCAt) {
-        if (!dyn_cast<WildAtom>(ICAt)) {
-          assert(false && "Should be same checked types");
-        }
-      }
-    }
+    // If the current variable was wild in the source, and we're merging
+    // something that had a checked type, then take the checked type. This is
+    // particularly important for itypes since function parameters can be
+    // redeclared with an itype.
+    if (isa<WildAtom>(SrcVars[AtomIdx]))
+      NewSrcAtoms.push_back(From->SrcVars[AtomIdx]);
+    else
+      NewSrcAtoms.push_back(SrcVars[AtomIdx]);
   }
-  assert(Vars.size() == NewVatoms.size() &&
+  assert(Vars.size() == NewVAtoms.size() &&
+         SrcVars.size() == NewSrcAtoms.size() &&
          "Merging error, pointer depth change");
-  Vars = NewVatoms;
+  Vars = NewVAtoms;
   SrcVars = NewSrcAtoms;
   if (Name.empty())
     Name = From->Name;
