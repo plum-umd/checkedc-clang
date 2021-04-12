@@ -773,8 +773,6 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
 
   assert("We shouldn't be adding a null CV to Variables map." && NewCV);
   if (!canWrite(PLoc.getFileName())) {
-    // FIXME: Potential bug here. What if we hit this branch for a
-    //        pre-declaration, but then later see a definition of the function?
     NewCV->equateWithItype(*this, true);
     NewCV->constrainToWild(CS, "Declaration in non-writable file", &PLoc);
   }
