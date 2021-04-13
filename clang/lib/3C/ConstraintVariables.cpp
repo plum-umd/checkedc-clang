@@ -767,12 +767,12 @@ std::string PointerVariableConstraint::mkString(Constraints &CS,
     if (!ForItype && BaseType == "void")
       K = Atom::A_Wild;
 
-    if (PrevArr && ArrSizes.at(TypeIdx).first == O_Pointer && !EmittedName) {
+    if (PrevArr && ArrSizes.at(TypeIdx).first != O_SizedArray && !EmittedName) {
       EmittedName = true;
       addArrayAnnotations(ConstArrs, EndStrs);
       EndStrs.push_front(" " + UseName);
     }
-    PrevArr = ArrSizes.at(TypeIdx).first != O_Pointer;
+    PrevArr = ArrSizes.at(TypeIdx).first == O_SizedArray;
 
     switch (K) {
     case Atom::A_Ptr:
