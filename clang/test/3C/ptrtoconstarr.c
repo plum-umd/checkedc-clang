@@ -88,14 +88,7 @@ int example(void) {
   //CHECK_ALL: int local _Checked[5] = {0};
   //CHECK_NOALL: int local[5] = {0};
   compl t = &local;
-<<<<<<< HEAD
-  //CHECK: compl t = &local;
-||||||| ad4c801ae1ff
-  //CHECK_ALL: compl t = &local;
-  //CHECK_NOALL _Ptr<int *> t = &local;
-=======
   //CHECK_ALL: compl t = &local;
   //CHECK_NOALL: compl t = &local;
->>>>>>> public/main
   return (*t)[2];
 }

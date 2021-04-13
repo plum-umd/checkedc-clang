@@ -868,7 +868,7 @@ std::string PointerVariableConstraint::mkString(Constraints &CS,
     if (FV) {
       if (Ss.str().empty()) {
         if (!EmittedName) {
-          FptrInner << getName();
+          FptrInner << UseName;
           EmittedName = true;
         }
         for (std::string Str : EndStrs)
@@ -879,7 +879,7 @@ std::string PointerVariableConstraint::mkString(Constraints &CS,
       if (EmitFVName)
         Ss << FV->mkString(CS, true, false, false, false, FptrInner.str());
       else
-        Ss << FV->mkString(CS);
+        Ss << FV->mkString(CS, false);
     } else if (TypedefLevelInfo.HasTypedef) {
       std::ostringstream Buf;
       getQualString(TypedefLevelInfo.TypedefLevel, Buf);
@@ -1517,7 +1517,7 @@ std::string FunctionVariableConstraint::mkString(Constraints &CS,
       // This is done to rewrite the typedef of a function proto
       Ret += UseName;
     else
-      Ret += "(*" + UseName + ")";
+      Ret += "(" + UseName + ")";
   }
   Ret = Ret + "(";
   std::vector<std::string> ParmStrs;
@@ -1534,7 +1534,7 @@ std::string FunctionVariableConstraint::mkString(Constraints &CS,
     Ret = Ret + Ss.str() + ")";
   } else
     Ret = Ret + "void)";
-  return Ret;
+  return Ret + Itype;
 }
 
 // Reverses the direction of CA for function subtyping.
