@@ -100,6 +100,16 @@ def expandMacros(opts: ExpandMacrosOptions, compilation_base_dir: str,
     if not opts.enable:
         return
 
+    # If this somehow happens (e.g., it happened in one build configuration of
+    # thttpd), fail up front rather than producing mysterious verification
+    # failures later.
+    tu_output_realpaths = set()
+    for tu in translation_units:
+        assert tu.output_realpath not in tu_output_realpaths, (
+            f'Multiple compilation database entries with output file '
+            f'{tu.output_realpath}: not supported by expand_macros')
+        tu_output_realpaths.add(tu.output_realpath)
+
     compilation_base_dir = realpath_cached(compilation_base_dir)
 
     for tu in translation_units:
