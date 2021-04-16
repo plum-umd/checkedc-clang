@@ -291,7 +291,8 @@ public:
               } else {
                 if (PrintfStringArgIndices.find(I) !=
                     PrintfStringArgIndices.end()) {
-                  // In `printf("%s", foo)`, foo should be an _Nt_array_ptr
+                  // In `printf("... %s ...", ...)`, the argument corresponding
+                  // to the `%s` should be an _Nt_array_ptr
                   // (https://github.com/correctcomputation/checkedc-clang/issues/549).
                   constrainVarsTo(ArgumentConstraints.first, CS.getNTArr());
                 }
