@@ -2,8 +2,6 @@
 // RUN: 3c -base-dir=%S -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK" %s
 // RUN: 3c -base-dir=%S -addcr %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -
 
-#include <stddef.h>
-
 #include <string.h>
 
 // don't mess with this

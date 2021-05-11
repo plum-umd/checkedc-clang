@@ -5,7 +5,6 @@
 // RUN: 3c -base-dir=%S -alltypes -output-dir=%t.checked %s --
 // RUN: 3c -base-dir=%t.checked -alltypes %t.checked/definedType.c -- | diff %t.checked/definedType.c -
 
-#include <stddef.h>
 #include <stdlib.h>
 
 // From issue 204

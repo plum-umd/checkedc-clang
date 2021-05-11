@@ -6,7 +6,6 @@
 
 // This test is unusual in that it checks for the errors in the code
 
-#include <stddef.h>
 #include <stdlib.h>
 
 void *x; // expected-warning {{Default void* type}}

@@ -4,9 +4,8 @@
 // RUN: 3c -base-dir=%S -addcr -alltypes -output-dir=%t.checked %s --
 // RUN: 3c -base-dir=%t.checked -addcr -alltypes %t.checked/pointerarithm.c -- | diff %t.checked/pointerarithm.c -
 
-#include <stddef.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 int *sus(int *x, int *y) {

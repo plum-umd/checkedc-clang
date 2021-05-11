@@ -7,7 +7,6 @@
 // independent at each call site.
 
 // adapted from type_params.c
-#include <stddef.h>
 #include <stdlib.h>
 
 _Itype_for_any(T) void incoming_doubleptr(_Array_ptr<T> ptr

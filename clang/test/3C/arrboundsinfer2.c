@@ -6,9 +6,8 @@
 Basic array bounds tests (without any data-flow analysis).
 */
 
-#include <stddef.h>
-
 #include <stdlib.h>
+
 extern void ext_func(_Array_ptr<int> arr : count(len), unsigned len);
 
 struct bar {

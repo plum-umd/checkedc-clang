@@ -40,7 +40,6 @@ int *foo(void) {
   return q;
 }
 
-#include <stddef.h>
 #include <stdlib.h>
 
 int *bar() {

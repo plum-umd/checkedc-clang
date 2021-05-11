@@ -91,7 +91,6 @@ void unsafe(int *a) {
 
 // Example issue 153
 
-#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -152,7 +151,6 @@ void deep(int ****v, int ****w, int ****x, int ****y, int ****z) {
 
 // Issue #233. Void type paramters were not being detected by
 // typeArgsProvidedCheck
-
 
 // void provided
 void *example0(void *ptr, unsigned int size) {

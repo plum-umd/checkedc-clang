@@ -8,8 +8,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <stdlib.h>
-
 int ***malloc3d(int y, int x, int z) {
   //CHECK_NOALL: int ***malloc3d(int y, int x, int z) : itype(_Ptr<int **>) {
   //CHECK_ALL: _Array_ptr<_Array_ptr<_Array_ptr<int>>> malloc3d(int y, int x, int z) : count(y) {

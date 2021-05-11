@@ -10,7 +10,6 @@
 
 int *glob;
 int lenplusone;
-#include <stddef.h>
 #include <stdlib.h>
 //CHECK_ALL: _Array_ptr<int> glob = ((void *)0);
 //CHECK_NOALL: int *glob;

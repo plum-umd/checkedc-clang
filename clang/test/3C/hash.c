@@ -6,11 +6,6 @@
  * Based on hash.c in Very Secure FTPd
  */
 
-//#include <stdlib_checked.h>
-//#include <string_checked.h>
-//#include <stdio_checked.h>
-
-#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 

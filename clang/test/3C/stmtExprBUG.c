@@ -3,7 +3,6 @@
 // RUN: 3c -base-dir=%S %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -
 // XFAIL: *
 
-#include <stddef.h>
 #include <stdlib.h>
 
 /*right now, even though our solving correctly identifies q ought to be checked

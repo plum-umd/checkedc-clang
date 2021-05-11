@@ -5,7 +5,6 @@
 // RUN: 3c -base-dir=%S -output-dir=%t.checked -alltypes %s --
 // RUN: 3c -base-dir=%t.checked -alltypes %t.checked/malloc_array.c -- | diff %t.checked/malloc_array.c -
 
-#include <stddef.h>
 #include <stdlib.h>
 
 int *foo(int *x) {

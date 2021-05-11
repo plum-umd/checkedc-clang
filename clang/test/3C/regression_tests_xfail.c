@@ -8,8 +8,6 @@
 //
 // XFAIL: *
 
-#include <stddef.h>
-
 #include <stdlib.h>
 
 unsigned char *func(void) {

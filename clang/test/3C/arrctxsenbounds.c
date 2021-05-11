@@ -5,7 +5,6 @@
 /*
 Context-sensitive array-bounds inference.
 */
-#include <stddef.h>
 #include <stdlib.h>
 struct foo {
   int *x;

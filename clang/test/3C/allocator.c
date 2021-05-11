@@ -9,7 +9,6 @@
 // RUN: 3c -base-dir=%t.checked %t.checked/allocator.c -- | diff %t.checked/allocator.c -
 // expected-no-diagnostics
 //
-#include <stddef.h>
 #include <stdlib.h>
 
 void dosomething(void) {

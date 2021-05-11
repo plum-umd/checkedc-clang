@@ -5,7 +5,6 @@
 // RUN: 3c -base-dir=%S -output-dir=%t.checked -alltypes %s --
 // RUN: 3c -base-dir=%t.checked -alltypes %t.checked/single_ptr_calloc.c -- | diff %t.checked/single_ptr_calloc.c -
 
-#include <stddef.h>
 #include <stdlib.h>
 
 void foo(int *w) {

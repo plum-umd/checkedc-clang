@@ -8,9 +8,8 @@
 Various array bounds tests.
 */
 
-#include <stddef.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 int *g; // array : count is 100; see the call to foo
 void foo(void) {

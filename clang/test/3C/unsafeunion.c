@@ -5,7 +5,6 @@
 // RUN: 3c -base-dir=%S -output-dir=%t.checked -alltypes %s --
 // RUN: 3c -base-dir=%t.checked -alltypes %t.checked/unsafeunion.c -- | diff %t.checked/unsafeunion.c -
 
-#include <stddef.h>
 #include <stdlib.h>
 
 union foo {

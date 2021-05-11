@@ -10,7 +10,6 @@
 #include <stdlib.h>
 
 #include <stddef.h>
-#include <stdlib.h>
 
 typedef struct node Node;
 typedef struct list List;

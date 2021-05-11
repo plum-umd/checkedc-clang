@@ -5,9 +5,8 @@
 // RUN: 3c -base-dir=%S -output-dir=%t.checked -alltypes %s --
 // RUN: 3c -base-dir=%t.checked -alltypes %t.checked/ptrptr.c -- | diff %t.checked/ptrptr.c -
 
-#include <stddef.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 void f() {

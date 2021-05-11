@@ -5,7 +5,6 @@
 // RUN: 3c -base-dir=%S -output-dir=%t.checked %s --
 // RUN: 3c -base-dir=%t.checked %t.checked/inline_anon_structs.c -- | diff %t.checked/inline_anon_structs.c -
 
-#include <stddef.h>
 #include <stdlib.h>
 
 /*This code ensures conversion happens as expected when

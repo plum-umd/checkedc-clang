@@ -35,7 +35,6 @@ void biz(){
   //CHECK_ALL: _Array_ptr<int> b : count(10) = a;
 }
 
-#include<stddef.h>
 #include <stdlib.h>
 _Array_ptr<int> faz(void) {
 //CHECK_ALL: _Array_ptr<int> faz(void) : count(100) {

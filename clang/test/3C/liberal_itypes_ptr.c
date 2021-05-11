@@ -41,7 +41,6 @@ void biz() {
   // CHECK: b = buz();
 }
 
-#include <stddef.h>
 #include <stdlib.h>
 
 void malloc_test() {

@@ -6,7 +6,6 @@
 Array bounds (byte_bound) tests with data-flow analysis.
 */
 
-#include <stddef.h>
 #include <stdlib.h>
 // This test needs a custom version of memcpy where src and dest are `int *`.
 int *memcpy_int(int *restrict dest

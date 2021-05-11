@@ -5,7 +5,6 @@
 // RUN: 3c -base-dir=%S -output-dir=%t.checked -alltypes %s --
 // RUN: 3c -base-dir=%t.checked -alltypes %t.checked/alloc_type_param.c -- | diff %t.checked/alloc_type_param.c -
 
-#include <stddef.h>
 #include <stdlib.h>
 
 /* Check basic behavior with the three alloc functions */

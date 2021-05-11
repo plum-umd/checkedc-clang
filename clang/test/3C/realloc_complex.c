@@ -10,7 +10,6 @@
 /* multiple complex realloc calls                         */
 /**********************************************************/
 
-#include <stddef.h>
 #include <stdlib.h>
 
 void foo(int *count) {

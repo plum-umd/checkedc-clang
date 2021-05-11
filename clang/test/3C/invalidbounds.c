@@ -8,8 +8,6 @@ https://github.com/plum-umd/checkedc-clang/issues/239
 Here, array bounds should be invalidated when conflicting bounds are assigned.
 */
 
-#include <stddef.h>
-
 #include <stdlib.h>
 #include <string.h>
 

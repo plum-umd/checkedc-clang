@@ -2,7 +2,6 @@
 // RUN: 3c -base-dir=%S %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" %s
 // RUN: 3c -base-dir=%S %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -
 
-#include <stddef.h>
 #include <stdlib.h>
 
 void foo2(int *x) {

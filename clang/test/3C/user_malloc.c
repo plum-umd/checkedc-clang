@@ -3,11 +3,11 @@
 // RUN: 3c -base-dir=%S -use-malloc=my_malloc,your_malloc %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -
 
 #include <stddef.h>
+#include <stdlib.h>
 extern _Itype_for_any(T) void *my_malloc(size_t size)
     : itype(_Array_ptr<T>) byte_count(size);
 extern _Itype_for_any(T) void *your_malloc(size_t size)
     : itype(_Array_ptr<T>) byte_count(size);
-#include <stdlib.h>
 
 int *foo(void) {
   int *p = my_malloc(sizeof(int));
