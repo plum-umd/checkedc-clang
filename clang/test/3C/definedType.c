@@ -6,7 +6,7 @@
 // RUN: 3c -base-dir=%t.checked -alltypes %t.checked/definedType.c -- | diff %t.checked/definedType.c -
 
 #include <stddef.h>
-_Itype_for_any(T) void *malloc(size_t size) : itype(_Array_ptr<T>) byte_count(size);
+#include <stdlib.h>
 
 // From issue 204
 

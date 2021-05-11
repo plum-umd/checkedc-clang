@@ -7,7 +7,7 @@
 // This test is unusual in that it checks for the errors in the code
 
 #include <stddef.h>
-_Itype_for_any(T) void *malloc(size_t size) : itype(_Array_ptr<T>) byte_count(size);
+#include <stdlib.h>
 
 void *x; // expected-warning {{Default void* type}}
 

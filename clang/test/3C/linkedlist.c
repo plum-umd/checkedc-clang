@@ -10,7 +10,7 @@
 #include <stdlib.h>
 
 #include <stddef.h>
-_Itype_for_any(T) void *malloc(size_t size) : itype(_Array_ptr<T>) byte_count(size);
+#include <stdlib.h>
 
 typedef struct node Node;
 typedef struct list List;

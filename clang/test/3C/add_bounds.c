@@ -36,7 +36,7 @@ void biz(){
 }
 
 #include<stddef.h>
-_Itype_for_any(T) void *malloc(size_t size) : itype(_Array_ptr<T>) byte_count(size);
+#include <stdlib.h>
 _Array_ptr<int> faz(void) {
 //CHECK_ALL: _Array_ptr<int> faz(void) : count(100) {
   int *c = malloc(100 * sizeof(int));

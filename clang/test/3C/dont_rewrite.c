@@ -4,7 +4,7 @@
 
 #include <stddef.h>
 
-void *memset(void *dest : byte_count(n), int c, size_t n) : bounds(dest, (_Array_ptr<char>)dest + n);
+#include <string.h>
 
 // don't mess with this
 _Itype_for_any(T) void vsf_sysutil_memclr(void *p_dest

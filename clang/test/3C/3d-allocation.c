@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-_Itype_for_any(T) void *malloc(size_t size) : itype(_Array_ptr<T>) byte_count(size);
+#include <stdlib.h>
 
 int ***malloc3d(int y, int x, int z) {
   //CHECK_NOALL: int ***malloc3d(int y, int x, int z) : itype(_Ptr<int **>) {

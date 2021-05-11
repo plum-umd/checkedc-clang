@@ -10,8 +10,8 @@ Here, array bounds should be invalidated when conflicting bounds are assigned.
 
 #include <stddef.h>
 
-_Itype_for_any(T) void *malloc(size_t size) : itype(_Array_ptr<T>) byte_count(size);
-size_t strlen(const char *s : itype(_Nt_array_ptr<const char>));
+#include <stdlib.h>
+#include <string.h>
 
 int foo() {
   const char *invalstr = "%b %d %H:%M";
