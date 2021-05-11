@@ -6,7 +6,7 @@
 // RUN: 3c -base-dir=%S -alltypes -output-dir=%t.checked %s --
 // RUN: 3c -base-dir=%t.checked -alltypes %t.checked/ptrtoconstarr.c -- | diff %t.checked/ptrtoconstarr.c -
 
-_Unchecked unsigned long strlen(const char *restrict src : itype(restrict _Nt_array_ptr<const char>));
+size_t strlen(const char *s : itype(_Nt_array_ptr<const char>));
 
 int bar(void) {
   //CHECK_ALL: int bar(void) _Checked {
