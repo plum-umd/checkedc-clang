@@ -11,21 +11,11 @@
 //#include <stdio_checked.h>
 
 #include <stddef.h>
-extern _Itype_for_any(T) void free(void *pointer
-                                   : itype(_Array_ptr<T>) byte_count(0));
-extern _Itype_for_any(T) void *malloc(size_t size)
-    : itype(_Array_ptr<T>) byte_count(size);
-extern _Itype_for_any(T) void *memcpy(
-    void *restrict dest
-    : itype(restrict _Array_ptr<T>) byte_count(n), const void *restrict src
-    : itype(restrict _Array_ptr<const T>) byte_count(n), size_t n)
-    : itype(_Array_ptr<T>) byte_count(n);
-extern void *memset(void *dest
-                    : byte_count(n), int c, size_t n)
-    : bounds(dest, (_Array_ptr<char>)dest + n);
-extern int memcmp(const void *src1
-                  : byte_count(n), const void *src2
-                  : byte_count(n), size_t n);
+_Itype_for_any(T) void free(void *pointer : itype(_Array_ptr<T>) byte_count(0));
+_Itype_for_any(T) void *malloc(size_t size) : itype(_Array_ptr<T>) byte_count(size);
+_Itype_for_any(T) void *memcpy( void *restrict dest : itype(restrict _Array_ptr<T>) byte_count(n), const void *restrict src : itype(restrict _Array_ptr<const T>) byte_count(n), size_t n) : itype(_Array_ptr<T>) byte_count(n);
+void *memset(void *dest : byte_count(n), int c, size_t n) : bounds(dest, (_Array_ptr<char>)dest + n);
+int memcmp(const void *src1 : byte_count(n), const void *src2 : byte_count(n), size_t n);
 
 _Itype_for_any(T) void vsf_sysutil_memclr(void *p_dest
                                           : itype(_Array_ptr<T>)

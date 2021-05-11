@@ -8,8 +8,7 @@
 
 // adapted from type_params.c
 #include <stddef.h>
-_Itype_for_any(T) void *malloc(size_t size)
-    : itype(_Array_ptr<T>) byte_count(size);
+_Itype_for_any(T) void *malloc(size_t size) : itype(_Array_ptr<T>) byte_count(size);
 
 _Itype_for_any(T) void incoming_doubleptr(_Array_ptr<T> ptr
                                           : itype(_Array_ptr<T>)) {

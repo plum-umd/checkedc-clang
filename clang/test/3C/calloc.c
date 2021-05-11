@@ -6,8 +6,7 @@
 // RUN: 3c -base-dir=%t.checked -alltypes %t.checked/calloc.c -- | diff %t.checked/calloc.c -
 
 #include <stddef.h>
-extern _Itype_for_any(T) void *calloc(size_t nmemb, size_t size)
-    : itype(_Array_ptr<T>) byte_count(nmemb * size);
+_Itype_for_any(T) void *calloc(size_t nmemb, size_t size) : itype(_Array_ptr<T>) byte_count(nmemb * size);
 
 void func(int *x : itype(_Array_ptr<int>));
 //CHECK: void func(int *x : itype(_Array_ptr<int>));

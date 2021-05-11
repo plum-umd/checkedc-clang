@@ -7,8 +7,7 @@ Array bounds (byte_bound) tests with data-flow analysis.
 */
 
 #include <stddef.h>
-_Itype_for_any(T) void *malloc(size_t size)
-    : itype(_Array_ptr<T>) byte_count(size);
+_Itype_for_any(T) void *malloc(size_t size) : itype(_Array_ptr<T>) byte_count(size);
 // This test needs a custom version of memcpy where src and dest are `int *`.
 int *memcpy_int(int *restrict dest
                 : itype(restrict _Array_ptr<int>) byte_count(n),

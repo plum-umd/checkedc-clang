@@ -10,8 +10,7 @@
 
 #include <stddef.h>
 
-_Itype_for_any(T) void *calloc(size_t nmemb, size_t size)
-    : itype(_Array_ptr<T>) byte_count(nmemb * size);
+_Itype_for_any(T) void *calloc(size_t nmemb, size_t size) : itype(_Array_ptr<T>) byte_count(nmemb * size);
 
 unsigned char *func(void) {
   char *ptr = NULL;

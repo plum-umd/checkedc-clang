@@ -4,8 +4,7 @@
 // XFAIL: *
 
 #include <stddef.h>
-extern _Itype_for_any(T) void *malloc(size_t size)
-    : itype(_Array_ptr<T>) byte_count(size);
+_Itype_for_any(T) void *malloc(size_t size) : itype(_Array_ptr<T>) byte_count(size);
 
 /*right now, even though our solving correctly identifies q ought to be checked
   the rewriter fails to rewrite q to be checked so it appears WILD*/

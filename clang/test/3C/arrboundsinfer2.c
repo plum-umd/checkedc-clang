@@ -8,8 +8,7 @@ Basic array bounds tests (without any data-flow analysis).
 
 #include <stddef.h>
 
-extern _Itype_for_any(T) void *malloc(size_t size)
-    : itype(_Array_ptr<T>) byte_count(size);
+_Itype_for_any(T) void *malloc(size_t size) : itype(_Array_ptr<T>) byte_count(size);
 extern void ext_func(_Array_ptr<int> arr : count(len), unsigned len);
 
 struct bar {

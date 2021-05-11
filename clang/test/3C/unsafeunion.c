@@ -6,8 +6,7 @@
 // RUN: 3c -base-dir=%t.checked -alltypes %t.checked/unsafeunion.c -- | diff %t.checked/unsafeunion.c -
 
 #include <stddef.h>
-extern _Itype_for_any(T) void *calloc(size_t nmemb, size_t size)
-    : itype(_Array_ptr<T>) byte_count(nmemb * size);
+_Itype_for_any(T) void *calloc(size_t nmemb, size_t size) : itype(_Array_ptr<T>) byte_count(nmemb * size);
 
 union foo {
   /*fields of a union should never be converted*/
