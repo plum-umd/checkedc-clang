@@ -9,13 +9,14 @@
 // RUN: 3c -base-dir=%t.checked -addcr %t.checked/multipledecls.c -- | diff %t.checked/multipledecls.c -
 // expected-no-diagnostics
 
-void gmtime(long *q);
-void gmtime(long *q1 : itype(_Ptr<long>));
+// time.h declares gmtime, so don't declare that name ourselves.
+void my_gmtime(long *q);
+void my_gmtime(long *q1 : itype(_Ptr<long>));
 void foo() {
   long *p;
   long *p1;
-  gmtime(p);
-  gmtime(p1);
+  my_gmtime(p);
+  my_gmtime(p1);
 }
 //CHECK: _Ptr<long> p = ((void *)0);
 //CHECK-NEXT: _Ptr<long> p1 = ((void *)0);

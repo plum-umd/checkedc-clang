@@ -11,18 +11,20 @@ _Itype_for_any(T) void *malloc(size_t size)
 
 // From issue 204
 
-#define ulong unsigned long
+// sys/types.h declares ulong at least on some systems, so don't declare that
+// name ourselves.
+#define my_ulong unsigned long
 
-ulong *TOP;
-// CHECK_NOALL: ulong *TOP;
-// CHECK_ALL: _Array_ptr<ulong> TOP = ((void *)0);
-ulong channelColumns;
+my_ulong *TOP;
+// CHECK_NOALL: my_ulong *TOP;
+// CHECK_ALL: _Array_ptr<my_ulong> TOP = ((void *)0);
+my_ulong channelColumns;
 
 void DescribeChannel(void) {
-  ulong col;
-  TOP = (ulong *)malloc((channelColumns + 1) * sizeof(ulong));
-  // CHECK_ALL: TOP = (_Array_ptr<unsigned long>)malloc<unsigned long>((channelColumns + 1) * sizeof(ulong));
-  // CHECK_NOALL: TOP = (ulong *)malloc<unsigned long>((channelColumns + 1) * sizeof(ulong));
+  my_ulong col;
+  TOP = (my_ulong *)malloc((channelColumns + 1) * sizeof(my_ulong));
+  // CHECK_ALL: TOP = (_Array_ptr<unsigned long>)malloc<unsigned long>((channelColumns + 1) * sizeof(my_ulong));
+  // CHECK_NOALL: TOP = (my_ulong *)malloc<unsigned long>((channelColumns + 1) * sizeof(my_ulong));
   TOP[col] = 0;
 }
 

@@ -10,11 +10,12 @@
 
 // This test only uses -alltypes because of the use of _Array_ptr in the example
 // (to distinguish from the _Ptr that will be added).
-_Itype_for_any(T) void free(void * : itype(_Array_ptr<T>));
+// stdlib.h declares free, so don't declare that name ourselves.
+_Itype_for_any(T) void my_free(void * : itype(_Array_ptr<T>));
 void b(void) {
   char **c;
-  free(c);
+  my_free(c);
   // CHECK: _Array_ptr<_Ptr<char>> c = ((void *)0);
-  // CHECK: free<_Ptr<char>>(c);
+  // CHECK: my_free<_Ptr<char>>(c);
 }
-void free(void *);
+void my_free(void *);
