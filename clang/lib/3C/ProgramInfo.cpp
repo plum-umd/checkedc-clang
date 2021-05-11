@@ -1015,7 +1015,9 @@ bool ProgramInfo::computeInterimConstraintState(
       auto *SearchVA = dyn_cast<VarAtom>(SearchAtom);
       if (SearchVA && AllValidVars.find(SearchVA) != AllValidVars.end()) {
         CState.RCMap[SearchVA->getLoc()].insert(VA->getLoc());
-        TmpCGrp.insert(SearchVA->getLoc());
+
+        if (ValidVarsKey.find(SearchVA->getLoc()) != ValidVarsKey.end())
+          TmpCGrp.insert(SearchVA->getLoc());
         if (DirectWildVarAtoms.find(SearchVA) == DirectWildVarAtoms.end()) {
           OnlyIndirect.insert(SearchVA->getLoc());
         }
