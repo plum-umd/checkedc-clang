@@ -104,6 +104,23 @@ CastPlacementVisitor::CastNeeded CastPlacementVisitor::needCasting(
     ConstraintVariable *SrcInt, ConstraintVariable *SrcExt,
     ConstraintVariable *DstInt, ConstraintVariable *DstExt) {
   Constraints &CS = Info.getConstraints();
+
+  // In this case, the source is internally unchecked (i.e., it has an itype).
+  // Typically, no casting is required, but a CheckedC bug means that we need to
+  // insert a cast. https://github.com/microsoft/checkedc-clang/issues/614
+  if (!SrcInt->isSolutionChecked(CS.getVariables()) &&
+      SrcExt->isSolutionChecked(CS.getVariables()) &&
+      DstExt->isSolutionChecked(CS.getVariables())) {
+    if (auto *DstPVC = dyn_cast<PVConstraint>(DstExt)) {
+      if (!DstPVC->getCvars().empty()) {
+        ConstAtom *CA = Info.getConstraints().getAssignment(
+          DstPVC->getCvars().at(0));
+        if (isa<NTArrAtom>(CA))
+          return CAST_NT_ARRAY;
+      }
+    }
+  }
+
   // No casting is required if the source exactly matches either the
   // destinations itype or the destinations regular type.
   if (SrcExt->solutionEqualTo(CS, DstExt, false) ||
@@ -118,10 +135,12 @@ CastPlacementVisitor::CastNeeded CastPlacementVisitor::needCasting(
   // in the file. Because the function is defined, the internal type can solve
   // to checked, causing to appear fully checked (without itype). This would
   // cause a bounds cast to be inserted on unchecked calls to the function.
-  if (!SrcExt->isChecked(CS.getVariables()) && DstInt->srcHasItype())
+  if (!SrcExt->isSolutionChecked(CS.getVariables()) &&
+      !DstInt->isSolutionFullyChecked(CS.getVariables()) &&
+      DstInt->srcHasItype())
     return NO_CAST;
 
-  if (DstInt->isChecked(CS.getVariables()))
+  if (DstInt->isSolutionChecked(CS.getVariables()))
     return CAST_TO_CHECKED;
 
   return CAST_TO_WILD;
@@ -133,9 +152,11 @@ CastPlacementVisitor::CastNeeded CastPlacementVisitor::needCasting(
 std::pair<std::string, std::string>
 CastPlacementVisitor::getCastString(ConstraintVariable *Dst,
                                     CastNeeded CastKind) {
-  const auto &E = Info.getConstraints().getVariables();
   switch (CastKind) {
-  case CAST_TO_WILD:
+  case CAST_NT_ARRAY:
+    return std::make_pair(
+      "((" + Dst->mkString(Info.getConstraints(), false) + ")", ")");
+    case CAST_TO_WILD:
     return std::make_pair("((" + Dst->getRewritableOriginalTy() + ")", ")");
   case CAST_TO_CHECKED: {
     std::string Suffix = ")";
@@ -161,7 +182,8 @@ CastPlacementVisitor::getCastString(ConstraintVariable *Dst,
       }
     }
     return std::make_pair(
-        "_Assume_bounds_cast<" + Dst->mkString(E, false) + ">(", Suffix);
+      "_Assume_bounds_cast<" + Dst->mkString(Info.getConstraints(), false) +
+      ">(", Suffix);
   }
   default:
     llvm_unreachable("No casting needed");
@@ -198,6 +220,7 @@ void CastPlacementVisitor::surroundByCast(ConstraintVariable *Dst,
     // FIXME: This rewriting is known to fail on the benchmark programs.
     //        https://github.com/correctcomputation/checkedc-clang/issues/444
     rewriteSourceRange(Writer, CastTypeRange, CastStr, false);
+    updateRewriteStats(CastKind);
   } else {
     // First try to insert the cast prefix and suffix around the expression in
     // the source code.
@@ -206,6 +229,7 @@ void CastPlacementVisitor::surroundByCast(ConstraintVariable *Dst,
     if (FrontRewritable && EndRewritable) {
       bool BFail = Writer.InsertTextBefore(E->getBeginLoc(), CastStrs.first);
       bool EFail = Writer.InsertTextAfterToken(E->getEndLoc(), CastStrs.second);
+      updateRewriteStats(CastKind);
       assert("Locations were rewritable, fail should not be possible." &&
              !BFail && !EFail);
     } else {
@@ -220,11 +244,13 @@ void CastPlacementVisitor::surroundByCast(ConstraintVariable *Dst,
       // This doesn't always work either. We can't rewrite if the cast needs to
       // be placed fully inside a macro rather than around a macro or on an
       // argument to the macro.
-      if (!SrcText.empty())
+      if (!SrcText.empty()) {
         rewriteSourceRange(Writer, NewCRA,
                            CastStrs.first + SrcText + CastStrs.second);
-      else
+        updateRewriteStats(CastKind);
+      } else {
         reportCastInsertionFailure(E, CastStrs.first + CastStrs.second);
+      }
     }
   }
 }
@@ -242,6 +268,23 @@ void CastPlacementVisitor::reportCastInsertionFailure(
   ErrorBuilder.AddSourceRange(
       Context->getSourceManager().getExpansionRange(E->getSourceRange()));
   ErrorBuilder.AddString(CastStr);
+}
+
+void CastPlacementVisitor::updateRewriteStats(CastNeeded CastKind) {
+  auto &PStats = Info.getPerfStats();
+  switch (CastKind) {
+  case CAST_NT_ARRAY:
+    PStats.incrementNumCheckedCasts();
+    break;
+  case CAST_TO_WILD:
+    PStats.incrementNumWildCasts();
+    break;
+  case CAST_TO_CHECKED:
+    PStats.incrementNumAssumeBounds();
+    break;
+  default:
+    llvm_unreachable("Unhandled cast.");
+  }
 }
 
 bool CastLocatorVisitor::VisitCastExpr(CastExpr *C) {

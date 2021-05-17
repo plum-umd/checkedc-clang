@@ -1,3 +1,7 @@
+// TODO: refactor this test
+// https://github.com/correctcomputation/checkedc-clang/issues/503
+// XFAIL: *
+
 // Test that non-canWrite files are constrained not to change so that the final
 // annotations of other files are consistent with the original annotations of
 // the non-canWrite files. The currently supported cases are function and
@@ -32,12 +36,9 @@ int *bar(int *q) {
   return foo_var;
 }
 
-
 int gar(intptr a) {
-        int* b = a;
-        //CHECK_LOWER: int* b = a;
-        //CHECK_HIGHER: _Ptr<int> b = a;
-        return *b;
+  int *b = a;
+  //CHECK_LOWER: int* b = a;
+  //CHECK_HIGHER: _Ptr<int> b = a;
+  return *b;
 }
-
-

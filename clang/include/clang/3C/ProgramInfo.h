@@ -13,6 +13,7 @@
 #define LLVM_CLANG_3C_PROGRAMINFO_H
 
 #include "clang/3C/3CInteractiveData.h"
+#include "clang/3C/3CStats.h"
 #include "clang/3C/AVarBoundsInfo.h"
 #include "clang/3C/ConstraintVariables.h"
 #include "clang/3C/PersistentSourceLoc.h"
@@ -23,54 +24,6 @@
 #include "clang/Frontend/FrontendAction.h"
 #include "clang/Tooling/Tooling.h"
 
-class PerformanceStats {
-public:
-  double CompileTime;
-  double ConstraintBuilderTime;
-  double ConstraintSolverTime;
-  double ArrayBoundsInferenceTime;
-  double RewritingTime;
-  double TotalTime;
-
-  PerformanceStats() {
-    CompileTime = ConstraintBuilderTime = 0;
-    ConstraintSolverTime = ArrayBoundsInferenceTime = 0;
-    RewritingTime = TotalTime = 0;
-
-    CompileTimeSt = ConstraintBuilderTimeSt = 0;
-    ConstraintSolverTimeSt = ArrayBoundsInferenceTimeSt = 0;
-    RewritingTimeSt = TotalTimeSt = 0;
-  }
-
-  void startCompileTime();
-  void endCompileTime();
-
-  void startConstraintBuilderTime();
-  void endConstraintBuilderTime();
-
-  void startConstraintSolverTime();
-  void endConstraintSolverTime();
-
-  void startArrayBoundsInferenceTime();
-  void endArrayBoundsInferenceTime();
-
-  void startRewritingTime();
-  void endRewritingTime();
-
-  void startTotalTime();
-  void endTotalTime();
-
-  void printPerformanceStats(raw_ostream &O);
-
-private:
-  clock_t CompileTimeSt;
-  clock_t ConstraintBuilderTimeSt;
-  clock_t ConstraintSolverTimeSt;
-  clock_t ArrayBoundsInferenceTimeSt;
-  clock_t RewritingTimeSt;
-  clock_t TotalTimeSt;
-
-};
 class ProgramVariableAdder {
 public:
   virtual void addVariable(clang::DeclaratorDecl *D,
@@ -178,6 +131,9 @@ public:
   void constrainWildIfMacro(ConstraintVariable *CV, SourceLocation Location,
                             PersistentSourceLoc *PSL = nullptr);
 
+  void ensureNtCorrect(const QualType &QT, const ASTContext &C,
+                       PointerVariableConstraint *PV);
+
   void unifyIfTypedef(const clang::Type *, clang::ASTContext &,
                       clang::DeclaratorDecl *, PVConstraint *);
 
@@ -199,15 +155,19 @@ private:
   // rewritten.
   std::map<PersistentSourceLoc, CVarOption> TypedefVars;
 
-  // Map with the similar purpose as the Variables map, this stores constraint
-  // variables and set of bounds key for non-declaration expressions.
-  std::map<PersistentSourceLoc, CSetBkeyPair> ExprConstraintVars;
+  // A pair containing an AST node ID and the name of the main file in the
+  // translation unit. Used as a key to index expression in the following maps.
+  typedef std::pair<int64_t, std::string> IDAndTranslationUnit;
+  IDAndTranslationUnit getExprKey(clang::Expr *E, clang::ASTContext *C) const;
 
-  // Implicit casts do not physically exist in the source code, so their source
-  // location can collide with the source location of another expression. Since
-  // we need to look up constraint variables for implicit casts for the cast
-  // placement, the variables are stored in this separate map.
-  std::map<PersistentSourceLoc, CSetBkeyPair> ImplicitCastConstraintVars;
+  // Map with the similar purpose as the Variables map. This stores a set of
+  // constraint variables and bounds key for non-declaration expressions.
+  std::map<IDAndTranslationUnit, CSetBkeyPair> ExprConstraintVars;
+
+  // For each expr stored in the ExprConstraintVars, also store the source
+  // location for the expression. This is used to emit diagnostics. It is
+  // expected that multiple entries will map to the same source location.
+  std::map<IDAndTranslationUnit, PersistentSourceLoc> ExprLocations;
 
   //Performance stats
   PerformanceStats PerfS;

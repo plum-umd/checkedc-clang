@@ -52,26 +52,13 @@ void ConstraintResolver::constraintCVarToWild(CVarOption CVar,
 // Return a set of PVConstraints equivalent to the set given,
 // but dereferenced one level down
 CVarSet ConstraintResolver::handleDeref(CVarSet T) {
-  CVarSet Tmp;
-  for (const auto &CV : T) {
-    PVConstraint *PVC = dyn_cast<PVConstraint>(CV);
-    assert(PVC != nullptr); // Shouldn't be dereferencing FPs
-    // Subtract one from this constraint. If that generates an empty
-    // constraint, then, don't add it
-    CAtoms CA = PVC->getCvars();
-    if (CA.size() > 0) {
-      CA.erase(CA.begin());
-      if (CA.size() > 0) {
-        bool A = PVC->getArrPresent();
-        std::string D = PVC->getItype();
-        FVConstraint *B = PVC->getFV();
-        PVConstraint *TmpPV =
-            new PVConstraint(CA, PVC->getTy(), PVC->getName(), B, A, D);
-        Tmp.insert(TmpPV);
-      }
-    }
+  CVarSet DerefVars;
+  for (ConstraintVariable *CV : T) {
+    PVConstraint *PVC = cast<PVConstraint>(CV);
+    if (!PVC->getCvars().empty())
+      DerefVars.insert(PointerVariableConstraint::derefPVConstraint(PVC));
   }
-  return Tmp;
+  return DerefVars;
 }
 
 // For each constraint variable either invoke addAtom to add an additional level
@@ -82,40 +69,12 @@ CVarSet ConstraintResolver::addAtomAll(CVarSet CVS, ConstAtom *PtrTyp,
   CVarSet Result;
   for (auto *CV : CVS) {
     if (PVConstraint *PVC = dyn_cast<PVConstraint>(CV)) {
-      PVConstraint *Temp = addAtom(PVC, PtrTyp, CS);
-      Result.insert(Temp);
+      Result.insert(PVConstraint::addAtomPVConstraint(PVC, PtrTyp, CS));
     } else {
       Result.insert(CV);
     }
   }
   return Result;
-}
-
-// Add to a PVConstraint one additional level of indirection
-// The pointer type of the new atom is constrained >= PtrTyp.
-PVConstraint *ConstraintResolver::addAtom(PVConstraint *PVC, ConstAtom *PtrTyp,
-                                          Constraints &CS) {
-  Atom *NewA = CS.getFreshVar("&" + (PVC->getName()), VarAtom::V_Other);
-  CAtoms CA = PVC->getCvars();
-  if (!CA.empty()) {
-    Atom *A = *CA.begin();
-    // If PVC is already a pointer, add implication forcing outermost
-    //   one to be wild if this added one is
-    if (VarAtom *VA = dyn_cast<VarAtom>(A)) {
-      auto *Prem = CS.createGeq(NewA, CS.getWild());
-      auto *Conc = CS.createGeq(VA, CS.getWild());
-      CS.addConstraint(CS.createImplies(Prem, Conc));
-    }
-  }
-
-  CA.insert(CA.begin(), NewA);
-  bool A = PVC->getArrPresent();
-  FVConstraint *B = PVC->getFV();
-  std::string D = PVC->getItype();
-  PVConstraint *TmpPV =
-      new PVConstraint(CA, PVC->getTy(), PVC->getName(), B, A, D);
-  TmpPV->constrainOuterTo(CS, PtrTyp, true);
-  return TmpPV;
 }
 
 static bool getSizeOfArg(Expr *Arg, QualType &ArgTy) {
@@ -178,7 +137,7 @@ CVarSet ConstraintResolver::getInvalidCastPVCons(CastExpr *E) {
   QualType DstType = E->getType();
   QualType SrcType = E->getSubExpr()->getType();
 
-  auto *P = new PVConstraint(DstType, nullptr, "Invalid cast", Info, *Context);
+  auto *P = new PVConstraint(E, Info, *Context);
   PersistentSourceLoc PL = PersistentSourceLoc::mkPSL(E, *Context);
   std::string Rsn =
       "Cast from " + SrcType.getAsString() + " to " + DstType.getAsString();
@@ -529,7 +488,7 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
         ConstraintVariable *NewCV;
         auto *PCV = dyn_cast<PVConstraint>(CV);
         if (!IsAllocator) {
-          if (PCV && PCV->getIsOriginallyChecked()) {
+          if (PCV && PCV->isOriginallyChecked()) {
             // Copying needs to be done differently if the constraint variable
             // had a checked type in the input program because the constraint
             // variables contain constant atoms that are reused by the copy
@@ -557,10 +516,13 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
                                           NewCV->getBoundsKey());
           NewCV->setBoundsKey(CSensBKey);
         }
-        // Important: Do Safe_to_Wild from returnvar in this copy, which then
-        //   might be assigned otherwise (Same_to_Same) to LHS
-        if (NewCV != CV)
-          constrainConsVarGeq(NewCV, CV, CS, &PSL, Safe_to_Wild, false, &Info);
+        if (NewCV != CV) {
+          // If the call is in a macro, use Same_to_Same to force checked type
+          // equality and avoid ever needing to insert a cast inside a macro.
+          ConsAction CA = Rewriter::isRewritable(CE->getExprLoc())
+                          ? Safe_to_Wild : Same_to_Same;
+          constrainConsVarGeq(NewCV, CV, CS, &PSL, CA, false, &Info);
+        }
         TmpCVs.insert(NewCV);
         // If this is realloc, constrain the first arg to flow to the return
         if (!ReallocFlow.empty()) {
@@ -613,9 +575,7 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
       // If this is a string literal. i.e., "foo".
       // We create a new constraint variable and constraint it to an Nt_array.
 
-      PVConstraint *P =
-          new PVConstraint(Str->getType(), nullptr, Str->getStmtClassName(),
-                           Info, *Context, nullptr);
+      PVConstraint *P = new PVConstraint(Str, Info, *Context);
       P->constrainOuterTo(CS, CS.getNTArr()); // NB: ARR already there.
 
       BoundsKey TmpKey = ABI.getRandomBKey();
@@ -636,6 +596,17 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
       if (Expr *ESE = dyn_cast<Expr>(Res)) {
         return getExprConstraintVars(ESE);
       }
+    } else if (VAArgExpr *VarArg = dyn_cast<VAArgExpr>(E)) {
+      // Use of VarArg parameters are assumed to be unsafe even though CheckedC
+      // will accept them with checked pointer types. If we want to support
+      // VarArgs with checked pointer types, we can remove the constraint to
+      // WILD here. We would then need to update TypeExprRewriter to rewrite the
+      // type in these expression.
+      auto *P = new PVConstraint(VarArg, Info, *Context);
+      PersistentSourceLoc PL = PersistentSourceLoc::mkPSL(E, *Context);
+      std::string Rsn = "Accessing VarArg parameter";
+      P->constrainToWild(Info.getConstraints(), Rsn, &PL);
+      Ret = pairWithEmptyBkey({P});
     } else {
       if (Verbose) {
         llvm::errs() << "WARNING! Initialization expression ignored: ";
@@ -763,8 +734,7 @@ CVarSet ConstraintResolver::getCalleeConstraintVars(CallExpr *CE) {
 // rewriting the expression later on. This is done by making the constraint WILD
 // if the expression is inside a macro.
 PVConstraint *ConstraintResolver::getRewritablePVConstraint(Expr *E) {
-  PVConstraint *P = new PVConstraint(
-      E->getType(), nullptr, E->getStmtClassName(), Info, *Context, nullptr);
+  PVConstraint *P = new PVConstraint(E, Info, *Context);
   auto PSL = PersistentSourceLoc::mkPSL(E, *Context);
   Info.constrainWildIfMacro(P, E->getExprLoc(), &PSL);
   return P;

@@ -556,22 +556,79 @@ void BoundsAnalysis::ComputeOutSets(ElevatedCFGBlock *EB,
   }
 }
 
-StmtDeclSetTy BoundsAnalysis::GetKilledBounds(const CFGBlock *B) {
+DeclSetTy BoundsAnalysis::GetKilledBounds(const CFGBlock *B, const Stmt *St) {
   auto I = BlockMap.find(B);
   if (I == BlockMap.end())
-    return StmtDeclSetTy();
+    return DeclSetTy();
 
   ElevatedCFGBlock *EB = I->second;
-  return EB->Kill;
+  auto J = EB->Kill.find(St);
+  if (J == EB->Kill.end())
+    return DeclSetTy();
+
+  return J->second;
 }
 
-BoundsMapTy BoundsAnalysis::GetWidenedBounds(const CFGBlock *B) {
+BoundsMapTy BoundsAnalysis::GetWidenedBoundsOffsets(const CFGBlock *B) {
   auto I = BlockMap.find(B);
   if (I == BlockMap.end())
     return BoundsMapTy();
 
   ElevatedCFGBlock *EB = I->second;
   return EB->In;
+}
+
+BoundsExprMapTy BoundsAnalysis::GetWidenedBounds(const CFGBlock *B) {
+  // GetWidenedBoundsOffsets returns the mapping from _Nt_array_ptr to the
+  // offset by which its declared bounds should be widened. In this function we
+  // apply the offset to the declared upper bounds of the _Nt_array_ptr.
+
+  BoundsExprMapTy Result;
+  for (const auto item : GetWidenedBoundsOffsets(B)) {
+    const VarDecl *V = item.first;
+    unsigned Offset = item.second;
+
+    // We normalize the declared bounds to RangeBoundsExpr here so that we
+    // can easily apply the offset to the upper bound.
+    BoundsExpr *Bounds = S.NormalizeBounds(V);
+    if (RangeBoundsExpr *RBE = dyn_cast<RangeBoundsExpr>(Bounds)) {
+      const llvm::APInt
+        APIntOff(Ctx.getTargetInfo().getPointerWidth(0), Offset);
+      IntegerLiteral *WidenedOffset =
+        ExprCreatorUtil::CreateIntegerLiteral(Ctx, APIntOff);
+
+      Expr *Lower = RBE->getLowerExpr();
+      Expr *Upper = RBE->getUpperExpr();
+
+      // WidenedUpperBound = UpperBound + WidenedOffset.
+      Expr *WidenedUpper = ExprCreatorUtil::CreateBinaryOperator(
+                             S, Upper, WidenedOffset,
+                             BinaryOperatorKind::BO_Add);
+
+      RangeBoundsExpr *R = new (Ctx) RangeBoundsExpr(Lower, WidenedUpper,
+                                                     SourceLocation(),
+                                                     SourceLocation());
+
+      Result[V] = R;
+    }
+  }
+  return Result;
+}
+
+DeclSetTy BoundsAnalysis::GetBoundsWidenedAndNotKilled(const CFGBlock *B,
+                                                       const Stmt *St) {
+  BoundsMapTy WidenedBounds = GetWidenedBoundsOffsets(B);
+  if (!WidenedBounds.size())
+    return DeclSetTy();
+
+  DeclSetTy KilledBounds = GetKilledBounds(B, St);
+
+  DeclSetTy Vars;
+  // WidenedBounds ∧ ~KilledBounds = WidenedBounds - KilledBounds.
+  for (auto item : Difference(WidenedBounds, KilledBounds))
+    Vars.insert(item.first);
+
+  return Vars;
 }
 
 Expr *BoundsAnalysis::GetTerminatorCondition(const Expr *E) const {
@@ -630,13 +687,13 @@ T BoundsAnalysis::Intersect(T &A, T &B) const {
     return Ret;
   }
 
-  for (auto I = Ret.begin(), E = Ret.end(); I != E;) {
+  // As the container iterated over by Ret is modified within the
+  // body of the loop, we need to evaluate Ret.end() each time.
+  for (auto I = Ret.begin(); I != Ret.end();) {
     const auto *V = I->first;
 
     if (!B.count(V)) {
-      auto Next = std::next(I);
-      Ret.erase(I);
-      I = Next;
+      I = Ret.erase(I);
     } else {
       Ret[V] = std::min(Ret[V], B[V]);
       ++I;
@@ -722,7 +779,7 @@ void BoundsAnalysis::DumpWidenedBounds(FunctionDecl *FD) {
     OS << "--------------------------------------";
     B->print(OS, Cfg, S.getLangOpts(), /* ShowColors */ true);
 
-    BoundsMapTy Vars = GetWidenedBounds(B);
+    BoundsMapTy Vars = GetWidenedBoundsOffsets(B);
     using VarPairTy = std::pair<const VarDecl *, unsigned>;
 
     llvm::sort(Vars.begin(), Vars.end(),

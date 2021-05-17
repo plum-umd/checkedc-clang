@@ -199,11 +199,11 @@ static void emit(Rewriter &R, ASTContext &C) {
     if (const FileEntry *FE = SM.getFileEntryForID(Buffer->first)) {
       assert(FE->isValid());
 
+      DiagnosticsEngine &DE = C.getDiagnostics();
       DiagnosticsEngine::Level UnwritableChangeDiagnosticLevel =
           AllowUnwritableChanges ? DiagnosticsEngine::Warning
                                  : DiagnosticsEngine::Error;
       auto PrintExtraUnwritableChangeInfo = [&]() {
-        DiagnosticsEngine &DE = C.getDiagnostics();
         // With -dump-unwritable-changes and not -allow-unwritable-changes, we
         // want the -allow-unwritable-changes note before the dump.
         if (!DumpUnwritableChanges) {
@@ -229,10 +229,56 @@ static void emit(Rewriter &R, ASTContext &C) {
       };
 
       // Check whether we are allowed to write this file.
+      //
+      // In our testing as of 2021-03-15, the file path returned by
+      // FE->tryGetRealPathName() was canonical, but be safe against unusual
+      // situations or possible future changes to Clang before we actually write
+      // a file. We can't use FE->getName() because it seems it may be relative
+      // to the `directory` field of the compilation database, which (now that
+      // we no longer use `ClangTool::run`) is not guaranteed to match 3C's
+      // working directory.
+      std::string ToConv = FE->tryGetRealPathName().str();
       std::string FeAbsS = "";
-      getCanonicalFilePath(std::string(FE->getName()), FeAbsS);
+      std::error_code EC = tryGetCanonicalFilePath(ToConv, FeAbsS);
+      if (EC) {
+        unsigned ErrorId = DE.getCustomDiagID(
+            UnwritableChangeDiagnosticLevel,
+            "3C internal error: not writing the new version of this file due "
+            "to failure to re-canonicalize the file path provided by Clang");
+        DE.Report(SM.translateFileLineCol(FE, 1, 1), ErrorId);
+        {
+          // Put this in a block because Clang only allows one DiagnosticBuilder
+          // to exist at a time and the call to PrintExtraUnwritableChangeInfo
+          // below may create more DiagnosticBuilders.
+          unsigned NoteId =
+              DE.getCustomDiagID(DiagnosticsEngine::Note,
+                                 "file path from Clang was %0; error was: %1");
+          auto ErrorBuilder = DE.Report(NoteId);
+          ErrorBuilder.AddString(ToConv);
+          ErrorBuilder.AddString(EC.message());
+        }
+        PrintExtraUnwritableChangeInfo();
+        continue;
+      }
+      if (FeAbsS != ToConv) {
+        unsigned ErrorId = DE.getCustomDiagID(
+            UnwritableChangeDiagnosticLevel,
+            "3C internal error: not writing the new version of this file "
+            "because the file path provided by Clang was not canonical");
+        DE.Report(SM.translateFileLineCol(FE, 1, 1), ErrorId);
+        {
+          // Ditto re the block.
+          unsigned NoteId = DE.getCustomDiagID(
+              DiagnosticsEngine::Note, "file path from Clang was %0; "
+                                       "re-canonicalized file path is %1");
+          auto ErrorBuilder = DE.Report(NoteId);
+          ErrorBuilder.AddString(ToConv);
+          ErrorBuilder.AddString(FeAbsS);
+        }
+        PrintExtraUnwritableChangeInfo();
+        continue;
+      }
       if (!canWrite(FeAbsS)) {
-        DiagnosticsEngine &DE = C.getDiagnostics();
         unsigned ID =
             DE.getCustomDiagID(UnwritableChangeDiagnosticLevel,
                                "3C internal error: 3C generated changes to "
@@ -251,7 +297,6 @@ static void emit(Rewriter &R, ASTContext &C) {
           Buffer->second.write(outs());
           StdoutModeSawMainFile = true;
         } else {
-          DiagnosticsEngine &DE = C.getDiagnostics();
           unsigned ID = DE.getCustomDiagID(
               UnwritableChangeDiagnosticLevel,
               "3C generated changes to this file, which is under the base dir "
@@ -265,7 +310,6 @@ static void emit(Rewriter &R, ASTContext &C) {
 
       // Produce a path/file name for the rewritten source file.
       std::string NFile;
-      std::error_code EC;
       // We now know that we are using either OutputPostfix or OutputDir mode
       // because stdout mode is handled above. OutputPostfix defaults to "-"
       // when it's not provided, so any other value means that we should use
@@ -289,14 +333,13 @@ static void emit(Rewriter &R, ASTContext &C) {
         // fatal error in the _3CInterface constructor.
         assert(filePathStartsWith(FeAbsS, BaseDir));
         // replace_path_prefix is not smart about separators, but this should be
-        // OK because getCanonicalFilePath should ensure that neither BaseDir
+        // OK because tryGetCanonicalFilePath should ensure that neither BaseDir
         // nor OutputDir has a trailing separator.
         SmallString<255> Tmp(FeAbsS);
         llvm::sys::path::replace_path_prefix(Tmp, BaseDir, OutputDir);
         NFile = std::string(Tmp.str());
         EC = llvm::sys::fs::create_directories(sys::path::parent_path(NFile));
         if (EC) {
-          DiagnosticsEngine &DE = C.getDiagnostics();
           unsigned ID = DE.getCustomDiagID(
               DiagnosticsEngine::Error,
               "failed to create parent directory of output file \"%0\"");
@@ -313,7 +356,6 @@ static void emit(Rewriter &R, ASTContext &C) {
           errs() << "writing out " << NFile << "\n";
         Buffer->second.write(Out);
       } else {
-        DiagnosticsEngine &DE = C.getDiagnostics();
         unsigned ID = DE.getCustomDiagID(DiagnosticsEngine::Error,
                                          "failed to write output file \"%0\"");
         auto DiagBuilder = DE.Report(SM.translateFileLineCol(FE, 1, 1), ID);
@@ -360,6 +402,7 @@ private:
   Rewriter &Writer;
 
   void rewriteType(Expr *E, SourceRange &Range) {
+    auto &PState = Info.getPerfStats();
     if (!Info.hasPersistentConstraints(E, Context))
       return;
     const CVarSet &CVSingleton = Info.getPersistentConstraintsSet(E, Context);
@@ -377,8 +420,11 @@ private:
 
     for (auto *CV : CVSingleton)
       // Replace the original type with this new one if the type has changed.
-      if (CV->anyChanges(Vars))
-        rewriteSourceRange(Writer, Range, CV->mkString(Vars, false));
+      if (CV->anyChanges(Vars)) {
+        rewriteSourceRange(Writer, Range,
+                           CV->mkString(Info.getConstraints(), false));
+        PState.incrementNumFixedCasts();
+      }
   }
 };
 
@@ -406,7 +452,7 @@ public:
           if (Entry.second != nullptr) {
             AllInconsistent = false;
             std::string TyStr = Entry.second->mkString(
-                Info.getConstraints().getVariables(), false, false, true);
+                Info.getConstraints(), false, false, true);
             if (TyStr.back() == ' ')
               TyStr.pop_back();
             TypeParamString += TyStr + ",";
@@ -435,7 +481,7 @@ private:
   // Attempt to find the right spot to insert the type arguments. This should be
   // directly after the name of the function being called.
   SourceLocation getTypeArgLocation(CallExpr *Call) {
-    Expr *Callee = Call->getCallee()->IgnoreImpCasts();
+    Expr *Callee = Call->getCallee()->IgnoreParenImpCasts();
     if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(Callee)) {
       size_t NameLength = DRE->getNameInfo().getAsString().length();
       return Call->getBeginLoc().getLocWithOffset(NameLength);
@@ -443,6 +489,92 @@ private:
     llvm_unreachable("Could find SourceLocation for type arguments!");
   }
 };
+
+SourceRange FunctionDeclReplacement::getSourceRange(SourceManager &SM) const {
+  SourceLocation Begin = RewriteReturn ? getDeclBegin(SM) : getParamBegin(SM);
+  SourceLocation End = RewriteParams ? getDeclEnd(SM) : getReturnEnd(SM);
+  // Begin can be equal to End if the SourceRange only contains one token.
+  assert("Invalid FunctionDeclReplacement SourceRange!" &&
+         (Begin == End || SM.isBeforeInTranslationUnit(Begin, End)));
+  return SourceRange(Begin, End);
+}
+
+SourceLocation FunctionDeclReplacement::getDeclBegin(SourceManager &SM) const {
+  SourceLocation Begin = Decl->getBeginLoc();
+  return Begin;
+}
+
+SourceLocation FunctionDeclReplacement::getParamBegin(SourceManager &SM) const {
+  FunctionTypeLoc FTypeLoc = getFunctionTypeLoc(Decl);
+  // If we can't get a FunctionTypeLoc instance, then we'll guess that the
+  // l-paren is the token following the function name. This can clobber some
+  // comments and formatting.
+  if (FTypeLoc.isNull())
+    return Lexer::getLocForEndOfToken(Decl->getLocation(), 0, SM,
+                                      Decl->getLangOpts());
+  return FTypeLoc.getLParenLoc();
+}
+
+SourceLocation FunctionDeclReplacement::getReturnEnd(SourceManager &SM) const {
+  return Decl->getReturnTypeSourceRange().getEnd();
+}
+
+SourceLocation FunctionDeclReplacement::getDeclEnd(SourceManager &SM) const {
+  SourceLocation End;
+   if (isKAndRFunctionDecl(Decl)) {
+     // For K&R style function declaration, use the beginning of the function
+     // body as the end of the declaration. K&R declarations must have a body.
+     End = locationPrecedingChar(Decl->getBody()->getBeginLoc(), SM, ';');
+   } else {
+     FunctionTypeLoc FTypeLoc = getFunctionTypeLoc(Decl);
+     if (FTypeLoc.isNull()) {
+       // Without a FunctionTypeLocation, we have to approximate the end of the
+       // declaration as the location of the first r-paren before the start of the
+       // function body. This is messed up by comments and ifdef blocks containing
+       // r-paren, but works correctly most of the time.
+       End = getFunctionDeclRParen(Decl, SM);
+     } else if (Decl->getReturnType()->isFunctionPointerType()) {
+       // If a function returns a function pointer type, the paramter list for the
+       // returned function type comes after the top-level functions parameter
+       // list. Of course, this FunctionTypeLoc can also be null, so we have
+       // another fall back to the r-paren approximation.
+       FunctionTypeLoc T = getFunctionTypeLoc(FTypeLoc.getReturnLoc());
+       if (!T.isNull())
+         End = T.getRParenLoc();
+       else
+         End = getFunctionDeclRParen(Decl, SM);
+     } else {
+       End = FTypeLoc.getRParenLoc();
+     }
+   }
+
+  // If there's a bounds expression, this comes after the right paren of the
+  // function declaration parameter list.
+  if (auto *BoundsE = Decl->getBoundsExpr()) {
+    SourceLocation BoundsEnd = BoundsE->getEndLoc();
+    if (BoundsEnd.isValid() &&
+        (!End.isValid() || SM.isBeforeInTranslationUnit(End, BoundsEnd)))
+      End = BoundsEnd;
+  }
+
+  // If there's an itype, this also comes after the right paren. In the case
+  // that there is both a bounds expression and an itype, we need check
+  // which is later in the file and use that as the declaration end.
+  if (auto *InteropE = Decl->getInteropTypeExpr()) {
+    SourceLocation InteropEnd = InteropE->getEndLoc();
+    if (InteropEnd.isValid() &&
+        (!End.isValid() || SM.isBeforeInTranslationUnit(End, InteropEnd)))
+      End = InteropEnd;
+  }
+
+  // SourceLocations are weird and turn up invalid for reasons I don't
+  // understand. Fallback to extracting r paren location from source
+  // character buffer.
+  if (!End.isValid())
+    End = getFunctionDeclRParen(Decl, SM);
+
+  return End;
+}
 
 std::string ArrayBoundsRewriter::getBoundsString(const PVConstraint *PV,
                                                  Decl *D, bool Isitype) {
@@ -539,7 +671,7 @@ void RewriteConsumer::HandleTranslationUnit(ASTContext &Context) {
   std::set<llvm::FoldingSetNodeID> Seen;
   std::map<llvm::FoldingSetNodeID, AnnotationNeeded> NodeMap;
   CheckedRegionFinder CRF(&Context, R, Info, Seen, NodeMap, WarnRootCause);
-  CheckedRegionAdder CRA(&Context, R, NodeMap);
+  CheckedRegionAdder CRA(&Context, R, NodeMap, Info);
   CastLocatorVisitor CLV(&Context);
   CastPlacementVisitor ECPV(&Context, Info, R, CLV.getExprsWithCast());
   TypeExprRewriter TER(&Context, Info, R);

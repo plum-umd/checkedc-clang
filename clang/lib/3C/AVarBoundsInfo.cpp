@@ -43,6 +43,8 @@ void AVarBoundsStats::print(llvm::raw_ostream &O,
     O << "DataflowMatch:" << Tmp.size() << "\n";
     findIntersection(DeclaredBounds, *InSrcArrs, Tmp);
     O << "Declared:" << Tmp.size() << "\n";
+    findIntersection(DeclaredButNotHandled, *InSrcArrs, Tmp);
+    O << "DeclaredButNotHandled:" << Tmp.size() << "\n";
   } else {
     O << "\"ArrayBoundsInferenceStats\":{";
     findIntersection(NamePrefixMatch, *InSrcArrs, Tmp);
@@ -56,7 +58,9 @@ void AVarBoundsStats::print(llvm::raw_ostream &O,
     findIntersection(DataflowMatch, *InSrcArrs, Tmp);
     O << "\"DataflowMatch\":" << Tmp.size() << ",\n";
     findIntersection(DeclaredBounds, *InSrcArrs, Tmp);
-    O << "\"Declared\":" << Tmp.size() << "\n";
+    O << "\"Declared\":" << Tmp.size() << ",\n";
+    findIntersection(DeclaredButNotHandled, *InSrcArrs, Tmp);
+    O << "\"DeclaredButNotHandled\":" << Tmp.size() << "\n";
     O << "}";
   }
 }
@@ -95,8 +99,9 @@ bool isInSrcArray(ConstraintVariable *CK, Constraints &CS) {
 class ScopeVisitor {
 public:
   ScopeVisitor(const ProgramVarScope *S, std::set<BoundsKey> &R,
+               std::set<BoundsKey> &VK,
                std::map<BoundsKey, ProgramVar *> &VarM,
-               std::set<BoundsKey> &P): TS(S), Res(R), VM(VarM)
+               std::set<BoundsKey> &P): TS(S), Res(R), VisibleKeys(VK), VM(VarM)
     , PtrAtoms(P) { }
   void visitBoundsKey(BoundsKey V) const {
     // If the variable is non-pointer?
@@ -106,19 +111,23 @@ public:
       if (S->isNumConstant() ||
           (*(TS) == *(S->getScope()))) {
         Res.insert(V);
+        VisibleKeys.insert(V);
+      } else if (TS->isInInnerScope(*(S->getScope()))) {
+        VisibleKeys.insert(V);
       }
     }
   }
 
   const ProgramVarScope *TS;
   std::set<BoundsKey> &Res;
+  std::set<BoundsKey> &VisibleKeys;
   std::map<BoundsKey, ProgramVar *> &VM;
   std::set<BoundsKey> &PtrAtoms;
 };
 
 void
 AvarBoundsInference::
-mergeReachableProgramVars(std::set<BoundsKey> &AllVars) {
+mergeReachableProgramVars(BoundsKey TarBK, std::set<BoundsKey> &AllVars) {
   if (AllVars.size() > 1) {
     // Convert the bounds key to corresponding program var.
     std::set<ProgramVar *> AllProgVars;
@@ -126,28 +135,55 @@ mergeReachableProgramVars(std::set<BoundsKey> &AllVars) {
       AllProgVars.insert(BI->getProgramVar(AV));
     }
     ProgramVar *BVar = nullptr;
+    bool IsTarNTArr = BI->NtArrPointerBoundsKey.find(TarBK) !=
+                      BI->NtArrPointerBoundsKey.end();
     // We want to merge all bounds vars. We give preference to
     // non-constants if there are multiple non-constant variables,
     // we give up.
     for (auto *TmpB : AllProgVars) {
+      // First case.
       if (BVar == nullptr) {
         BVar = TmpB;
       } else if (BVar->isNumConstant()) {
+        // Case when one variable is constant and other is not.
         if (!TmpB->isNumConstant()) {
           // We give preference to non-constant lengths.
           BVar = TmpB;
         } else {
-          // If we need to merge two constants? Pick the lesser value.
+          // If we need to merge two constants?
           int CVal = std::stoi(BVar->getVarName());
           int TmpVal = std::stoi(TmpB->getVarName());
-          if (TmpVal < CVal) {
+          if (IsTarNTArr) {
+            // If this is an NTarr then the values should be same.
+            if (TmpVal != CVal) {
+              BVar = nullptr;
+              break;
+            }
+          } else if (TmpVal < CVal) {
+            // Else (if array), pick the lesser value.
             BVar = TmpB;
           }
         }
-      } else if (!TmpB->isNumConstant() && BVar->getKey() != TmpB->getKey()) {
-        // If they are different variables?
-        BVar = nullptr;
-        break;
+      } else if (!TmpB->isNumConstant()) {
+        // Case when both are non-constant variables.
+        auto *BScope = BVar->getScope();
+        auto *TScope = TmpB->getScope();
+        if (*BScope != *TScope) {
+          // Is the new variable in inner scope (i.e., more close)?
+          if (TScope->isInInnerScope(*BScope)) {
+            BVar = TmpB;
+          } else if (!BScope->isInInnerScope(*TScope)) {
+            // Variables are in different scope and their visibilities are
+            // incomparable. We give up.
+            BVar = nullptr;
+            break;
+          }
+        } else if (BVar->getKey() != TmpB->getKey()) {
+          // The variables are in same scope, but are different variables.
+          // We give up.
+          BVar = nullptr;
+          break;
+        }
       }
     }
     AllVars.clear();
@@ -168,7 +204,7 @@ AvarBoundsInference::convergeInferredBounds() {
     if (AB == nullptr) {
       auto BTypeMap = CInfABnds.second;
       for (auto &TySet : BTypeMap) {
-        mergeReachableProgramVars(TySet.second);
+        mergeReachableProgramVars(CInfABnds.first, TySet.second);
       }
       // Order of preference: Count and Byte
       if (BTypeMap.find(ABounds::CountBoundKind) != BTypeMap.end() &&
@@ -191,6 +227,16 @@ AvarBoundsInference::convergeInferredBounds() {
     }
   }
   return FoundSome;
+}
+
+bool AvarBoundsInference::hasImpossibleBounds(BoundsKey BK) {
+  return this->BI->PointersWithImpossibleBounds.find(BK) !=
+         this->BI->PointersWithImpossibleBounds.end();
+}
+
+void AvarBoundsInference::setImpossibleBounds(BoundsKey BK) {
+  this->BI->PointersWithImpossibleBounds.insert(BK);
+  this->BI->removeBounds(BK);
 }
 
 // This function finds all the BoundsKeys (i.e., variables) in
@@ -226,11 +272,21 @@ bool AvarBoundsInference::getReachableBoundKeys(const ProgramVarScope *DstScope,
   for (auto CurrVarK : AllFKeys) {
     // Find all the in scope variables reachable from the CurrVarK
     // bounds variable.
-    ScopeVisitor TV(DstScope, PotK, BI->PVarInfo,
+    std::set<BoundsKey> InScopeKeys;
+    std::set<BoundsKey> VisibleKeys;
+    if (DstScope->isInInnerScope(*BI->getProgramVar(CurrVarK)->getScope()))
+      VisibleKeys.insert(CurrVarK);
+    ScopeVisitor TV(DstScope, InScopeKeys, VisibleKeys, BI->PVarInfo,
                     BI->PointerBoundsKey);
     BKGraph.visitBreadthFirst(CurrVarK, [&TV](BoundsKey BK) {
       TV.visitBoundsKey(BK);
     });
+    // Prioritize in scope keys.
+    if (!InScopeKeys.empty()) {
+      PotK.insert(InScopeKeys.begin(), InScopeKeys.end());
+    } else {
+      PotK.insert(VisibleKeys.begin(), VisibleKeys.end());
+    }
   }
 
   // This is to get all the constants that are assigned to the variables
@@ -245,7 +301,7 @@ bool AvarBoundsInference::getReachableBoundKeys(const ProgramVarScope *DstScope,
       BKGraph.getPredecessors(CK, Pre);
       for (auto T : Pre) {
         auto *TVar = BI->getProgramVar(T);
-        if (TVar->isNumConstant()) {
+        if (TVar != nullptr && TVar->isNumConstant()) {
           ReachableCons.insert(T);
         }
       }
@@ -339,10 +395,16 @@ bool AvarBoundsInference::predictBounds(BoundsKey K,
         }
       }
     } else if (IsFuncRet ||
-               (BKsFailedFlowInference.find(NBK) != BKsFailedFlowInference.end())) {
+               (BKsFailedFlowInference.find(NBK) !=
+                BKsFailedFlowInference.end())) {
 
       // If this is a function return we should have bounds from all
       // neighbours.
+      ErrorOccurred = true;
+    } else if (hasImpossibleBounds(NBK)) {
+      // if the neighbour has impossible bounds?
+      // Consider that current pointer to also have impossible bounds.
+      setImpossibleBounds(K);
       ErrorOccurred = true;
     }
     if (ErrorOccurred) {
@@ -470,11 +532,11 @@ bool AvarBoundsInference::inferBounds(BoundsKey K, AVarGraph &BKGraph, bool From
 
 bool AVarBoundsInfo::isValidBoundVariable(clang::Decl *D) {
   // All parameters, return, and field values are valid bound variables.
-  if (isa<ParmVarDecl>(D) || isa<FunctionDecl>(D) || isa<FieldDecl>(D))
+  if (D && (isa<ParmVarDecl>(D) || isa<FunctionDecl>(D) || isa<FieldDecl>(D)))
     return true;
  
   // For VarDecls, check if these are are not dummy and have a name.
-  if (auto *VD = dyn_cast<VarDecl>(D))
+  if (auto *VD = dyn_cast_or_null<VarDecl>(D))
     return !VD->getNameAsString().empty();
 
   return false;
@@ -492,13 +554,15 @@ void AVarBoundsInfo::insertDeclaredBounds(clang::Decl *D, ABounds *B) {
   } else {
     // Set bounds to be invalid.
     InvalidBounds.insert(BK);
+    BoundsInferStats.DeclaredButNotHandled.insert(BK);
   }
 }
 
 bool AVarBoundsInfo::tryGetVariable(clang::Decl *D, BoundsKey &R) {
   if (isValidBoundVariable(D)) {
     if (ParmVarDecl *PD = dyn_cast<ParmVarDecl>(D)) {
-      R = getVariable(PD);
+      if (PD->getParentFunctionOrMethod())
+        R = getVariable(PD);
     } else if (VarDecl *VD = dyn_cast<VarDecl>(D)) {
       R = getVariable(VD);
     } else if (FieldDecl *FD = dyn_cast<FieldDecl>(D)) {
@@ -873,6 +937,15 @@ AVarBoundsInfo::handlePointerAssignment(clang::Stmt *St, clang::Expr *L,
 }
 
 void
+AVarBoundsInfo::mergeBoundsKey(BoundsKey To, BoundsKey From) {
+  if (InvalidBounds.find(To) != InvalidBounds.end() ||
+      InvalidBounds.find(From) != InvalidBounds.end()) {
+    InvalidBounds.insert(To);
+    InvalidBounds.insert(From);
+  }
+}
+
+void
 AVarBoundsInfo::recordArithmeticOperation(clang::Expr *E,
                                           ConstraintResolver *CR) {
   CVarSet CSet = CR->getExprConstraintVarsSet(E);
@@ -1022,15 +1095,18 @@ void AVarBoundsInfo::computerArrPointers(ProgramInfo *PI,
         FV = PI->getExtFuncDefnConstraint(FuncName);
       }
 
-      if (hasArray(FV->getExternalParam(ParmNum), CS)) {
+      if (hasArray(FV->getExternalParam(ParmNum), CS) ||
+          hasArray(FV->getInternalParam(ParmNum), CS)) {
         ArrPointers.insert(Bkey);
       }
       // Does this array belong to a valid program variable?
-      if (isInSrcArray(FV->getExternalParam(ParmNum), CS)) {
+      if (isInSrcArray(FV->getExternalParam(ParmNum), CS) ||
+          isInSrcArray(FV->getInternalParam(ParmNum), CS)) {
         InProgramArrPtrBoundsKeys.insert(Bkey);
       }
 
-      if (hasOnlyNtArray(FV->getExternalParam(ParmNum), CS)) {
+      if (hasOnlyNtArray(FV->getExternalParam(ParmNum), CS) ||
+          hasOnlyNtArray(FV->getInternalParam(ParmNum), CS)) {
         NtArrPointerBoundsKey.insert(Bkey);
       }
 
@@ -1054,16 +1130,24 @@ void AVarBoundsInfo::computerArrPointers(ProgramInfo *PI,
         FV = getOnly(Tmp);
       }
 
-      if (hasArray(FV->getExternalReturn(), CS)) {
+      if (hasArray(FV->getExternalReturn(), CS) ||
+          hasArray(FV->getInternalReturn(), CS)) {
         ArrPointers.insert(Bkey);
       }
       // Does this array belongs to a valid program variable?
-      if (isInSrcArray(FV->getExternalReturn(), CS)) {
+      if (isInSrcArray(FV->getExternalReturn(), CS) ||
+          isInSrcArray(FV->getInternalReturn(), CS)) {
         InProgramArrPtrBoundsKeys.insert(Bkey);
       }
 
-      if (hasOnlyNtArray(FV->getInternalReturn(), CS)) {
+      if (hasOnlyNtArray(FV->getExternalReturn(), CS) ||
+          hasOnlyNtArray(FV->getInternalReturn(), CS)) {
         NtArrPointerBoundsKey.insert(Bkey);
+        // If the return value is an nt array pointer
+        // and there are no declared bounds? Then, we cannot
+        // find bounds for this pointer.
+        if (getBounds(Bkey) == nullptr)
+          PointersWithImpossibleBounds.insert(Bkey);
       }
       continue;
     }
@@ -1110,6 +1194,9 @@ void AVarBoundsInfo::getBoundsNeededArrPointers(
   }
   // Also add arrays with invalid bounds.
   ArrWithBounds.insert(InvalidBounds.begin(), InvalidBounds.end());
+  // Also, add arrays with impossible bounds.
+  ArrWithBounds.insert(PointersWithImpossibleBounds.begin(),
+                       PointersWithImpossibleBounds.end());
 
   // This are the array atoms that need bounds.
   // i.e., AB = ArrPtrs - ArrPtrsWithBounds.

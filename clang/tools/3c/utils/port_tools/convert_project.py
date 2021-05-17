@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 Given the path to the project and 3c binary,
@@ -17,44 +17,26 @@ import os
 import sys
 import argparse
 import logging
-from includes_updater import updateProjectIncludes
 from generate_ccommands import run3C
+from expand_macros import ExpandMacrosOptions
 
 logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S',
                     level=logging.DEBUG)
 
-# This default value will be overwritten if an alternate path is provided
-# in an argument.
-CHECKEDC_INCLUDE_REL_PATH = "projects/checkedc-wrapper/checkedc/include"
-checkedcHeaderDir = os.path.abspath(
-    os.path.join("../../../../..",
-                 CHECKEDC_INCLUDE_REL_PATH))
-
 
 # If the arg is a valid filename, returns the absolute path to it
 def parseTheArg():
-    global CHECKEDC_INCLUDE_REL_PATH
-    global checkedcHeaderDir
-    # get the directory based on `LLVM_SRC` environment variable.
-    pathBasedDir = ""
-    if 'LLVM_SRC' in os.environ:
-        pathBasedDir = os.path.join(os.environ['LLVM_SRC'], CHECKEDC_INCLUDE_REL_PATH)
     _3c_bin = ""
     if 'LLVM_OBJ' in os.environ:
         _3c_bin = os.path.join(os.environ['LLVM_OBJ'], "bin/3c")
 
     parser = argparse.ArgumentParser(description='Convert the provided project into Checked C.')
 
-    parser.add_argument('--includeDir',
-                        default=checkedcHeaderDir if os.path.exists(checkedcHeaderDir) else pathBasedDir,
-                        required=False,
-                        dest='includeDir',
-                        help='Path to the checkedC headers, run from a checkedCclang repo')
     parser.add_argument("-p", "--prog_name", dest='prog_name', type=str, default=_3c_bin,
                         help='Program name to run. i.e., path to 3c')
 
-    parser.add_argument("--extra-3c-arg", dest='extra_3c_args', type=str, default=[], nargs='*',
+    parser.add_argument("--extra-3c-arg", dest='extra_3c_args', action='append', type=str, default=[],
                         help=('Extra argument to pass to 3c. '
                               'Multiple -extra-3c-arg options can be used.'))
 
@@ -68,6 +50,27 @@ def parseTheArg():
     parser.add_argument("--skip", dest='skip_paths', action='append', type=str, default=[],
                         help='Relative path to source files that should be skipped.')
 
+    parser.add_argument("--expand_macros_before_conversion",
+                        dest='expand_macros_before_conversion', action='store_true',
+                        default=False,
+                        help=('Before running 3c, attempt to expand macros in place in all source files '
+                              'based on the compiler options in compile_commands.json. '
+                              'This will help stop macros from interfering with 3C\'s ability to perform rewrites.'))
+    parser.add_argument('--include_before_undefs', dest='includes_before_undefs', action='append',
+                        # Start a combined list here rather than potentially duplicating the options for
+                        # every benchmark. TBD what we want to do longer term.
+                        default=['<signal.h>', '<ctype.h>'],
+                        help=('With --expand_macros_before_conversion, #include the given filename '
+                              '(which should contain the double quotes or angle brackets) in each translation '
+                              'unit before undefining the macros specified via --undef_macro. Assuming the '
+                              'header has a multiple inclusion guard, this can be used to prevent '
+                              'a subsequent inclusion from defining the macros again.'))
+    parser.add_argument('--undef_macro', dest='undef_macros', action='append',
+                        default=['sa_handler', 'toupper', 'tolower'],
+                        help=('With --expand_macros_before_conversion, #undef the given macro name '
+                              'in each translation unit. Can be used to prevent problematic '
+                              '(e.g., recursive) macros from being expanded.'))
+
     parser.add_argument("-dr", dest='skip_exec', action='store_true', default=False,
                         help='Do not run the conversion. Just create the conversion script.')
 
@@ -76,11 +79,6 @@ def parseTheArg():
     if not args.skip_exec and (not args.prog_name or not os.path.isfile(args.prog_name)):
         logging.error("Error: --prog_name argument is not a valid file..")
         logging.error("Provided argument: {} is not a file.".format(args.prog_name))
-        sys.exit()
-
-    if not args.includeDir or not os.path.isdir(args.includeDir):
-        logging.error("Error: --includeDir argument must be the name of a directory.")
-        logging.error("Provided argument: {} is not a directory.".format(args.includeDir))
         sys.exit()
 
     if not args.project_path or not os.path.isdir(args.project_path):
@@ -107,15 +105,15 @@ if __name__ == "__main__":
         logging.error("Error: Build directory does not contain compile_commands.json.")
         logging.error("compile_commands.json file: {} does not exist.".format(compileCmdsJson))
         sys.exit()
-    # replace include files
-    logging.info("Updating include lines of all the source files.")
-    updateProjectIncludes(progArgs.project_path, progArgs.includeDir)
-    logging.info("Finished updating project files.")
 
     logging.info("Trying to convert all the source files to header files")
     run3C(progArgs.prog_name, progArgs.extra_3c_args,
-          progArgs.project_path, compileCmdsJson, progArgs.includeDir,
-          progArgs.skip_paths, progArgs.skip_exec)
+          progArgs.project_path, compileCmdsJson,
+          progArgs.skip_paths,
+          ExpandMacrosOptions(progArgs.expand_macros_before_conversion,
+                              progArgs.includes_before_undefs,
+                              progArgs.undef_macros),
+          progArgs.skip_exec)
     logging.info("Finished converting all the files to checkedc files.")
 
 

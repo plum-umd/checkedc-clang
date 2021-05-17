@@ -41,6 +41,9 @@ public:
   std::set<BoundsKey> DataflowMatch;
   // These are bounds keys for which the bounds are declared.
   std::set<BoundsKey> DeclaredBounds;
+  // These are bounds key having bounds, but unfortunately cannot be handled
+  // by our inference.
+  std::set<BoundsKey> DeclaredButNotHandled;
   AVarBoundsStats() { clear(); }
   ~AVarBoundsStats() { clear(); }
 
@@ -73,6 +76,7 @@ private:
     NeighbourParamMatch.clear();
     DataflowMatch.clear();
     DeclaredBounds.clear();
+    DeclaredButNotHandled.clear();
   }
 };
 
@@ -128,7 +132,12 @@ private:
   bool predictBounds(BoundsKey DstArrK, std::set<BoundsKey> &Neighbours,
                      AVarGraph &BKGraph);
 
-  void mergeReachableProgramVars(std::set<BoundsKey> &AllVars);
+  void mergeReachableProgramVars(BoundsKey TarBK,std::set<BoundsKey> &AllVars);
+
+  // Check if the pointer variable has impossible bounds.
+  bool hasImpossibleBounds(BoundsKey BK);
+  // Set the given pointer to have impossible bounds.
+  void setImpossibleBounds(BoundsKey BK);
 
   AVarBoundsInfo *BI;
 
@@ -203,6 +212,8 @@ public:
                         const std::set<BoundsKey> &CSRKeys,
                         ASTContext *C, ConstraintResolver *CR);
 
+  void mergeBoundsKey(BoundsKey To, BoundsKey From);
+
   // Handle the arithmetic expression. This is required to adjust bounds
   // for pointers that has pointer arithmetic performed on them.
   void recordArithmeticOperation(clang::Expr *E, ConstraintResolver *CR);
@@ -272,6 +283,10 @@ private:
   // Set of BoundsKey that correspond to array pointers.
   std::set<BoundsKey> ArrPointerBoundsKey;
   std::set<BoundsKey> NtArrPointerBoundsKey;
+  // These are array and nt arr pointers which cannot have bounds.
+  // E.g., return value of strdup and in general any return value
+  // which is an nt array.
+  std::set<BoundsKey> PointersWithImpossibleBounds;
   // Set of BoundsKey that correspond to array pointers with in the program
   // being compiled i.e., it does not include array pointers that belong
   // to libraries.
