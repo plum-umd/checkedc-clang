@@ -131,9 +131,9 @@ PointerVariableConstraint::PointerVariableConstraint(
       this->SrcVars.push_back(*CAIt);
       if (!isa<WildAtom>(*CAIt))
         CS.addConstraint(CS.createGeq(*CAIt, FreshVA, false));
-      ++VAIt;
-      ++CAIt;
     }
+    ++VAIt;
+    ++CAIt;
   }
 
   if (Ot->FV != nullptr) {
@@ -145,7 +145,7 @@ PointerVariableConstraint::PointerVariableConstraint(
   this->BaseType = Ot->BaseType;
   this->SrcHasItype = Ot->SrcHasItype;
   this->IsVoidPtr = Ot->IsVoidPtr;
-  // We need not initialize other members.
+  this->TypedefLevelInfo = Ot->TypedefLevelInfo;
 }
 
 PointerVariableConstraint::PointerVariableConstraint(DeclaratorDecl *D,
