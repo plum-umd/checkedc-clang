@@ -5,11 +5,11 @@
 //
 // RUN: 3c -base-dir=%S -alltypes %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_ALL","CHECK" %s
 // RUN: 3c -base-dir=%S %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" %s
-// RUN: 3c -base-dir=%S %s -- | %clang_cc1  -verify -fcheckedc-extension -x c -
+// RUN: 3c -base-dir=%S %s -- | %clang -c  -Xclang -verify -fcheckedc-extension -x c -
 // expected-no-diagnostics
 //
 
-typedef unsigned short wchar_t;
+#include <stddef.h>
 
 void typd_driver(void) {
   wchar_t buf[10];

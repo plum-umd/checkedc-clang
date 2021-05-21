@@ -1,14 +1,12 @@
 // RUN: rm -rf %t*
 // RUN: 3c -base-dir=%S -alltypes -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_ALL","CHECK" %s
 // RUN: 3c -base-dir=%S -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" %s
-// RUN: 3c -base-dir=%S --addcr %s -- | %clang_cc1  -fcheckedc-extension -x c -
-// RUN: 3c -base-dir=%S --addcr --alltypes %s -- | %clang_cc1  -fcheckedc-extension -x c -
+// RUN: 3c -base-dir=%S --addcr %s -- | %clang -c  -fcheckedc-extension -x c -
+// RUN: 3c -base-dir=%S --addcr --alltypes %s -- | %clang -c  -fcheckedc-extension -x c -
 // RUN: 3c -base-dir=%S -alltypes -output-dir=%t.checked %s --
 // RUN: 3c -base-dir=%t.checked -alltypes %t.checked/ptrtoconstarr.c -- | diff %t.checked/ptrtoconstarr.c -
 
-extern _Unchecked unsigned long
-strlen(const char *restrict src
-       : itype(restrict _Nt_array_ptr<const char>));
+#include <string.h>
 
 int bar(void) {
   //CHECK_ALL: int bar(void) _Checked {
