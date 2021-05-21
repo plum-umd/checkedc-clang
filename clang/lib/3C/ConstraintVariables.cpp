@@ -2134,11 +2134,12 @@ void FVComponentVariable::equateWithItype(
   // of the type to change because that could blow away the bounds, but we still
   // allow the internal type to change so that the type can change from an itype
   // to fully checked.
-  if (HasItype && (!ReasonUnchangeable2.empty() || HasBounds)) {
+  bool MustConstrainInternalType = !ReasonUnchangeable2.empty();
+  if (HasItype && (MustConstrainInternalType || HasBounds)) {
     ExternalConstraint->equateWithItype(I, ReasonUnchangeable2);
     if (ExternalConstraint != InternalConstraint)
       linkInternalExternal(I, false);
-    if (!ReasonUnchangeable2.empty())
+    if (MustConstrainInternalType)
       InternalConstraint->constrainToWild(CS, ReasonUnchangeable2);
   }
 }
