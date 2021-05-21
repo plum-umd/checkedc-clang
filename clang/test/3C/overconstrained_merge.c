@@ -10,7 +10,11 @@
 
 // This test only uses -alltypes because of the use of _Array_ptr in the example
 // (to distinguish from the _Ptr that will be added).
-// stdlib.h declares free, so don't declare that name ourselves.
+
+// This test uses a sequence of declarations of this function that differs in an
+// important way from the one for the system `free` (the fully unchecked
+// declaration comes second), so we use a different name for this function to
+// avoid any confusion with the system `free`.
 _Itype_for_any(T) void my_free(void * : itype(_Array_ptr<T>));
 void b(void) {
   char **c;

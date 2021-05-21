@@ -9,8 +9,9 @@
 
 // From issue 204
 
-// sys/types.h declares ulong at least on some systems, so don't declare that
-// name ourselves.
+// Here, we specifically want to test 3C's behavior on a macro that expands to a
+// type. Use a different name to avoid any confusion with the `ulong` that is
+// defined as a typedef in sys/types.h on some systems.
 #define my_ulong unsigned long
 
 my_ulong *TOP;
