@@ -194,20 +194,6 @@ static cl::opt<bool>
                                  "even those unlikely to be interesting."),
                         cl::init(false), cl::cat(_3CCategory));
 
-// https://clang.llvm.org/doxygen/classclang_1_1VerifyDiagnosticConsumer.html#details
-//
-// Analogous to the -verify option of `clang -cc1`, but currently applies only
-// to the rewriting phase (because it is the only phase that generates
-// diagnostics, except for the declaration merging diagnostics that are
-// currently fatal). No checking of diagnostics from the other phases is
-// performed. We cannot simply have the caller pass `-extra-arg=-Xclang
-// -extra-arg=-verify` because that would expect each phase to produce the same
-// set of diagnostics.
-static cl::opt<bool> OptVerifyDiagnosticOutput(
-    "verify",
-    cl::desc("Verify diagnostic output (for automated testing of 3c)."),
-    cl::init(false), cl::cat(_3CCategory), cl::Hidden);
-
 // In the future, we may enhance this to write the output to individual files.
 // For now, the user has to copy and paste the correct portions of stderr.
 static cl::opt<bool> OptDumpUnwritableChanges(
@@ -303,7 +289,6 @@ int main(int argc, const char **argv) {
   CcOptions.EnableCCTypeChecker = OptEnableCCTypeChecker;
   CcOptions.WarnRootCause = OptWarnRootCause;
   CcOptions.WarnAllRootCause = OptWarnAllRootCause;
-  CcOptions.VerifyDiagnosticOutput = OptVerifyDiagnosticOutput;
   CcOptions.DumpUnwritableChanges = OptDumpUnwritableChanges;
   CcOptions.AllowUnwritableChanges = OptAllowUnwritableChanges;
   CcOptions.AllowRewriteFailures = OptAllowRewriteFailures;

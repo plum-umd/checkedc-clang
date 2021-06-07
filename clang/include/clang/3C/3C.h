@@ -68,11 +68,6 @@ struct _3COptions {
   bool ForceItypes;
 #endif
 
-  // Currently applies only to the rewriting phase (because it is the only phase
-  // that generates diagnostics, except for the declaration merging diagnostics
-  // that are currently fatal) and uses the default "expected" prefix.
-  bool VerifyDiagnosticOutput;
-
   bool DumpUnwritableChanges;
   bool AllowUnwritableChanges;
 
