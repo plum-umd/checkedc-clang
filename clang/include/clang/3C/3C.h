@@ -57,7 +57,7 @@ struct _3COptions {
 
   bool AddCheckedRegions;
 
-  bool DisableCCTypeChecker;
+  bool EnableCCTypeChecker;
 
   bool WarnRootCause;
 

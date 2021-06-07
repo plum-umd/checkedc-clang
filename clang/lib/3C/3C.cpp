@@ -51,7 +51,7 @@ std::string PerWildPtrInfoJson;
 bool AllTypes;
 std::string BaseDir;
 bool AddCheckedRegions;
-bool DisableCCTypeChecker;
+bool EnableCCTypeChecker;
 bool WarnRootCause;
 bool WarnAllRootCause;
 std::set<std::string> FilePaths;
@@ -80,7 +80,7 @@ ArgumentsAdjuster getIgnoreCheckedPointerAdjuster() {
         break;
       }
     }
-    if (!DisableCCTypeChecker && !HasAdjuster)
+    if (!EnableCCTypeChecker && !HasAdjuster)
       AdjustedArgs.push_back("-f3c-tool");
     return AdjustedArgs;
   };
@@ -190,7 +190,7 @@ _3CInterface::_3CInterface(const struct _3COptions &CCopt,
   BaseDir = CCopt.BaseDir;
   AllTypes = CCopt.EnableAllTypes;
   AddCheckedRegions = CCopt.AddCheckedRegions;
-  DisableCCTypeChecker = CCopt.DisableCCTypeChecker;
+  EnableCCTypeChecker = CCopt.EnableCCTypeChecker;
   AllocatorFunctions = CCopt.AllocatorFunctions;
   WarnRootCause = CCopt.WarnRootCause || CCopt.WarnAllRootCause;
   WarnAllRootCause = CCopt.WarnAllRootCause;

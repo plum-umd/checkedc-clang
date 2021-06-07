@@ -156,10 +156,13 @@ static cl::opt<bool> OptAddCheckedRegions("addcr",
                                           cl::init(false),
                                           cl::cat(_3CCategory));
 
-static cl::opt<bool>
-    OptDiableCCTypeChecker("disccty",
-                           cl::desc("Do not disable checked c type checker."),
-                           cl::init(false), cl::cat(_3CCategory));
+static cl::opt<bool> OptEnableCCTypeChecker(
+    "enccty",
+    cl::desc(
+        "Enable the Checked C type checker. 3c normally disables it (via the "
+        "equivalent of `clang -f3c-tool`) so that 3c can operate on partially "
+        "converted programs that may have Checked C type errors."),
+    cl::init(false), cl::cat(_3CCategory));
 
 static cl::opt<std::string> OptBaseDir(
     "base-dir",
@@ -297,7 +300,7 @@ int main(int argc, const char **argv) {
   CcOptions.PerPtrInfoJson = OptPerPtrWILDInfoJson.getValue();
   CcOptions.AddCheckedRegions = OptAddCheckedRegions;
   CcOptions.EnableAllTypes = OptAllTypes;
-  CcOptions.DisableCCTypeChecker = OptDiableCCTypeChecker;
+  CcOptions.EnableCCTypeChecker = OptEnableCCTypeChecker;
   CcOptions.WarnRootCause = OptWarnRootCause;
   CcOptions.WarnAllRootCause = OptWarnAllRootCause;
   CcOptions.VerifyDiagnosticOutput = OptVerifyDiagnosticOutput;
