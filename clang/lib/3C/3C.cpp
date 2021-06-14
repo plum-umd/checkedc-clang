@@ -125,6 +125,32 @@ public:
           FrontendInputFile(NewPath, OldInput.getKind(), OldInput.isSystem());
     }
 
+    // Canonicalize -I paths to address the same two issues for `#include`d
+    // files. The situation is analogous except that this is not a complete fix
+    // for https://github.com/correctcomputation/checkedc-clang/issues/604
+    // because the portion of the path in the `#include` directive may be
+    // non-canonical.
+    HeaderSearchOptions &HeaderOpts = *Invocation->HeaderSearchOpts;
+    std::vector<HeaderSearchOptions::Entry> NewUserEntries;
+    for (auto It = HeaderOpts.UserEntries.begin();
+         It != HeaderOpts.UserEntries.end();) {
+      HeaderSearchOptions::Entry &Entry = *It;
+      std::string OldPath = Entry.Path, NewPath;
+      std::error_code EC = tryGetCanonicalFilePath(OldPath, NewPath);
+      if (EC) {
+        // Normally, if an -I directory isn't accessible, Clang seems to ignore
+        // it with no diagnostic. Hopefully, removing it from the list here will
+        // have the same effect and not break anything. If we kept the
+        // non-canonical entry, we might benefit from any diagnostic that Clang
+        // might issue in the future, but it's harder to reason about whether
+        // that might re-expose the original bugs.
+        It = HeaderOpts.UserEntries.erase(It);
+      } else {
+        Entry.Path = NewPath;
+        It++;
+      }
+    }
+
     // Finally, actually build the AST. This part is the same as in
     // ASTBuilderAction::runInvocation.
 
