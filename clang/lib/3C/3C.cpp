@@ -67,48 +67,80 @@ bool ForceItypes;
 static CompilationDatabase *CurrCompDB = nullptr;
 static tooling::CommandLineArguments SourceFiles;
 
-ArgumentsAdjuster getIgnoreCheckedPointerAdjuster() {
-  return [](const CommandLineArguments &Args, StringRef /*unused*/) {
-    CommandLineArguments AdjustedArgs;
-    bool HasAdjuster = false;
-    for (size_t I = 0, E = Args.size(); I < E; ++I) {
-      StringRef Arg = Args[I];
-      AdjustedArgs.push_back(Args[I]);
-      if (Arg == "-f3c-tool") {
-        HasAdjuster = true;
-        break;
+// Based on LibTooling's ASTBuilderAction but does several custom things that we
+// need.
+//
+// See clang/docs/checkedc/3C/clang-tidy.md#_3c-name-prefix
+// NOLINTNEXTLINE(readability-identifier-naming)
+class _3CASTBuilderAction : public ToolAction {
+  std::vector<std::unique_ptr<ASTUnit>> &ASTs;
+
+public:
+  _3CASTBuilderAction(std::vector<std::unique_ptr<ASTUnit>> &ASTs)
+      : ASTs(ASTs) {}
+
+  bool runInvocation(std::shared_ptr<CompilerInvocation> Invocation,
+                     FileManager *Files,
+                     std::shared_ptr<PCHContainerOperations> PCHContainerOps,
+                     DiagnosticConsumer *DiagConsumer) override {
+
+    // Adjust some compiler options. This is similar to what we could do with
+    // a LibTooling ArgumentsAdjuster, but we access the options in their parsed
+    // data structure rather than as strings, so it is much more robust.
+
+    if (!EnableCCTypeChecker)
+      // Corresponds to the -f3c-tool compiler option.
+      Invocation->LangOpts->_3C = true;
+
+    // Re-canonicalize the path of the main source file, in case it was
+    // overridden by the compilation database after it was originally
+    // canonicalized by the _3CInterface constructor. This completely fixes
+    // https://github.com/correctcomputation/checkedc-clang/issues/515 and
+    // https://github.com/correctcomputation/checkedc-clang/issues/604 for the
+    // main source file.
+    //
+    // If https://github.com/correctcomputation/checkedc-clang/issues/604 were
+    // fixed another way, then making the path absolute would be sufficient to
+    // fix https://github.com/correctcomputation/checkedc-clang/issues/515; the
+    // path wouldn't need to be canonical.
+    SmallVectorImpl<FrontendInputFile> &Inputs =
+        Invocation->getFrontendOpts().Inputs;
+    for (FrontendInputFile *Iter = Inputs.begin(); Iter < Inputs.end();
+         Iter++) {
+      FrontendInputFile &OldInput = *Iter;
+      // getFile will assert that the input is a file, which should be true for
+      // 3C.
+      std::string OldPath = std::string(OldInput.getFile()), NewPath;
+      std::error_code EC = tryGetCanonicalFilePath(OldPath, NewPath);
+      if (EC) {
+        // If the compilation database specifies a bogus, inaccessible file,
+        // that will normally be caught by Driver::DiagnoseInputExistence before
+        // we get here.
+        errs() << "3C error: Failed to re-canonicalize source file path "
+               << OldPath << " during compiler invocation: "
+               << EC.message() << "\n";
+        return false;
       }
+      *Iter =
+          FrontendInputFile(NewPath, OldInput.getKind(), OldInput.isSystem());
     }
-    if (!EnableCCTypeChecker && !HasAdjuster)
-      AdjustedArgs.push_back("-f3c-tool");
-    return AdjustedArgs;
-  };
-}
-ArgumentsAdjuster canonicalizeSourceFilePathAdjuster() {
-  return [](const CommandLineArguments &Args, StringRef FileName) {
-    std::string AbsoluteFp;
-    std::error_code EC = tryGetCanonicalFilePath(std::string(FileName), AbsoluteFp);
-    assert(!EC && "We canonicalized the source file path during 3C "
-                  "initialization; doing it again in "
-                  "canonicalizeSourceFilePathAdjuster shouldn't fail.");
-    CommandLineArguments AdjustedArgs;
-    for (auto Arg : Args) {
-      if (Arg == FileName) {
-        // XXX We are assuming that any occurrence of the source file path as an
-        // argument should be replaced with the canonical file path. It might be
-        // safer to only match the argument that represents the input file.
-        // Unfortunately, it's hard to do here short of reimplementing compiler
-        // command line parsing. It would be better to adjust the parsed option
-        // data structures instead
-        // (https://github.com/correctcomputation/checkedc-clang/issues/536).
-        AdjustedArgs.push_back(AbsoluteFp);
-      } else {
-        AdjustedArgs.push_back(Arg);
-      }
-    }
-    return AdjustedArgs;
-  };
-}
+
+    // Finally, actually build the AST. This part is the same as in
+    // ASTBuilderAction::runInvocation.
+
+    std::unique_ptr<ASTUnit> AST = ASTUnit::LoadFromCompilerInvocation(
+        Invocation, std::move(PCHContainerOps),
+        CompilerInstance::createDiagnostics(&Invocation->getDiagnosticOpts(),
+                                            DiagConsumer,
+                                            /*ShouldOwnClient=*/false),
+        Files);
+    if (!AST)
+      return false;
+
+    ASTs.push_back(std::move(AST));
+    return true;
+  }
+};
 
 void dumpConstraintOutputJson(const std::string &PostfixStr,
                               ProgramInfo &Info) {
@@ -298,18 +330,10 @@ bool _3CInterface::parseASTs() {
   std::lock_guard<std::mutex> Lock(InterfaceMutex);
 
   auto *Tool = new ClangTool(*CurrCompDB, SourceFiles);
-  Tool->appendArgumentsAdjuster(getIgnoreCheckedPointerAdjuster());
-  // We canonicalize source file paths in the _3CInterface constructor, but the
-  // compilation database may override the path with a relative or otherwise
-  // non-canonical path, which may then affect the presumed filename, which is
-  // used in the PersistentSourceLoc. Since we need PersistentSourceLocs to be
-  // unambiguous, we canonicalize the source file path again here. We may still
-  // get relative presumed filenames from relative -I paths, though
-  // convert_project tries to change the -I options to avoid this.
-  Tool->appendArgumentsAdjuster(canonicalizeSourceFilePathAdjuster());
 
   // load the ASTs
-  if (Tool->buildASTs(ASTs))
+  _3CASTBuilderAction Action(ASTs);
+  if (Tool->run(&Action))
     return false;
 
   // check for compile errors
