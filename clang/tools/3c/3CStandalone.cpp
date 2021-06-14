@@ -335,7 +335,7 @@ int main(int argc, const char **argv) {
   // Build AST from source.
   if (!_3CInterface.parseASTs()) {
     errs() << "Failure occurred while parsing source files. Exiting.\n";
-    return 1;
+    return _3CInterface.determineExitCode();
   }
 
   if (OptVerbose) {
@@ -346,7 +346,7 @@ int main(int argc, const char **argv) {
   // Add variables.
   if (!_3CInterface.addVariables()) {
     errs() << "Failure occurred while trying to add variables. Exiting.\n";
-    return 1;
+    return _3CInterface.determineExitCode();
   }
 
   if (OptVerbose) {
@@ -357,7 +357,7 @@ int main(int argc, const char **argv) {
   // Build constraints.
   if (!_3CInterface.buildInitialConstraints()) {
     errs() << "Failure occurred while trying to build constraints. Exiting.\n";
-    return 1;
+    return _3CInterface.determineExitCode();
   }
 
   if (OptVerbose) {
@@ -368,7 +368,7 @@ int main(int argc, const char **argv) {
   // Solve the constraints.
   if (!_3CInterface.solveConstraints()) {
     errs() << "Failure occurred while trying to solve constraints. Exiting.\n";
-    return 1;
+    return _3CInterface.determineExitCode();
   }
 
   if (OptVerbose) {
@@ -380,14 +380,17 @@ int main(int argc, const char **argv) {
   if (!_3CInterface.writeAllConvertedFilesToDisk()) {
     errs() << "Failure occurred while trying to rewrite converted files back. "
               "Exiting.\n";
-    return 1;
+    return _3CInterface.determineExitCode();
   }
 
   // Write all the performance related stats.
   if (!_3CInterface.dumpStats()) {
     errs() << "Failure occurred while trying to write performance stats. "
               "Exiting.\n";
-    return 1;
+    return _3CInterface.determineExitCode();
   }
-  return 0;
+
+  // Even if all passes succeeded, we could still have a diagnostic verification
+  // failure.
+  return _3CInterface.determineExitCode();
 }
