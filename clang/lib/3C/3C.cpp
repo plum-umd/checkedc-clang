@@ -119,6 +119,12 @@ class _3CDiagnosticConsumer : public DiagnosticConsumer {
 public:
   _3CDiagnosticConsumer(DiagnosticsEngine &Engine)
       : UnderlyingConsumer(Engine.takeClient()) {
+    // This code currently only supports the default LibTooling setup in which
+    // the ClangTool has no global DiagnosticConsumer, so
+    // CompilerInstance::createDiagnostics creates one owned by the
+    // DiagnosticsEngine. If we needed to support the case in which the
+    // DiagnosticConsumer isn't owned, we could use an "UnderlyingConsumerOwner"
+    // pattern like VerifyDiagnosticConsumer does.
     assert(UnderlyingConsumer);
   }
 
@@ -153,7 +159,17 @@ public:
     return UnderlyingConsumer->getNumErrors() == 0;
   }
 
-  ~_3CDiagnosticConsumer() { assert(CurrentState == S_Done); }
+  ~_3CDiagnosticConsumer() {
+    // We considered asserting that the state is S_Done here, but if
+    // ASTUnit::LoadFromCompilerInvocation fails and returns null, the
+    // _3CDiagnosticConsumer may be destructed without reaching S_Done. However,
+    // even without such an assertion, we're still well protected against
+    // forgetting to finish verification and missing an error because if the
+    // ASTUnit is null, _3CInterface::parseASTs will record a "non-diagnostic
+    // error", while if the ASTUnit is non-null, it will get added to
+    // _3CInterface::ASTs and determineExitCode will call finish3CAnalysis. (And
+    // the _3CInterface destructor enforces that determineExitCode is called.)
+  }
 };
 
 // Based on LibTooling's ASTBuilderAction but does several custom things that we
