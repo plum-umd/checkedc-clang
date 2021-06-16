@@ -2120,9 +2120,6 @@ void FVComponentVariable::equateWithItype(
   Constraints &CS = I.getConstraints();
   const std::string ReasonUnchangeable2 =
       (ReasonUnchangeable.empty() && ExternalConstraint->getIsGeneric())
-          // TODO: Add a test for this root-cause message somewhere once
-          // diagnostic verification is re-enabled
-          // (https://github.com/correctcomputation/checkedc-clang/issues/503).
           ? "Internal constraint for generic function declaration, "
             "for which 3C currently does not support re-solving."
           : ReasonUnchangeable;
