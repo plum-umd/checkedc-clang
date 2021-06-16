@@ -402,6 +402,7 @@ bool ProgramInfo::link() {
           "External global variable " + VarName + " has no definition";
       const std::set<PVConstraint *> &C = GlobalVariableSymbols[VarName];
       for (const auto &Var : C) {
+        // TODO: Is there an easy way to get a PSL to attach to the constraint?
         Var->constrainToWild(CS, Rsn);
       }
     }
@@ -423,7 +424,9 @@ bool ProgramInfo::link() {
 
     // Handle the cases where itype parameters should not be treated as their
     // unchecked type.
-    G->equateWithItype(*this, Rsn);
+    // TODO: Ditto re getting a PSL (in the case in which Rsn is non-empty and
+    // it is actually used).
+    G->equateWithItype(*this, Rsn, nullptr);
 
     // If we've seen this symbol, but never seen a body for it, constrain
     // everything about it.
@@ -464,7 +467,8 @@ bool ProgramInfo::link() {
                                         "return of static function " +
                                             FuncName + " in " + FileName);
 
-      G->equateWithItype(*this, Rsn);
+      // TODO: Ditto re getting a PSL
+      G->equateWithItype(*this, Rsn, nullptr);
 
       if (!G->hasBody()) {
 
@@ -734,7 +738,7 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
 
   assert("We shouldn't be adding a null CV to Variables map." && NewCV);
   if (!canWrite(PLoc.getFileName())) {
-    NewCV->equateWithItype(*this, "Declaration in non-writable file");
+    NewCV->equateWithItype(*this, "Declaration in non-writable file", &PLoc);
     NewCV->constrainToWild(CS, "Declaration in non-writable file", &PLoc);
   }
   constrainWildIfMacro(NewCV, D->getLocation());
