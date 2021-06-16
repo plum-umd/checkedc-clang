@@ -1044,6 +1044,12 @@ bool ProgramInfo::computeInterimConstraintState(
   findIntersection(CState.TotalNonDirectWildAtoms, ValidVarsKey,
                    CState.InSrcNonDirectWildAtoms);
 
+  // The ConstraintVariable for a variable normally appears in Variables for the
+  // definition, but it may also be reused directly in ExprConstraintVars for a
+  // reference to that variable. We want to give priority to the PSL of the
+  // definition, not the reference. We currently achieve this by processing
+  // Variables before ExprConstraintVars and making insertIntoPtrSourceMap not
+  // overwrite a PSL already recorded for a given atom.
   for (const auto &I : Variables)
     insertIntoPtrSourceMap(&(I.first), I.second);
   for (const auto &I : ExprConstraintVars) {
@@ -1076,13 +1082,13 @@ void ProgramInfo::insertIntoPtrSourceMap(const PersistentSourceLoc *PSL,
   std::string FilePath = PSL->getFileName();
   if (canWrite(FilePath))
     CState.ValidSourceFiles.insert(FilePath);
-  else
-    return;
 
   if (auto *PV = dyn_cast<PVConstraint>(CV)) {
     for (auto *A : PV->getCvars())
       if (auto *VA = dyn_cast<VarAtom>(A))
-        CState.AtomSourceMap[VA->getLoc()] = PSL;
+        // Don't overwrite a PSL already recorded for a given atom: see the
+        // comment in computeInterimConstraintState.
+        CState.AtomSourceMap.insert(std::make_pair(VA->getLoc(), PSL));
     // If the PVConstraint is a function pointer, create mappings for parameter
     // and return variables.
     if (auto *FV = PV->getFV()) {
