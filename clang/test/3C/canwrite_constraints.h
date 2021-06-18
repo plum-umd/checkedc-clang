@@ -73,8 +73,9 @@ _Itype_for_any(T) void my_generic_function(void *p : itype(_Ptr<T>));
 
 void unwritable_type_argument() {
   int i;
-  // TODO: Why is this warning showing up? Does it relate to an atom
-  // representing the temporary pointer of `&i`?
+  // This warning relates to the atom representing the temporary pointer of
+  // `&i`. https://github.com/correctcomputation/checkedc-clang/issues/618 would
+  // make 3C smarter to avoid the need to constrain the temporary pointer.
   // expected-warning@+1 {{Expression in non-writable file}}
   my_generic_function(&i);
 }
