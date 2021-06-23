@@ -1,7 +1,7 @@
 // RUN: rm -rf %t*
-// RUN: 3c -base-dir=%S -addcr -alltypes %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_ALL","CHECK" %s
-// RUN: 3c -base-dir=%S -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" %s
-// RUN: 3c -base-dir=%S -addcr %s -- | %clang -c -fcheckedc-extension -x c -o %t1.unused -
+// RUN: 3c -base-dir=%S --extra-arg="-D_FORTIFY_SOURCE=0" -addcr -alltypes %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_ALL","CHECK" %s
+// RUN: 3c -base-dir=%S --extra-arg="-D_FORTIFY_SOURCE=0" -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" %s
+// RUN: 3c -base-dir=%S --extra-arg="-D_FORTIFY_SOURCE=0" -addcr %s -- | %clang -c -fcheckedc-extension -x c -o %t1.unused -
 
 // General demonstration
 _Itype_for_any(T) void *test_single(void *a
