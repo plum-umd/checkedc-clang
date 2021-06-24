@@ -164,7 +164,7 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
     E = E->IgnoreParens();
 
     // Non-pointer (int, char, etc.) types have a special base PVConstraint.
-    if (TypE->isRecordType() || TypE->isArithmeticType()) {
+    if (TypE->isRecordType() || TypE->isArithmeticType() || TypE->isVectorType()) {
       if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(E)) {
         // If we have a DeclRef, the PVC can get a meaningful name
         return pairWithEmptyBkey(getBaseVarPVConstraint(DRE));
@@ -552,6 +552,7 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
         // In particular, structure initialization should not reach here,
         // as that caught by the non-pointer check at the top of this
         // method.
+        ILE->getType()->dump();
         assert("InitlistExpr of type other than array or pointer in "
                "getExprConstraintVars" &&
                ILE->getType()->isPointerType());
@@ -694,7 +695,7 @@ CVarSet ConstraintResolver::pvConstraintFromType(QualType TypE) {
   assert("Pointer type CVs should be obtained through getExprConstraintVars." &&
          !TypE->isPointerType());
   CVarSet Ret;
-  if (TypE->isRecordType() || TypE->isArithmeticType())
+  if (TypE->isRecordType() || TypE->isArithmeticType() || TypE->isVectorType())
     Ret.insert(PVConstraint::getNonPtrPVConstraint(Info.getConstraints()));
   else
     llvm::errs() << "Warning: Returning non-base, non-wild type";
@@ -706,7 +707,8 @@ CVarSet ConstraintResolver::getBaseVarPVConstraint(DeclRefExpr *Decl) {
     return Info.getPersistentConstraintsSet(Decl, Context);
 
   assert(Decl->getType()->isRecordType() ||
-         Decl->getType()->isArithmeticType());
+         Decl->getType()->isArithmeticType() ||
+         Decl->getType()->isVectorType());
 
   CVarSet Ret;
   auto DN = Decl->getDecl()->getName();
