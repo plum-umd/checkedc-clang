@@ -11,11 +11,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <sstream>
-#include "clang/3C/AVarBoundsInfo.h"
 #include "clang/3C/CtxSensAVarBounds.h"
+#include "clang/3C/AVarBoundsInfo.h"
 #include "clang/3C/ConstraintResolver.h"
 #include "clang/3C/ProgramInfo.h"
+#include <sstream>
 
 
 // This visitor computes a string representation of a structure member access
@@ -120,12 +120,12 @@ CtxSensitiveBoundsKeyHandler::contextualizeCVar(CallExpr *CE,
                                                 const CVarSet &CSet,
                                                 ASTContext *C) {
   for (auto *CV : CSet) {
-    // If this is a FV Constraint the contextualize its returns and
+    // If this is a FV Constraint then contextualize its returns and
     // parameters.
     if (FVConstraint *FV = dyn_cast_or_null<FVConstraint>(CV)) {
       contextualizeCVar(CE, {FV->getExternalReturn()}, C);
-      for (unsigned i = 0; i < FV->numParams(); i++) {
-        contextualizeCVar(CE, {FV->getExternalParam(i)}, C);
+      for (unsigned I = 0; I < FV->numParams(); I++) {
+        contextualizeCVar(CE, {FV->getExternalParam(I)}, C);
       }
     }
 
@@ -402,15 +402,15 @@ bool ContextSensitiveBoundsKeyVisitor::VisitDeclStmt(DeclStmt *DS) {
           const RecordDecl *Definition =
             ILE->getType()->getAsStructureType()->getDecl()->getDefinition();
           auto *CSKeyMap = CSBHandler.getCtxStKeyMap(SAV.IsGlobal);
-          unsigned int initIdx = 0;
-          const auto fields = Definition->fields();
-          for (auto it = fields.begin();
-               initIdx < ILE->getNumInits() && it != fields.end();
-               initIdx++, it++) {
-            Expr *InitExpr = ILE->getInit(initIdx);
+          unsigned int InitIdx = 0;
+          const auto Fields = Definition->fields();
+          for (auto It = Fields.begin();
+               InitIdx < ILE->getNumInits() && It != Fields.end();
+               InitIdx++, It++) {
+            Expr *InitExpr = ILE->getInit(InitIdx);
             BoundsKey FKey;
             // Handle assignment to context-sensitive field key.
-            if (CSBHandler.tryGetFieldCSKey(*it, CSKeyMap, SAV.getStructAccessKey(),
+            if (CSBHandler.tryGetFieldCSKey(*It, CSKeyMap, SAV.getStructAccessKey(),
                                             Context, Info, FKey)) {
 
               auto InitCVs = CR->getExprConstraintVars(InitExpr);

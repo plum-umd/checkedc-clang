@@ -155,14 +155,14 @@ static void getVarsFromConstraint(ConstraintVariable *V, CAtoms &R,
 }
 
 // Print aggregate stats
-void ProgramInfo::print_aggregate_stats(const std::set<std::string> &F,
+void ProgramInfo::printAggregateStats(const std::set<std::string> &F,
                                         llvm::raw_ostream &O) {
   std::vector<Atom *> AllAtoms;
   CVarSet Visited;
   CAtoms FoundVars;
 
-  unsigned int totP, totNt, totA, totWi;
-  totP = totNt = totA = totWi = 0;
+  unsigned int TotP, TotNt, TotA, TotWi;
+  TotP = TotNt = TotA = TotWi = 0;
 
   CVarSet ArrPtrs, NtArrPtrs;
   ConstraintVariable *Tmp = nullptr;
@@ -194,16 +194,16 @@ void ProgramInfo::print_aggregate_stats(const std::set<std::string> &F,
     ConstAtom *CA = CS.getAssignment(N);
     switch (CA->getKind()) {
       case Atom::A_Arr:
-        totA += 1;
+        TotA += 1;
         break;
       case Atom::A_NTArr:
-        totNt += 1;
+        TotNt += 1;
         break;
       case Atom::A_Ptr:
-        totP += 1;
+        TotP += 1;
         break;
       case Atom::A_Wild:
-        totWi += 1;
+        TotWi += 1;
         break;
       case Atom::A_Var:
       case Atom::A_Const:
@@ -214,10 +214,10 @@ void ProgramInfo::print_aggregate_stats(const std::set<std::string> &F,
   O << "{\"AggregateStats\":[";
   O << "{\"" << "TotalStats" << "\":{";
   O << "\"constraints\":" << AllAtoms.size() << ",";
-  O << "\"ptr\":" << totP << ",";
-  O << "\"ntarr\":" << totNt << ",";
-  O << "\"arr\":" << totA << ",";
-  O << "\"wild\":" << totWi;
+  O << "\"ptr\":" << TotP << ",";
+  O << "\"ntarr\":" << TotNt << ",";
+  O << "\"arr\":" << TotA << ",";
+  O << "\"wild\":" << TotWi;
   O << "}},";
   O << "{\"ArrBoundsStats\":";
   ArrBInfo.printStats(O, ArrPtrs, true);

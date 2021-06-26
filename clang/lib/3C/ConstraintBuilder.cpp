@@ -388,8 +388,8 @@ private:
   }
 
   // Constraint helpers.
-  void constraintInBodyVariable(Expr *e, ConstAtom *CAtom) {
-    CVarSet Var = CB.getExprConstraintVarsSet(e);
+  void constraintInBodyVariable(Expr *E, ConstAtom *CAtom) {
+    CVarSet Var = CB.getExprConstraintVarsSet(E);
     constrainVarsTo(Var, CAtom);
   }
 
@@ -572,7 +572,6 @@ public:
   bool shouldVisitImplicitCode() const { return true; }
 
   bool VisitTypedefDecl(TypedefDecl* TD) {
-    CVarSet empty;
     auto PSL = PersistentSourceLoc::mkPSL(TD, *Context);
     // If we haven't seen this typedef before, initialize it's entry in the
     // typedef map. If we have seen it before, and we need to preserve the

@@ -65,7 +65,7 @@ public:
   void printStats(const std::set<std::string> &F, llvm::raw_ostream &O,
                   bool OnlySummary = false, bool JsonFormat = false);
 
-  void print_aggregate_stats(const std::set<std::string> &F,
+  void printAggregateStats(const std::set<std::string> &F,
                              llvm::raw_ostream &O);
 
   // Populate Variables, VarDeclToStatement, RVariables, and DepthMap with

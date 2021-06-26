@@ -620,7 +620,7 @@ bool _3CInterface::solveConstraints() {
     std::string AggregateStats = StatsOutputJson + ".aggregate.json";
     llvm::raw_fd_ostream AggrJson(AggregateStats, Ec);
     if (!AggrJson.has_error()) {
-      GlobalProgramInfo.print_aggregate_stats(FilePaths, AggrJson);
+      GlobalProgramInfo.printAggregateStats(FilePaths, AggrJson);
       AggrJson.close();
     }
 
@@ -671,7 +671,7 @@ bool _3CInterface::dumpStats() {
     std::string AggregateStats = StatsOutputJson + ".aggregate.json";
     llvm::raw_fd_ostream AggrJson(AggregateStats, Ec);
     if (!AggrJson.has_error()) {
-      GlobalProgramInfo.print_aggregate_stats(FilePaths, AggrJson);
+      GlobalProgramInfo.printAggregateStats(FilePaths, AggrJson);
       AggrJson.close();
     }
 

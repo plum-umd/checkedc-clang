@@ -17,8 +17,8 @@
 #include "clang/AST/Stmt.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 #include "llvm/Support/raw_ostream.h"
-#include <sstream>
 #include <algorithm>
+#include <sstream>
 
 #ifdef FIVE_C
 #include "clang/3C/DeclRewriter_5C.h"
@@ -60,11 +60,11 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
           const auto &Var = O.getValue();
           const auto &Env = Info.getConstraints().getVariables();
           if (Var.anyChanges(Env)) {
-            std::string newTy =
+            std::string NewTy =
                   getStorageQualifierString(D) +
                   Var.mkString(Info.getConstraints(), true, false, false, true);
               RewriteThese.insert(
-                  new TypedefDeclReplacement(TD, nullptr, newTy));
+                  new TypedefDeclReplacement(TD, nullptr, NewTy));
             }
         }
       }
@@ -201,17 +201,16 @@ void DeclRewriter::rewriteTypedefDecl(TypedefDeclReplacement *TDR, RSet &ToRewri
   rewriteSingleDecl(TDR, ToRewrite);
 }
 
-// In alltypes mode we need to handle inline structs inside functions specially
+// In alltypes mode we need to handle inline structs inside functions specially.
 // Because both the recorddecl and vardecl are inside one DeclStmt, the
-// SourceLocations will get be generated incorrectly if we rewrite it as a
+// SourceLocations will be generated incorrectly if we rewrite it as a
 // normal multidecl.
 bool isInlineStruct(std::vector<Decl*> &InlineDecls) {
   if (InlineDecls.size() >= 2 && AllTypes)
     return isa<RecordDecl>(InlineDecls[0]) &&
         std::all_of(InlineDecls.begin() + 1, InlineDecls.end(),
                        [](Decl* D) { return isa<VarDecl>(D); });
-  else
-    return false;
+  return false;
 }
 
 template <typename DRType>

@@ -386,4 +386,4 @@ private:
   void insertParamKey(ParamDeclType ParamDecl, BoundsKey NK);
 };
 
-#endif // _AVARBOUNDSINFO_H
+#endif // LLVM_CLANG_3C_AVARBOUNDSINFO_H

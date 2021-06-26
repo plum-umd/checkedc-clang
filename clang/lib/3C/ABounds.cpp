@@ -25,7 +25,7 @@ ABounds *ABounds::getBoundsInfo(AVarBoundsInfo *ABInfo, BoundsExpr *BExpr,
                                 const ASTContext &C) {
   ABounds *Ret = nullptr;
   CountBoundsExpr *CBE = dyn_cast<CountBoundsExpr>(BExpr->IgnoreParenCasts());
-  RangeBoundsExpr *RBE = dyn_cast<RangeBoundsExpr>(BExpr->IgnoreParenCasts());
+  //RangeBoundsExpr *RBE = dyn_cast<RangeBoundsExpr>(BExpr->IgnoreParenCasts());
   BoundsKey VK;
   if (CBE && !CBE->isCompilerGenerated()) {
     if (ABInfo->tryGetVariable(CBE->getCountExpr()->IgnoreParenCasts(), C,
