@@ -56,8 +56,7 @@ ABounds *ABounds::getBoundsInfo(AVarBoundsInfo *ABInfo, BoundsExpr *BExpr,
   return Ret;
 }
 
-std::string ABounds::getBoundsKeyStr(BoundsKey BK,
-                                     AVarBoundsInfo *ABI,
+std::string ABounds::getBoundsKeyStr(BoundsKey BK, AVarBoundsInfo *ABI,
                                      Decl *D) {
   ProgramVar *PV = ABI->getProgramVar(BK);
   assert(PV != nullptr && "No Valid program var");
@@ -121,7 +120,6 @@ bool ByteBound::areSame(ABounds *O, AVarBoundsInfo *ABI) {
 BoundsKey ByteBound::getBKey() { return this->ByteVar; }
 
 ABounds *ByteBound::makeCopy(BoundsKey NK) { return new ByteBound(NK); }
-
 
 std::string RangeBound::mkString(AVarBoundsInfo *ABI, clang::Decl *D) {
   std::string LBStr = ABounds::getBoundsKeyStr(LB, ABI, D);

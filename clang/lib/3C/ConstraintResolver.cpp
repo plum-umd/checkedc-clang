@@ -172,7 +172,6 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
       // Fetch the context sensitive bounds key.
       return std::make_pair(pvConstraintFromType(TypE),
                             ABI.getCtxSensFieldBoundsKey(E, Context, Info));
-
     }
     // NULL
     // Special handling for casts of null is required to enable rewriting
@@ -223,8 +222,8 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
             SubTypE->isVoidPointerType()) &&
           !isCastSafe(TypE, SubTypE)) {
         CVarSet WildCVar = getInvalidCastPVCons(IE);
-        constrainConsVarGeq(CVs.first, WildCVar, CS, nullptr, Safe_to_Wild, false,
-                            &Info);
+        constrainConsVarGeq(CVs.first, WildCVar, CS, nullptr, Safe_to_Wild,
+                            false, &Info);
         Ret = std::make_pair(WildCVar, CVs.second);
       } else {
         // Else, return sub-expression's result.
@@ -254,8 +253,8 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
         // constraining GEQ these vars would be the cast always be WILD.
         if (!isNULLExpression(ECE, *Context)) {
           PersistentSourceLoc PL = PersistentSourceLoc::mkPSL(ECE, *Context);
-          constrainConsVarGeq(P, Vars, Info.getConstraints(), &PL,
-                              Same_to_Same, false, &Info);
+          constrainConsVarGeq(P, Vars, Info.getConstraints(), &PL, Same_to_Same,
+                              false, &Info);
         }
       }
     }
@@ -448,7 +447,8 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
                 // We will constrain the first arg to the return of
                 // realloc, below
                 ReallocFlow =
-                    getExprConstraintVars(CE->getArg(0)->IgnoreParenImpCasts()).first;
+                    getExprConstraintVars(CE->getArg(0)->IgnoreParenImpCasts())
+                        .first;
               }
             }
           }
@@ -515,15 +515,15 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
         // Make the bounds key context sensitive.
         if (NewCV->hasBoundsKey()) {
           auto CSensBKey =
-                ABI.getCtxSensCEBoundsKey(PSL,
-                                          NewCV->getBoundsKey());
+              ABI.getCtxSensCEBoundsKey(PSL, NewCV->getBoundsKey());
           NewCV->setBoundsKey(CSensBKey);
         }
         if (NewCV != CV) {
           // If the call is in a macro, use Same_to_Same to force checked type
           // equality and avoid ever needing to insert a cast inside a macro.
           ConsAction CA = Rewriter::isRewritable(CE->getExprLoc())
-                          ? Safe_to_Wild : Same_to_Same;
+                              ? Safe_to_Wild
+                              : Same_to_Same;
           constrainConsVarGeq(NewCV, CV, CS, &PSL, CA, false, &Info);
         }
         TmpCVs.insert(NewCV);
@@ -570,8 +570,8 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
       PVConstraint *P = getRewritablePVConstraint(CLE);
 
       PersistentSourceLoc PL = PersistentSourceLoc::mkPSL(CLE, *Context);
-      constrainConsVarGeq(P, Vars.first, Info.getConstraints(), &PL, Same_to_Same,
-                          false, &Info);
+      constrainConsVarGeq(P, Vars.first, Info.getConstraints(), &PL,
+                          Same_to_Same, false, &Info);
 
       CVarSet T = {P};
       Ret = std::make_pair(T, Vars.second);
@@ -591,7 +591,6 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
       BoundsKey CBKey = ABI.getConstKey(Str->getByteLength());
       ABounds *NB = new CountBound(CBKey);
       ABI.replaceBounds(TmpKey, Declared, NB);
-
 
       T = {P};
 
@@ -632,8 +631,8 @@ CVarSet ConstraintResolver::getExprConstraintVarsSet(Expr *E) {
 }
 
 // Collect constraint variables for Exprs int a set.
-CSetBkeyPair ConstraintResolver::getAllSubExprConstraintVars(
-    std::vector<Expr *> &Exprs) {
+CSetBkeyPair
+ConstraintResolver::getAllSubExprConstraintVars(std::vector<Expr *> &Exprs) {
 
   CVarSet AggregateCons;
   BKeySet AggregateBKeys;
@@ -653,8 +652,8 @@ void ConstraintResolver::constrainLocalAssign(Stmt *TSt, Expr *LHS, Expr *RHS,
   CSetBkeyPair L = getExprConstraintVars(LHS);
   CSetBkeyPair R = getExprConstraintVars(RHS);
   bool HandleBoundsKey = L.second.empty() && R.second.empty();
-  constrainConsVarGeq(L.first, R.first, Info.getConstraints(), &PL,
-                      CAction, false, &Info, HandleBoundsKey);
+  constrainConsVarGeq(L.first, R.first, Info.getConstraints(), &PL, CAction,
+                      false, &Info, HandleBoundsKey);
 
   // Handle pointer arithmetic.
   auto &ABI = Info.getABoundsInfo();
@@ -663,10 +662,10 @@ void ConstraintResolver::constrainLocalAssign(Stmt *TSt, Expr *LHS, Expr *RHS,
   // Only if all types are enabled and these are not pointers, then track
   // the assignment.
   if (AllTypes) {
-    if ((!containsValidCons(L.first) &&
-         !containsValidCons(R.first)) || !HandleBoundsKey) {
-      ABI.handleAssignment(LHS, L.first, L.second, RHS,
-                           R.first, R.second, Context, this);
+    if ((!containsValidCons(L.first) && !containsValidCons(R.first)) ||
+        !HandleBoundsKey) {
+      ABI.handleAssignment(LHS, L.first, L.second, RHS, R.first, R.second,
+                           Context, this);
     }
   }
 }
@@ -685,14 +684,14 @@ void ConstraintResolver::constrainLocalAssign(Stmt *TSt, DeclaratorDecl *D,
   bool HandleBoundsKey = IgnoreBnds || RHSCons.second.empty();
 
   if (V.hasValue())
-    constrainConsVarGeq(&V.getValue(), RHSCons.first, Info.getConstraints(), PLPtr,
-                        CAction, false, &Info, HandleBoundsKey);
+    constrainConsVarGeq(&V.getValue(), RHSCons.first, Info.getConstraints(),
+                        PLPtr, CAction, false, &Info, HandleBoundsKey);
   if (AllTypes && !IgnoreBnds) {
-    if (!HandleBoundsKey || (!(V.hasValue() && isValidCons(&V.getValue()))
-                             && !containsValidCons(RHSCons.first))) {
+    if (!HandleBoundsKey || (!(V.hasValue() && isValidCons(&V.getValue())) &&
+                             !containsValidCons(RHSCons.first))) {
       auto &ABI = Info.getABoundsInfo();
-      ABI.handleAssignment(D, V, RHS, RHSCons.first, RHSCons.second,
-                           Context, this);
+      ABI.handleAssignment(D, V, RHS, RHSCons.first, RHSCons.second, Context,
+                           this);
     }
   }
 }

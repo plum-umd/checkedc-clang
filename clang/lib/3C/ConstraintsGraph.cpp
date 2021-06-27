@@ -73,9 +73,7 @@ std::string llvm::DOTGraphTraits<GraphVizOutputGraph>::getEdgeAttributes(
 
   return "color=" + EdgeTypeColors[GE->Kind] + "," +
          "dir=" + EdgeDirections[GE->IsBidirectional] +
-        (IsSoft ? ",style=dotted" : "");
-
-
+         (IsSoft ? ",style=dotted" : "");
 }
 
 void GraphVizOutputGraph::mergeConstraintGraph(const ConstraintsGraph &Graph,

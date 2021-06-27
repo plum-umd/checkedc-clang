@@ -85,14 +85,12 @@ private:
   clock_t ArrayBoundsInferenceTimeSt;
   clock_t RewritingTimeSt;
   clock_t TotalTimeSt;
-
 };
 
 class ProgramInfo;
 
 // Class to record stats by visiting AST.
-class StatsRecorder
-    : public clang::RecursiveASTVisitor<StatsRecorder> {
+class StatsRecorder : public clang::RecursiveASTVisitor<StatsRecorder> {
 public:
   explicit StatsRecorder(clang::ASTContext *C, ProgramInfo *I)
       : Context(C), Info(I) {}
