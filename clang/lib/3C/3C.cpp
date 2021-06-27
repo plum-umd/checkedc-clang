@@ -607,7 +607,8 @@ bool _3CInterface::solveConstraints() {
     GlobalProgramInfo.getABoundsInfo().performFlowAnalysis(&GlobalProgramInfo);
 
     /*if (DebugArrSolver)
-      GlobalProgramInfo.getABoundsInfo().dumpAVarGraph("arr_bounds_final.dot");*/
+      GlobalProgramInfo.getABoundsInfo().dumpAVarGraph(
+          "arr_bounds_final.dot");*/
   }
 
   /*if (DumpStats) {

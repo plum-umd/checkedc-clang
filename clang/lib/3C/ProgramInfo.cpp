@@ -697,7 +697,8 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
         PVInternal->constrainOuterTo(CS, CS.getArr());
         PVInternal->constrainIdxTo(CS, CS.getNTArr(), 1);
       }
-      // It is possible to have a param decl in a macro when the function is not.
+      // It is possible to have a param decl in a macro when the function is
+      // not.
       if (Variables.find(PSL) != Variables.end())
         continue;
       Variables[PSL] = PVInternal;

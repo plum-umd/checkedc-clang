@@ -91,8 +91,8 @@ PointerVariableConstraint *PointerVariableConstraint::addAtomPVConstraint(
   std::vector<ConstAtom *> SrcVars = PVC->SrcVars;
   if (!Vars.empty()) {
     if (auto *VA = dyn_cast<VarAtom>(*Vars.begin())) {
-      // If PVC is already a pointer, add implication forcing outermost one to be
-      // wild if this added one is.
+      // If PVC is already a pointer, add implication forcing outermost one to
+      // be wild if this added one is.
       auto *Prem = CS.createGeq(NewA, CS.getWild());
       auto *Conc = CS.createGeq(VA, CS.getWild());
       CS.addConstraint(CS.createImplies(Prem, Conc));
@@ -368,10 +368,10 @@ PointerVariableConstraint::PointerVariableConstraint(
         // This is an array type.
         CAtom = CS.getArr();
 
-        // In CheckedC, a pointer can be freely converted to a size 0 array pointer,
-        // but our constraint system does not allow this. To enable converting calls
-        // to functions with types similar to free, size 0 array pointers are made PTR
-        // instead of ARR.
+        // In CheckedC, a pointer can be freely converted to a size 0 array
+        // pointer, but our constraint system does not allow this. To enable
+        // converting calls to functions with types similar to free, size 0
+        // array pointers are made PTR instead of ARR.
         if (D && D->hasBoundsExpr())
           if (BoundsExpr *BE = D->getBoundsExpr())
             if (isZeroBoundsExpr(BE, C)) {

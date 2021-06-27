@@ -529,15 +529,15 @@ SourceLocation FunctionDeclReplacement::getDeclEnd(SourceManager &SM) const {
     FunctionTypeLoc FTypeLoc = getFunctionTypeLoc(Decl);
     if (FTypeLoc.isNull()) {
       // Without a FunctionTypeLocation, we have to approximate the end of the
-      // declaration as the location of the first r-paren before the start of the
-      // function body. This is messed up by comments and ifdef blocks containing
-      // r-paren, but works correctly most of the time.
+      // declaration as the location of the first r-paren before the start of
+      // the function body. This is messed up by comments and ifdef blocks
+      // containing r-paren, but works correctly most of the time.
       End = getFunctionDeclRParen(Decl, SM);
     } else if (Decl->getReturnType()->isFunctionPointerType()) {
-      // If a function returns a function pointer type, the paramter list for the
-      // returned function type comes after the top-level functions parameter
-      // list. Of course, this FunctionTypeLoc can also be null, so we have
-      // another fall back to the r-paren approximation.
+      // If a function returns a function pointer type, the parameter list for
+      // the returned function type comes after the top-level functions
+      // parameter list. Of course, this FunctionTypeLoc can also be null, so we
+      // have another fall back to the r-paren approximation.
       FunctionTypeLoc T = getFunctionTypeLoc(FTypeLoc.getReturnLoc());
       if (!T.isNull())
         End = T.getRParenLoc();
