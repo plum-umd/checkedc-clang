@@ -44,6 +44,7 @@
 #include "clang/Basic/TemplateKinds.h"
 #include "clang/Basic/TypeTraits.h"
 #include "clang/Sema/AnalysisBasedWarnings.h"
+#include "clang/Sema/CheckedCAnalysesPrepass.h"
 #include "clang/Sema/CleanupInfo.h"
 #include "clang/Sema/DeclSpec.h"
 #include "clang/Sema/ExternalSemaSource.h"
@@ -5667,7 +5668,8 @@ public:
   BoundsExpr *MakeMemberBoundsConcrete(Expr *MemberBase, bool IsArrow,
                                        BoundsExpr *Bounds);
   BoundsExpr *ConcretizeFromFunctionTypeWithArgs(BoundsExpr *Bounds, ArrayRef<Expr *> Args,
-                                                 NonModifyingContext ErrorKind);
+                                                 NonModifyingContext ErrorKind,
+                                                 NonModifyingMessage Message);
 
   /// ConvertToFullyCheckedType: convert an expression E to a fully checked type. This
   /// is used to retype declrefs and member exprs in checked scopes with bounds-safe
@@ -5731,11 +5733,12 @@ public:
   // normalized bounds for D.
   BoundsExpr *NormalizeBounds(const VarDecl *D);
 
-  // This is wrapper around CheckBoundsDeclaration::ExpandToRange. This
-  // provides an easy way to invoke this function from outside the class. Given
-  // a byte_count or count bounds expression for the VarDecl D, ExpandToRange
-  // will expand it to a range bounds expression.
-  BoundsExpr *ExpandBoundsToRange(const VarDecl *D, const BoundsExpr *B);
+  // Returns the declared bounds for the lvalue expression E. Assignments
+  // to E must satisfy these bounds. After checking a top-level statement,
+  // the inferred bounds of E must imply these declared bounds.
+  BoundsExpr *GetLValueDeclaredBounds(Expr *E,
+                                      CheckedScopeSpecifier CSS =
+                                        CheckedScopeSpecifier::CSS_Unchecked);
 
   //
   // Track variables that in-scope bounds declarations depend upon.
@@ -5820,6 +5823,12 @@ public:
   void ComputeBoundsDependencies(ModifiedBoundsDependencies &Tracker,
                                  FunctionDecl *FD, Stmt *Body);
 
+  /// \brief Traverse a function in order to gather information that is
+  /// used by different Checked C analyses such as bounds declaration
+  /// checking, bounds widening, etc.
+  void CheckedCAnalysesPrepass(PrepassInfo &Info, FunctionDecl *FD,
+                               Stmt *Body);
+
   /// \brief RAII class used to indicate that we are substituting an expression
   /// into another expression during bounds checking.  We need to suppress 
   /// diagnostics emission during this.  We are doing type-preserving
@@ -5850,6 +5859,22 @@ public:
                                  TypeArgument SubstArg,
                                  SourceLocation StartLoc,
                                  SourceLocation EndLoc);
+
+  /// \brief Information used to profile the Checked C extension.
+  struct CheckedCProfileStats {
+    // The number of MemberExprs created when synthesizing members during
+    // bounds checking.
+    int NumSynthesizedMemberExprs = 0;
+
+    // The number of AbstractSets created for MemberExprs when synthesizing
+    // members during bounds checking.
+    int NumSynthesizedMemberAbstractSets = 0;
+  };
+
+  struct CheckedCProfileStats CheckedCStats;
+
+  /// \brief Print Checked C profiling information.
+  void PrintCheckedCStats();
 
   //===---------------------------- Clang Extensions ----------------------===//
 

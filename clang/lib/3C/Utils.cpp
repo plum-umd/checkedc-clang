@@ -11,6 +11,8 @@
 #include "clang/3C/Utils.h"
 #include "clang/3C/3CGlobalOptions.h"
 #include "clang/3C/ConstraintVariables.h"
+#include "clang/AST/FormatString.h"
+#include "clang/Sema/Sema.h"
 #include "llvm/Support/Path.h"
 #include <errno.h>
 
@@ -57,7 +59,6 @@ FunctionDecl *getDefinition(FunctionDecl *FD) {
   return nullptr;
 }
 
-
 //This should only be used as a fall back for when the clang library function
 // FunctionTypeLoc::getRParenLoc cannot be called due to a null FunctionTypeLoc
 // or for when the function returns an invalid source location.
@@ -78,8 +79,8 @@ SourceLocation getFunctionDeclRParen(FunctionDecl *FD, SourceManager &S) {
 // and can cause this function to give an incorrect result. This should only be
 // used as a fall back for when clang library function for obtaining source
 // locations are not available or return invalid results.
-SourceLocation
-locationPrecedingChar(SourceLocation SL, SourceManager &S, char C) {
+SourceLocation locationPrecedingChar(SourceLocation SL, SourceManager &S,
+                                     char C) {
   int Offset = 0;
   const char *Buf = S.getCharacterData(SL);
   while (*Buf != C) {
@@ -192,7 +193,7 @@ bool filePathStartsWith(const std::string &Path, const std::string &Prefix) {
 bool functionHasVarArgs(clang::FunctionDecl *FD) {
   if (FD && FD->getFunctionType()->isFunctionProtoType()) {
     const FunctionProtoType *SrcType =
-        dyn_cast<FunctionProtoType>(FD->getFunctionType());
+        FD->getFunctionType()->getAs<FunctionProtoType>();
     return SrcType->isVariadic();
   }
   return false;
@@ -216,6 +217,20 @@ bool isPointerType(clang::ValueDecl *VD) {
 
 bool isPtrOrArrayType(const clang::QualType &QT) {
   return QT->isPointerType() || QT->isArrayType();
+}
+
+bool isNullableType(const clang::QualType &QT) {
+  if (QT.getTypePtrOrNull())
+    return QT->isPointerType() || QT->isArrayType() || QT->isIntegerType();
+  return false;
+}
+
+bool canBeNtArray(const clang::QualType &QT) {
+  if (const auto &Ptr = dyn_cast<clang::PointerType>(QT))
+    return isNullableType(Ptr->getPointeeType());
+  if (const auto &Arr = dyn_cast<clang::ArrayType>(QT))
+    return isNullableType(Arr->getElementType());
+  return false;
 }
 
 bool isStructOrUnionType(clang::DeclaratorDecl *DD) {
@@ -307,7 +322,8 @@ bool hasVoidType(clang::ValueDecl *D) { return isTypeHasVoid(D->getType()); }
 //  return D->isPointerType() == S->isPointerType();
 //}
 
-static bool castCheck(clang::QualType DstType, clang::QualType SrcType) {
+static bool castCheck(clang::QualType DstType, clang::QualType SrcType,
+                      bool AllowVoidCast) {
 
   // Check if both types are same.
   if (SrcType == DstType)
@@ -323,9 +339,9 @@ static bool castCheck(clang::QualType DstType, clang::QualType SrcType) {
 
   // Both are pointers? check their pointee
   if (SrcPtrTypePtr && DstPtrTypePtr) {
-    return (SrcPtrTypePtr->isVoidPointerType()) ||
+    return (AllowVoidCast && SrcPtrTypePtr->isVoidPointerType()) ||
            castCheck(DstPtrTypePtr->getPointeeType(),
-                     SrcPtrTypePtr->getPointeeType());
+                     SrcPtrTypePtr->getPointeeType(), AllowVoidCast);
   }
 
   if (SrcPtrTypePtr || DstPtrTypePtr)
@@ -339,10 +355,12 @@ static bool castCheck(clang::QualType DstType, clang::QualType SrcType) {
       return false;
 
     for (unsigned I = 0; I < SrcFnType->getNumParams(); I++)
-      if (!castCheck(SrcFnType->getParamType(I), DstFnType->getParamType(I)))
+      if (!castCheck(SrcFnType->getParamType(I), DstFnType->getParamType(I),
+                     false))
         return false;
 
-    return castCheck(SrcFnType->getReturnType(), DstFnType->getReturnType());
+    return castCheck(SrcFnType->getReturnType(), DstFnType->getReturnType(),
+                     false);
   }
 
   // If both are not scalar types? Then the types must be exactly same.
@@ -366,7 +384,7 @@ bool isCastSafe(clang::QualType DstType, clang::QualType SrcType) {
       dyn_cast<clang::PointerType>(DstTypePtr);
   if (!DstPtrTypePtr) // Safe to cast to a non-pointer.
     return true;
-  return castCheck(DstType, SrcType);
+  return castCheck(DstType, SrcType, true);
 }
 
 bool canWrite(const std::string &FilePath) {
@@ -485,4 +503,86 @@ FunctionTypeLoc getFunctionTypeLoc(DeclaratorDecl *Decl) {
 
 bool isKAndRFunctionDecl(FunctionDecl *FD) {
   return !FD->hasPrototype() && FD->getNumParams();
+}
+
+namespace {
+
+// See clang/docs/checkedc/3C/clang-tidy.md#_3c-name-prefix
+// NOLINTNEXTLINE(readability-identifier-naming)
+class _3CFormatStringHandler
+    : public analyze_format_string::FormatStringHandler {
+  unsigned DataStartIdx;
+  std::set<unsigned> &StringArgIndices;
+
+public:
+  _3CFormatStringHandler(unsigned DataStartIdx,
+                         std::set<unsigned> &StringArgIndices)
+      : DataStartIdx(DataStartIdx), StringArgIndices(StringArgIndices) {}
+  bool HandlePrintfSpecifier(const analyze_printf::PrintfSpecifier &FS,
+                             const char *StartSpecifier,
+                             unsigned SpecifierLen) override {
+    if (FS.consumesDataArgument() &&
+        FS.getConversionSpecifier().getKind() ==
+            analyze_printf::PrintfConversionSpecifier::sArg)
+      StringArgIndices.insert(DataStartIdx + FS.getArgIndex());
+    return true;
+  }
+};
+
+} // namespace
+
+// Unfortunately, this duplicates some logic from different parts of
+// SemaChecking.cpp. We handle only the common case. If we get this wrong, it's
+// not a big deal: 3C may just infer some checked pointer types incorrectly.
+void getPrintfStringArgIndices(const CallExpr *CE, const FunctionDecl *Callee,
+                               const clang::ASTContext &Context,
+                               std::set<unsigned> &StringArgIndices) {
+  for (const FormatAttr *Attr : Callee->specific_attrs<FormatAttr>()) {
+    if (Sema::GetFormatStringType(Attr) != Sema::FST_Printf)
+      continue;
+    if (Attr->getFirstArg() == 0)
+      // This means the data arguments are not available to check.
+      continue;
+    unsigned FormatIdx = Attr->getFormatIdx() - 1;
+    unsigned DataStartIdx = Attr->getFirstArg() - 1;
+    if (FormatIdx >= CE->getNumArgs())
+      continue;
+    const Expr *FormatExpr =
+        CE->getArg(FormatIdx)->IgnoreImpCasts()->IgnoreExprTmp();
+    const clang::StringLiteral *FormatLiteral =
+        dyn_cast<clang::StringLiteral>(FormatExpr);
+    if (!FormatLiteral || FormatLiteral->getCharByteWidth() != 1)
+      continue;
+    StringRef Str = FormatLiteral->getString();
+    _3CFormatStringHandler Handler(DataStartIdx, StringArgIndices);
+    analyze_format_string::ParsePrintfString(
+        Handler, Str.data(), Str.data() + Str.size(), Context.getLangOpts(),
+        Context.getTargetInfo(), false);
+  }
+}
+
+int64_t getStmtIdWorkaround(const Stmt *St, const ASTContext &Context) {
+  // Stmt::getID uses Context.getAllocator().identifyKnownAlignedObject(St) to
+  // derive a unique ID for St from its pointer in a way that should be
+  // reproducible if the exact same source file is loaded in the exact same
+  // environment, since if AST building is deterministic, the sequence of memory
+  // allocations should be identical.
+  // Context.getAllocator().identifyKnownObject(St) generates an ID that is
+  // normally the offset of the Stmt object within the allocator's memory slabs,
+  // so it is divisible by alignof(Stmt). identifyKnownAlignedObject wraps
+  // identifyKnownObject to divide the ID by alignof(Stmt) (after asserting that
+  // it is divisible), probably in an effort to produce smaller IDs to make some
+  // data structures more efficient. However, if the Stmt is allocated in a
+  // custom-size slab because it exceeds the default slab size of 4096, then
+  // identifyKnownObject returns -1 minus the offset, which is _not_ divisible
+  // by alignof(Stmt) because of the -1. Unfortunately,
+  // identifyKnownAlignedObject doesn't account for this rare case, and its
+  // assertion fails (https://bugs.llvm.org/show_bug.cgi?id=49926).
+  //
+  // Since 3C doesn't currently use the ID in a data structure that benefits
+  // from smaller IDs, we may as well just use identifyKnownObject. If we wanted
+  // smaller IDs, the solution would probably be to have
+  // identifyKnownAlignedObject fix the alignment of negative IDs by subtracting
+  // (alignof(Stmt) - 1) before dividing.
+  return Context.getAllocator().identifyKnownObject(St);
 }

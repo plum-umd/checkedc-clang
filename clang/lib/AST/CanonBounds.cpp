@@ -142,6 +142,15 @@ Lexicographic::CompareScope(const DeclContext *DC1, const DeclContext *DC2) cons
 }
 
 Result
+Lexicographic::CompareAddress(const Expr *E1, const Expr *E2) const {
+  if (E1 == E2)
+    return Result::Equal;
+  if (E1 < E2)
+    return Result::LessThan;
+  return Result::GreaterThan;
+}
+
+Result
 Lexicographic::CompareDecl(const CapturedDecl *CD1Arg,
                            const CapturedDecl *CD2Arg) const {
   const CapturedDecl *CD1 = dyn_cast<CapturedDecl>(CD1Arg->getCanonicalDecl());
@@ -249,7 +258,7 @@ Lexicographic::CompareDecl(const NamedDecl *D1Arg, const NamedDecl *D2Arg) const
   Current = D2->getNextDeclInContext();
   while (Current != nullptr) {
     if (Current == D1)
-      return Result::LessThan;
+      return Result::GreaterThan;
     Current = Current->getNextDeclInContext();
   }
   llvm_unreachable("unable to order declarations in same context");
@@ -257,7 +266,7 @@ Lexicographic::CompareDecl(const NamedDecl *D1Arg, const NamedDecl *D2Arg) const
 }
 
 bool Lexicographic::CompareExprSemantically(const Expr *Arg1,
-                                            const Expr *Arg2) {
+                                            const Expr *Arg2) const {
    // Compare Arg1 and Arg2 semantically. If we hit an error during comparison
    // simply fallback to CompareExpr which compares two expressions
    // structurally.
@@ -279,7 +288,7 @@ bool Lexicographic::CompareExprSemantically(const Expr *Arg1,
      return CompareExpr(Arg1, Arg2) == Result::Equal;
    }
 
-  bool Res = P1.IsEqual(P2);
+  bool Res = P1.Compare(P2) == Result::Equal;
   P1.Cleanup();
   P2.Cleanup();
   return Res;
@@ -287,7 +296,7 @@ bool Lexicographic::CompareExprSemantically(const Expr *Arg1,
 
 bool Lexicographic::GetDerefOffset(const Expr *UpperExpr,
                                    const Expr *DerefExpr,
-                                   llvm::APSInt &Offset) {
+                                   llvm::APSInt &Offset) const {
   Expr *E1 = const_cast<Expr *>(UpperExpr);
   Expr *E2 = const_cast<Expr *>(DerefExpr);
 
@@ -311,7 +320,7 @@ bool Lexicographic::GetDerefOffset(const Expr *UpperExpr,
   return Res;
 }
 
-Result Lexicographic::CompareExpr(const Expr *Arg1, const Expr *Arg2) {
+Result Lexicographic::CompareExpr(const Expr *Arg1, const Expr *Arg2) const {
    if (Trace) {
      raw_ostream &OS = llvm::outs();
      OS << "Lexicographic comparing expressions\n";
@@ -432,6 +441,14 @@ Result Lexicographic::CompareExpr(const Expr *Arg1, const Expr *Arg2) {
      // case Expr::MSPropertyRefExprClass:
      // case Expr::MSPropertySubscriptExprClass:
 
+     // Expressions which currently do not have ordering implementations,
+     // but which may need to be lexicographically ordered by some consumer
+     // of Lexicographic. These expressions are compared by their addresses.
+     // This comparison will be deterministic for one compiler run, but is
+     // not guaranteed to be deterministic across compiler runs.
+     case Expr::InitListExprClass:
+     case Expr::ImplicitValueInitExprClass: return CompareAddress(E1, E2);
+
      default:
        llvm_unreachable("unexpected expression kind");
    }
@@ -495,7 +512,7 @@ Result Lexicographic::CompareExpr(const Expr *Arg1, const Expr *Arg2) {
 
 // See if the expressions are considered equivalent using the list of lists
 // of equivalent expressions.
-Result Lexicographic::CheckEquivExprs(Result Current, const Expr *E1, const Expr *E2) {
+Result Lexicographic::CheckEquivExprs(Result Current, const Expr *E1, const Expr *E2) const {
   if (!EquivExprs)
     return Current;
 
@@ -567,22 +584,22 @@ Lexicographic::CompareTypeIgnoreCheckedness(QualType QT1, QualType QT2) const {
 }
 
 Result
-Lexicographic::CompareImpl(const PredefinedExpr *E1, const PredefinedExpr *E2) {
+Lexicographic::CompareImpl(const PredefinedExpr *E1, const PredefinedExpr *E2) const {
   return CompareInteger(E1->getIdentKind(), E2->getIdentKind());
 }
 
 Result
-Lexicographic::CompareImpl(const DeclRefExpr *E1, const DeclRefExpr *E2) {
+Lexicographic::CompareImpl(const DeclRefExpr *E1, const DeclRefExpr *E2) const {
   return CompareDecl(E1->getDecl(), E2->getDecl());
 }
 
 Result
-Lexicographic::CompareImpl(const ConstantExpr *E1, const ConstantExpr *E2) {
+Lexicographic::CompareImpl(const ConstantExpr *E1, const ConstantExpr *E2) const {
   return CompareExpr(E1->getSubExpr(), E2->getSubExpr());
 }
 
 Result
-Lexicographic::CompareImpl(const IntegerLiteral *E1, const IntegerLiteral *E2) {
+Lexicographic::CompareImpl(const IntegerLiteral *E1, const IntegerLiteral *E2) const {
   BuiltinType::Kind Kind1 = E1->getType()->castAs<BuiltinType>()->getKind();
   BuiltinType::Kind Kind2 = E2->getType()->castAs<BuiltinType>()->getKind();
   Result Cmp = CompareInteger(Kind1, Kind2);
@@ -593,7 +610,7 @@ Lexicographic::CompareImpl(const IntegerLiteral *E1, const IntegerLiteral *E2) {
 
 Result
 Lexicographic::CompareImpl(const FloatingLiteral *E1,
-                           const FloatingLiteral *E2) {
+                           const FloatingLiteral *E2) const {
   BuiltinType::Kind Kind1 = E1->getType()->castAs<BuiltinType>()->getKind();
   BuiltinType::Kind Kind2 = E2->getType()->castAs<BuiltinType>()->getKind();
   Result Cmp = CompareInteger(Kind1, Kind2);
@@ -609,7 +626,7 @@ Lexicographic::CompareImpl(const FloatingLiteral *E1,
 
 Result
 Lexicographic::CompareImpl(const StringLiteral *E1,
-                           const StringLiteral *E2) {
+                           const StringLiteral *E2) const {
   Result Cmp = CompareInteger(E1->getKind(), E2->getKind());
   if (Cmp != Result::Equal)
     return Cmp;
@@ -618,7 +635,7 @@ Lexicographic::CompareImpl(const StringLiteral *E1,
 
 Result
 Lexicographic::CompareImpl(const CharacterLiteral *E1,
-                           const CharacterLiteral *E2) {
+                           const CharacterLiteral *E2) const {
   Result Cmp = CompareInteger(E1->getKind(), E2->getKind());
   if (Cmp != Result::Equal)
     return Cmp;
@@ -626,13 +643,13 @@ Lexicographic::CompareImpl(const CharacterLiteral *E1,
 }
 
 Result
-Lexicographic::CompareImpl(const UnaryOperator *E1, const UnaryOperator *E2) {
+Lexicographic::CompareImpl(const UnaryOperator *E1, const UnaryOperator *E2) const {
   return CompareInteger(E1->getOpcode(), E2->getOpcode());
 }
 
 Result
 Lexicographic::CompareImpl(const UnaryExprOrTypeTraitExpr *E1,
-                           const UnaryExprOrTypeTraitExpr *E2) {
+                           const UnaryExprOrTypeTraitExpr *E2) const {
   Result Cmp = CompareInteger(E1->getKind(), E2->getKind());
   if (Cmp != Result::Equal)
     return Cmp;
@@ -648,13 +665,13 @@ Lexicographic::CompareImpl(const UnaryExprOrTypeTraitExpr *E1,
 }
 
 Result
-Lexicographic::CompareImpl(const OffsetOfExpr *E1, const OffsetOfExpr *E2) {
+Lexicographic::CompareImpl(const OffsetOfExpr *E1, const OffsetOfExpr *E2) const {
   // TODO: fill this in 
   return Result::Equal;
 }
 
 Result
-Lexicographic::CompareImpl(const MemberExpr *E1, const MemberExpr *E2) {
+Lexicographic::CompareImpl(const MemberExpr *E1, const MemberExpr *E2) const {
   Result Cmp = CompareInteger(E1->isArrow(), E2->isArrow());
   if (Cmp != Result::Equal)
     return Cmp;
@@ -663,19 +680,19 @@ Lexicographic::CompareImpl(const MemberExpr *E1, const MemberExpr *E2) {
 
 Result
 Lexicographic::CompareImpl(const BinaryOperator *E1,
-                           const BinaryOperator *E2) {
+                           const BinaryOperator *E2) const {
   return CompareInteger(E1->getOpcode(), E2->getOpcode());
 }
 
 Result
 Lexicographic::CompareImpl(const CompoundAssignOperator *E1,
-                           const CompoundAssignOperator *E2) {
+                           const CompoundAssignOperator *E2) const {
   return CompareInteger(E1->getOpcode(), E2->getOpcode());
 }
 
 Result
 Lexicographic::CompareImpl(const CastExpr *E1,
-                           const CastExpr *E2) {
+                           const CastExpr *E2) const {
   Result Cmp = CompareInteger(E1->getCastKind(), E2->getCastKind());
   if (Cmp != Result::Equal)
     return Cmp;
@@ -687,13 +704,13 @@ Lexicographic::CompareImpl(const CastExpr *E1,
 
 Result
 Lexicographic::CompareImpl(const CompoundLiteralExpr *E1,
-                           const CompoundLiteralExpr *E2) {
+                           const CompoundLiteralExpr *E2) const {
   return CompareInteger(E1->isFileScope(), E2->isFileScope());
 }
 
 Result
 Lexicographic::CompareImpl(const GenericSelectionExpr *E1,
-                           const GenericSelectionExpr *E2) {
+                           const GenericSelectionExpr *E2) const {
   unsigned E1AssocCount = E1->getNumAssocs();
   Result Cmp = CompareInteger(E1AssocCount, E2->getNumAssocs());
   if (Cmp != Result::Equal)
@@ -720,25 +737,25 @@ Lexicographic::CompareImpl(const GenericSelectionExpr *E1,
 }
 
 Result
-Lexicographic::CompareImpl(const AtomicExpr *E1, const AtomicExpr *E2) {
+Lexicographic::CompareImpl(const AtomicExpr *E1, const AtomicExpr *E2) const {
   return CompareInteger(E1->getOp(), E2->getOp());
 }
 
 Result
 Lexicographic::CompareImpl(const NullaryBoundsExpr *E1,
-                           const NullaryBoundsExpr *E2) {
+                           const NullaryBoundsExpr *E2) const {
   return CompareInteger(E1->getKind(), E2->getKind());
 }
 
 Result
 Lexicographic::CompareImpl(const CountBoundsExpr *E1,
-                           const CountBoundsExpr *E2) {
+                           const CountBoundsExpr *E2) const {
   return CompareInteger(E1->getKind(), E2->getKind());
 }
 
 Result
 Lexicographic::CompareRelativeBoundsClause(const RelativeBoundsClause *RC1,
-                                           const RelativeBoundsClause *RC2) {
+                                           const RelativeBoundsClause *RC2) const {
   bool ordered;
   Result Cmp = ComparePointers(RC1, RC2, ordered);
   if (ordered)
@@ -773,7 +790,7 @@ Lexicographic::CompareRelativeBoundsClause(const RelativeBoundsClause *RC1,
 
 Result
 Lexicographic::CompareImpl(const RangeBoundsExpr *E1,
-                           const RangeBoundsExpr *E2) {
+                           const RangeBoundsExpr *E2) const {
   Result Cmp = CompareInteger(E1->getKind(), E2->getKind());
   if (Cmp != Result::Equal)
     return Cmp;
@@ -785,13 +802,13 @@ Lexicographic::CompareImpl(const RangeBoundsExpr *E1,
 
 Result
 Lexicographic::CompareImpl(const InteropTypeExpr *E1,
-                           const InteropTypeExpr *E2) {
+                           const InteropTypeExpr *E2) const {
   return CompareType(E1->getType(), E2->getType());
 }
 
 Result
 Lexicographic::CompareImpl(const PositionalParameterExpr *E1,
-                           const PositionalParameterExpr *E2) {
+                           const PositionalParameterExpr *E2) const {
   Result Cmp = CompareInteger(E1->getIndex(), E2->getIndex());
   if (Cmp != Result::Equal)
     return Cmp;
@@ -800,7 +817,7 @@ Lexicographic::CompareImpl(const PositionalParameterExpr *E1,
 
 Result
 Lexicographic::CompareImpl(const BoundsCastExpr *E1,
-                           const BoundsCastExpr *E2) {
+                           const BoundsCastExpr *E2) const {
   Result Cmp = CompareInteger(E1->getCastKind(), E2->getCastKind());
   if (Cmp != Result::Equal)
     return Cmp;
@@ -814,7 +831,7 @@ Lexicographic::CompareImpl(const BoundsCastExpr *E1,
 
 Result
 Lexicographic::CompareImpl(const CHKCBindTemporaryExpr *E1,
-                           const CHKCBindTemporaryExpr *E2) {
+                           const CHKCBindTemporaryExpr *E2) const {
   bool ordered;
   Result Cmp = ComparePointers(E1, E2, ordered);
   if (!ordered) {
@@ -831,7 +848,7 @@ Lexicographic::CompareImpl(const CHKCBindTemporaryExpr *E1,
 
 Result
 Lexicographic::CompareImpl(const BoundsValueExpr *E1,
-                           const BoundsValueExpr *E2) {
+                           const BoundsValueExpr *E2) const {
   Result Cmp = CompareInteger(E1->getKind(), E2->getKind());
   if (Cmp != Result::Equal)
     return Cmp;
@@ -846,7 +863,7 @@ Lexicographic::CompareImpl(const BoundsValueExpr *E1,
 }
 
 Result
-Lexicographic::CompareImpl(const BlockExpr *E1, const BlockExpr *E2) {
+Lexicographic::CompareImpl(const BlockExpr *E1, const BlockExpr *E2) const {
   return Result::Equal;
 }
 
@@ -858,7 +875,7 @@ Lexicographic::CompareImpl(const BlockExpr *E1, const BlockExpr *E2) {
 // do enough filtering (it'll ignore LValueToRValue casts for example).
 // TODO: reconcile with CheckValuePreservingCast
 Expr *Lexicographic::IgnoreValuePreservingOperations(ASTContext &Ctx,
-                                                     Expr *E) {
+                                                     Expr *E) const {
   while (true) {
     E = E->IgnoreParens();
 

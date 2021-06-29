@@ -390,6 +390,7 @@ private:
   Rewriter &Writer;
 
   void rewriteType(Expr *E, SourceRange &Range) {
+    auto &PState = Info.getPerfStats();
     if (!Info.hasPersistentConstraints(E, Context))
       return;
     const CVarSet &CVSingleton = Info.getPersistentConstraintsSet(E, Context);
@@ -407,9 +408,11 @@ private:
 
     for (auto *CV : CVSingleton)
       // Replace the original type with this new one if the type has changed.
-      if (CV->anyChanges(Vars))
+      if (CV->anyChanges(Vars)) {
         rewriteSourceRange(Writer, Range,
                            CV->mkString(Info.getConstraints(), false));
+        PState.incrementNumFixedCasts();
+      }
   }
 };
 
@@ -436,8 +439,8 @@ public:
         for (auto Entry : Info.getTypeParamBindings(CE, Context))
           if (Entry.second != nullptr) {
             AllInconsistent = false;
-            std::string TyStr = Entry.second->mkString(
-                Info.getConstraints(), false, false, true);
+            std::string TyStr = Entry.second->mkString(Info.getConstraints(),
+                                                       false, false, true);
             if (TyStr.back() == ' ')
               TyStr.pop_back();
             TypeParamString += TyStr + ",";
@@ -466,7 +469,7 @@ private:
   // Attempt to find the right spot to insert the type arguments. This should be
   // directly after the name of the function being called.
   SourceLocation getTypeArgLocation(CallExpr *Call) {
-    Expr *Callee = Call->getCallee()->IgnoreImpCasts();
+    Expr *Callee = Call->getCallee()->IgnoreParenImpCasts();
     if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(Callee)) {
       size_t NameLength = DRE->getNameInfo().getAsString().length();
       return Call->getBeginLoc().getLocWithOffset(NameLength);
@@ -506,32 +509,32 @@ SourceLocation FunctionDeclReplacement::getReturnEnd(SourceManager &SM) const {
 
 SourceLocation FunctionDeclReplacement::getDeclEnd(SourceManager &SM) const {
   SourceLocation End;
-   if (isKAndRFunctionDecl(Decl)) {
-     // For K&R style function declaration, use the beginning of the function
-     // body as the end of the declaration. K&R declarations must have a body.
-     End = locationPrecedingChar(Decl->getBody()->getBeginLoc(), SM, ';');
-   } else {
-     FunctionTypeLoc FTypeLoc = getFunctionTypeLoc(Decl);
-     if (FTypeLoc.isNull()) {
-       // Without a FunctionTypeLocation, we have to approximate the end of the
-       // declaration as the location of the first r-paren before the start of the
-       // function body. This is messed up by comments and ifdef blocks containing
-       // r-paren, but works correctly most of the time.
-       End = getFunctionDeclRParen(Decl, SM);
-     } else if (Decl->getReturnType()->isFunctionPointerType()) {
-       // If a function returns a function pointer type, the paramter list for the
-       // returned function type comes after the top-level functions parameter
-       // list. Of course, this FunctionTypeLoc can also be null, so we have
-       // another fall back to the r-paren approximation.
-       FunctionTypeLoc T = getFunctionTypeLoc(FTypeLoc.getReturnLoc());
-       if (!T.isNull())
-         End = T.getRParenLoc();
-       else
-         End = getFunctionDeclRParen(Decl, SM);
-     } else {
-       End = FTypeLoc.getRParenLoc();
-     }
-   }
+  if (isKAndRFunctionDecl(Decl)) {
+    // For K&R style function declaration, use the beginning of the function
+    // body as the end of the declaration. K&R declarations must have a body.
+    End = locationPrecedingChar(Decl->getBody()->getBeginLoc(), SM, ';');
+  } else {
+    FunctionTypeLoc FTypeLoc = getFunctionTypeLoc(Decl);
+    if (FTypeLoc.isNull()) {
+      // Without a FunctionTypeLocation, we have to approximate the end of the
+      // declaration as the location of the first r-paren before the start of
+      // the function body. This is messed up by comments and ifdef blocks
+      // containing r-paren, but works correctly most of the time.
+      End = getFunctionDeclRParen(Decl, SM);
+    } else if (Decl->getReturnType()->isFunctionPointerType()) {
+      // If a function returns a function pointer type, the parameter list for
+      // the returned function type comes after the top-level functions
+      // parameter list. Of course, this FunctionTypeLoc can also be null, so we
+      // have another fall back to the r-paren approximation.
+      FunctionTypeLoc T = getFunctionTypeLoc(FTypeLoc.getReturnLoc());
+      if (!T.isNull())
+        End = T.getRParenLoc();
+      else
+        End = getFunctionDeclRParen(Decl, SM);
+    } else {
+      End = FTypeLoc.getRParenLoc();
+    }
+  }
 
   // If there's a bounds expression, this comes after the right paren of the
   // function declaration parameter list.
@@ -582,7 +585,7 @@ std::string ArrayBoundsRewriter::getBoundsString(const PVConstraint *PV,
     ABounds *ArrB = ABInfo.getBounds(DK);
     // Only we we have bounds and no pointer arithmetic on the variable.
     if (ArrB != nullptr && !ABInfo.hasPointerArithmetic(DK)) {
-      BString = ArrB->mkString(&ABInfo);
+      BString = ArrB->mkString(&ABInfo, D);
       if (!BString.empty())
         BString = Pfix + BString;
     }
@@ -653,7 +656,7 @@ void RewriteConsumer::HandleTranslationUnit(ASTContext &Context) {
   std::set<llvm::FoldingSetNodeID> Seen;
   std::map<llvm::FoldingSetNodeID, AnnotationNeeded> NodeMap;
   CheckedRegionFinder CRF(&Context, R, Info, Seen, NodeMap, WarnRootCause);
-  CheckedRegionAdder CRA(&Context, R, NodeMap);
+  CheckedRegionAdder CRA(&Context, R, NodeMap, Info);
   CastLocatorVisitor CLV(&Context);
   CastPlacementVisitor ECPV(&Context, Info, R, CLV.getExprsWithCast());
   TypeExprRewriter TER(&Context, Info, R);

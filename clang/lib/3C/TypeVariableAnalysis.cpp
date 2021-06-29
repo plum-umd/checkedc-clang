@@ -97,8 +97,10 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
       FDef = FD;
     if (auto *FVCon = Info.getFuncConstraint(FDef, Context)) {
       // if we need to rewrite it but can't (macro, etc), it isn't safe
-      bool ForcedInconsistent = !typeArgsProvided(CE)
-                                && !Rewriter::isRewritable(CE->getExprLoc());
+      bool ForcedInconsistent =
+          !typeArgsProvided(CE) &&
+          (!Rewriter::isRewritable(CE->getExprLoc()) ||
+           !canWrite(PersistentSourceLoc::mkPSL(CE, *Context).getFileName()));
       // Visit each function argument, and if it use a type variable, insert it
       // into the type variable binding map.
       unsigned int I = 0;
@@ -109,7 +111,8 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
         const int TyIdx = FVCon->getExternalParam(I)->getGenericIndex();
         if (TyIdx >= 0) {
           Expr *Uncast = A->IgnoreImpCasts();
-          std::set<ConstraintVariable *> CVs = CR.getExprConstraintVarsSet(Uncast);
+          std::set<ConstraintVariable *> CVs =
+              CR.getExprConstraintVarsSet(Uncast);
           insertBinding(CE, TyIdx, Uncast->getType(), CVs, ForcedInconsistent);
         }
         ++I;
@@ -194,7 +197,7 @@ void TypeVarVisitor::setProgramInfoTypeVars() {
 // Check if type arguments have already been provided for this function
 // call so that we don't mess with anything already there.
 bool typeArgsProvided(CallExpr *Call) {
-  Expr *Callee = Call->getCallee()->IgnoreImpCasts();
+  Expr *Callee = Call->getCallee()->IgnoreParenImpCasts();
   if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(Callee)) {
     // ArgInfo is null if there are no type arguments anywhere in the program
     if (auto *ArgInfo = DRE->GetTypeArgumentInfo())

@@ -46,14 +46,30 @@ const CtxStructScope *CtxStructScope::getCtxStructScope(const StructScope *SS,
   return &CSS;
 }
 
-const FunctionParamScope *FunctionParamScope::getFunctionParamScope(
-    std::string FnName, bool IsSt) {
+const FunctionParamScope *
+FunctionParamScope::getFunctionParamScope(std::string FnName, bool IsSt) {
   FunctionParamScope TmpFPS(FnName, IsSt);
   if (AllFnParamScopes.find(TmpFPS) == AllFnParamScopes.end()) {
     AllFnParamScopes.insert(TmpFPS);
   }
   const auto &FPS = *AllFnParamScopes.find(TmpFPS);
   return &FPS;
+}
+
+bool FunctionScope::isInInnerScope(const ProgramVarScope &O) const {
+  // Global variables and function parameters are visible here.
+  if (clang::isa<GlobalScope>(&O))
+    return true;
+
+  // Function parameters of the same function are also visible
+  // inside the function.
+  if (auto *FPS = clang::dyn_cast<FunctionParamScope>(&O)) {
+    if (this->FName == FPS->getFName() &&
+        this->IsStatic == FPS->getIsStatic()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 const CtxFunctionArgScope *

@@ -13,6 +13,7 @@
 #define LLVM_CLANG_3C_PROGRAMINFO_H
 
 #include "clang/3C/3CInteractiveData.h"
+#include "clang/3C/3CStats.h"
 #include "clang/3C/AVarBoundsInfo.h"
 #include "clang/3C/ConstraintVariables.h"
 #include "clang/3C/PersistentSourceLoc.h"
@@ -23,54 +24,6 @@
 #include "clang/Frontend/FrontendAction.h"
 #include "clang/Tooling/Tooling.h"
 
-class PerformanceStats {
-public:
-  double CompileTime;
-  double ConstraintBuilderTime;
-  double ConstraintSolverTime;
-  double ArrayBoundsInferenceTime;
-  double RewritingTime;
-  double TotalTime;
-
-  PerformanceStats() {
-    CompileTime = ConstraintBuilderTime = 0;
-    ConstraintSolverTime = ArrayBoundsInferenceTime = 0;
-    RewritingTime = TotalTime = 0;
-
-    CompileTimeSt = ConstraintBuilderTimeSt = 0;
-    ConstraintSolverTimeSt = ArrayBoundsInferenceTimeSt = 0;
-    RewritingTimeSt = TotalTimeSt = 0;
-  }
-
-  void startCompileTime();
-  void endCompileTime();
-
-  void startConstraintBuilderTime();
-  void endConstraintBuilderTime();
-
-  void startConstraintSolverTime();
-  void endConstraintSolverTime();
-
-  void startArrayBoundsInferenceTime();
-  void endArrayBoundsInferenceTime();
-
-  void startRewritingTime();
-  void endRewritingTime();
-
-  void startTotalTime();
-  void endTotalTime();
-
-  void printPerformanceStats(raw_ostream &O);
-
-private:
-  clock_t CompileTimeSt;
-  clock_t ConstraintBuilderTimeSt;
-  clock_t ConstraintSolverTimeSt;
-  clock_t ArrayBoundsInferenceTimeSt;
-  clock_t RewritingTimeSt;
-  clock_t TotalTimeSt;
-
-};
 class ProgramVariableAdder {
 public:
   virtual void addVariable(clang::DeclaratorDecl *D,
@@ -112,8 +65,8 @@ public:
   void printStats(const std::set<std::string> &F, llvm::raw_ostream &O,
                   bool OnlySummary = false, bool JsonFormat = false);
 
-  void print_aggregate_stats(const std::set<std::string> &F,
-                             llvm::raw_ostream &O);
+  void printAggregateStats(const std::set<std::string> &F,
+                           llvm::raw_ostream &O);
 
   // Populate Variables, VarDeclToStatement, RVariables, and DepthMap with
   // AST data structures that correspond do the data stored in PDMap and
@@ -126,12 +79,14 @@ public:
   void exitCompilationUnit();
 
   bool hasPersistentConstraints(clang::Expr *E, ASTContext *C) const;
-  const CSetBkeyPair &getPersistentConstraints(clang::Expr *E, ASTContext *C) const;
+  const CSetBkeyPair &getPersistentConstraints(clang::Expr *E,
+                                               ASTContext *C) const;
   void storePersistentConstraints(clang::Expr *E, const CSetBkeyPair &Vars,
                                   ASTContext *C);
   // Get only constraint vars from the persistent contents of the
   // expression E.
-  const CVarSet &getPersistentConstraintsSet(clang::Expr *E, ASTContext *C) const;
+  const CVarSet &getPersistentConstraintsSet(clang::Expr *E,
+                                             ASTContext *C) const;
   // Store CVarSet with an empty set of BoundsKey into persistent contents.
   void storePersistentConstraints(clang::Expr *E, const CVarSet &Vars,
                                   ASTContext *C);
@@ -156,9 +111,7 @@ public:
 
   PerformanceStats &getPerfStats() { return PerfS; }
 
-  ConstraintsInfo &getInterimConstraintState() {
-    return CState;
-  }
+  ConstraintsInfo &getInterimConstraintState() { return CState; }
   bool computeInterimConstraintState(const std::set<std::string> &FilePaths);
 
   const ExternalFunctionMapType &getExternFuncDefFVMap() const {
@@ -178,6 +131,9 @@ public:
   void constrainWildIfMacro(ConstraintVariable *CV, SourceLocation Location,
                             PersistentSourceLoc *PSL = nullptr);
 
+  void ensureNtCorrect(const QualType &QT, const ASTContext &C,
+                       PointerVariableConstraint *PV);
+
   void unifyIfTypedef(const clang::Type *, clang::ASTContext &,
                       clang::DeclaratorDecl *, PVConstraint *);
 
@@ -186,7 +142,7 @@ public:
   bool seenTypedef(PersistentSourceLoc PSL);
 
   void addTypedef(PersistentSourceLoc PSL, bool CanRewriteDef, TypedefDecl *TD,
-                  ASTContext& C);
+                  ASTContext &C);
 
 private:
   // List of constraint variables for declarations, indexed by their location in
@@ -239,7 +195,7 @@ private:
   // For each call to a generic function, remember how the type parameters were
   // instantiated so they can be inserted during rewriting.
   TypeParamBindingsT TypeParamBindings;
-  
+
   // Special-case handling for decl introductions. For the moment this covers:
   //  * void-typed variables
   //  * va_list-typed variables
@@ -265,7 +221,6 @@ private:
   // For each pointer type in the declaration of D, add a variable to the
   // constraint system for that pointer type.
   void addVariable(clang::DeclaratorDecl *D, clang::ASTContext *AstContext);
-
 };
 
 #endif

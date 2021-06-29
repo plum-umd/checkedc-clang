@@ -130,6 +130,12 @@ bool isPointerType(clang::ValueDecl *VD);
 // Is this a pointer or array type?
 bool isPtrOrArrayType(const clang::QualType &QT);
 
+// Is this a type that can go inside an _Nt_array_ptr?
+bool isNullableType(const clang::QualType &QT);
+
+// Is this type capable of being an NT Array?
+bool canBeNtArray(const clang::QualType &QT);
+
 // Check if provided type is a var arg type?
 bool isVarArgType(const std::string &TypeName);
 
@@ -149,8 +155,7 @@ clang::SourceLocation getFunctionDeclRParen(clang::FunctionDecl *FD,
                                             clang::SourceManager &S);
 
 clang::SourceLocation locationPrecedingChar(clang::SourceLocation SL,
-                                            clang::SourceManager &S,
-                                            char C);
+                                            clang::SourceManager &S, char C);
 
 // Remove auxillary casts from the provided expression.
 clang::Expr *removeAuxillaryCasts(clang::Expr *SrcExpr);
@@ -212,6 +217,16 @@ clang::FunctionTypeLoc getFunctionTypeLoc(clang::TypeLoc TLoc);
 clang::FunctionTypeLoc getFunctionTypeLoc(clang::DeclaratorDecl *Decl);
 
 bool isKAndRFunctionDecl(clang::FunctionDecl *FD);
+
+void getPrintfStringArgIndices(const clang::CallExpr *CE,
+                               const clang::FunctionDecl *Callee,
+                               const clang::ASTContext &Context,
+                               std::set<unsigned> &StringArgIndices);
+
+// Use instead of Stmt::getID since Stmt::getID fails an assertion on long
+// string literals (https://bugs.llvm.org/show_bug.cgi?id=49926).
+int64_t getStmtIdWorkaround(const clang::Stmt *St,
+                            const clang::ASTContext &Context);
 
 // Shortcut for the getCustomDiagID + Report sequence to report a custom
 // diagnostic as we currently do in 3C.

@@ -170,14 +170,13 @@ bool tryGetBoundsKeyVar(Decl *D, BoundsKey &BK, ProgramInfo &Info,
   return CR.resolveBoundsKey(CV, BK) || ABInfo.tryGetVariable(D, BK);
 }
 
-bool tryGetValidBoundsKey(Expr *E, BoundsKey &BK,
-                          ProgramInfo &I, ASTContext *C) {
+bool tryGetValidBoundsKey(Expr *E, BoundsKey &BK, ProgramInfo &I,
+                          ASTContext *C) {
   bool Ret = false;
   ConstraintResolver CR(I, C);
   auto BCVars = CR.getExprConstraintVars(E);
   auto &ABI = I.getABoundsInfo();
-  if (CR.containsValidCons(BCVars.first) ||
-      !BCVars.second.empty()) {
+  if (CR.containsValidCons(BCVars.first) || !BCVars.second.empty()) {
     if (!BCVars.second.empty()) {
       BK = *BCVars.second.begin();
       Ret = true;
@@ -209,21 +208,21 @@ static bool isAllocatorCall(Expr *E, std::string &FName, ProgramInfo &I,
         std::vector<Expr *> BaseExprs;
         BaseExprs.clear();
         for (auto Pidx : AllocatorSizeAssoc[FName]) {
-         Expr *PExpr = CE->getArg(Pidx)->IgnoreParenCasts();
-         BinaryOperator *BO = dyn_cast<BinaryOperator>(PExpr);
-         UnaryExprOrTypeTraitExpr *UExpr =
-             dyn_cast<UnaryExprOrTypeTraitExpr>(PExpr);
-         if (BO && BO->isMultiplicativeOp()) {
-           BaseExprs.push_back(BO->getLHS());
-           BaseExprs.push_back(BO->getRHS());
-         } else if (UExpr && UExpr->getKind() == UETT_SizeOf) {
-           BaseExprs.push_back(UExpr);
-         } else if (tryGetValidBoundsKey(PExpr, Tmp, I, C)) {
-           BaseExprs.push_back(PExpr);
-         } else {
-           RetVal = false;
-           break;
-         }
+          Expr *PExpr = CE->getArg(Pidx)->IgnoreParenCasts();
+          BinaryOperator *BO = dyn_cast<BinaryOperator>(PExpr);
+          UnaryExprOrTypeTraitExpr *UExpr =
+              dyn_cast<UnaryExprOrTypeTraitExpr>(PExpr);
+          if (BO && BO->isMultiplicativeOp()) {
+            BaseExprs.push_back(BO->getLHS());
+            BaseExprs.push_back(BO->getRHS());
+          } else if (UExpr && UExpr->getKind() == UETT_SizeOf) {
+            BaseExprs.push_back(UExpr);
+          } else if (tryGetValidBoundsKey(PExpr, Tmp, I, C)) {
+            BaseExprs.push_back(PExpr);
+          } else {
+            RetVal = false;
+            break;
+          }
         }
 
         // Check if each of the expression is either sizeof or a DeclRefExpr
@@ -233,7 +232,7 @@ static bool isAllocatorCall(Expr *E, std::string &FName, ProgramInfo &I,
             UnaryExprOrTypeTraitExpr *UExpr =
                 dyn_cast<UnaryExprOrTypeTraitExpr>(TmpE);
             if ((UExpr && UExpr->getKind() == UETT_SizeOf) ||
-                 tryGetValidBoundsKey(TmpE, Tmp, I, C)) {
+                tryGetValidBoundsKey(TmpE, Tmp, I, C)) {
               ArgVals.push_back(TmpE);
             } else {
               RetVal = false;
@@ -533,7 +532,8 @@ bool GlobalABVisitor::VisitFunctionDecl(FunctionDecl *FD) {
         }
       }
 
-      for (auto &CurrNtArr : ParamNtArrays) {
+      // Do not use heuristics for param nt arrays.
+      /*for (auto &CurrNtArr : ParamNtArrays) {
         unsigned PIdx = CurrNtArr.first;
         BoundsKey PBKey = CurrNtArr.second.second;
         if (LengthParams.find(PIdx + 1) != LengthParams.end()) {
@@ -544,7 +544,7 @@ bool GlobalABVisitor::VisitFunctionDecl(FunctionDecl *FD) {
             continue;
           }
         }
-      }
+      }*/
     }
   }
   return true;
@@ -885,6 +885,8 @@ void LengthVarInference::VisitArraySubscriptExpr(ArraySubscriptExpr *ASE) {
         CV.TraverseStmt(CDGNode->getTerminatorStmt());
       }
       ABI.updatePotentialCountBounds(BasePtr, PossibleLens);
+    } else {
+      ABI.updatePotentialCountPOneBounds(BasePtr, {IdxKey});
     }
   }
 }

@@ -540,6 +540,7 @@ public:
 
 private:
   // Visitors to walk an AST and construct the CFG.
+  CFGBlock *VisitNullStmt(Stmt *S);
   CFGBlock *VisitInitListExpr(InitListExpr *ILE, AddStmtChoice asc);
   CFGBlock *VisitAddrLabelExpr(AddrLabelExpr *A, AddStmtChoice asc);
   CFGBlock *VisitBinaryOperator(BinaryOperator *B, AddStmtChoice asc);
@@ -2085,9 +2086,24 @@ void CFGBuilder::prependAutomaticObjLifetimeWithTerminator(
   if (!BuildOpts.AddLifetime)
     return;
   BumpVectorContext &C = cfg->getBumpVectorContext();
+
+  // Note that B is the LocalScope iterator associated with the backpatched
+  // jump and E is the LocalScope iterator associated with the jump target.
+  //
+  // To go from B to E, one first goes up the scopes from B to AncestorOfB,
+  // then sideways in one scope from AncestorOfB to AncestorOfE and then down
+  // the scopes from AncestorOfE to E.
+  // The lifetime of all objects between B and AncestorOfE end.
+  //
+  // Get E's and B's nearest ancestors, both of which have the same LocalScope.
+  LocalScope::const_iterator AncestorOfE = E.shared_parent(B);
+  int Dist = B.distance(AncestorOfE);
+  if (Dist <= 0)
+    return;
+
   CFGBlock::iterator InsertPos =
-      Blk->beginLifetimeEndsInsert(Blk->end(), B.distance(E), C);
-  for (LocalScope::const_iterator I = B; I != E; ++I) {
+      Blk->beginLifetimeEndsInsert(Blk->end(), Dist, C);
+  for (LocalScope::const_iterator I = B; I != AncestorOfE; ++I) {
     InsertPos =
         Blk->insertLifetimeEnds(InsertPos, *I, Blk->getTerminatorStmt());
   }
@@ -2269,7 +2285,7 @@ CFGBlock *CFGBuilder::Visit(Stmt * S, AddStmtChoice asc,
       return VisitMemberExpr(cast<MemberExpr>(S), asc);
 
     case Stmt::NullStmtClass:
-      return Block;
+      return VisitNullStmt(cast<NullStmt>(S));
 
     case Stmt::ObjCAtCatchStmtClass:
       return VisitObjCAtCatchStmt(cast<ObjCAtCatchStmt>(S));
@@ -2377,6 +2393,14 @@ CFGBlock *CFGBuilder::VisitInitListExpr(InitListExpr *ILE, AddStmtChoice asc) {
     }
   }
   return B;
+}
+
+CFGBlock *CFGBuilder::VisitNullStmt(Stmt *S) {
+  if (BuildOpts.AddNullStmt) {
+    autoCreateBlock();
+    appendStmt(Block, S);
+  }
+  return Block;
 }
 
 CFGBlock *CFGBuilder::VisitAddrLabelExpr(AddrLabelExpr *A,

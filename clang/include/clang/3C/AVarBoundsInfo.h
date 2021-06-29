@@ -41,6 +41,9 @@ public:
   std::set<BoundsKey> DataflowMatch;
   // These are bounds keys for which the bounds are declared.
   std::set<BoundsKey> DeclaredBounds;
+  // These are bounds key having bounds, but unfortunately cannot be handled
+  // by our inference.
+  std::set<BoundsKey> DeclaredButNotHandled;
   AVarBoundsStats() { clear(); }
   ~AVarBoundsStats() { clear(); }
 
@@ -73,6 +76,7 @@ private:
     NeighbourParamMatch.clear();
     DataflowMatch.clear();
     DeclaredBounds.clear();
+    DeclaredButNotHandled.clear();
   }
 };
 
@@ -128,7 +132,14 @@ private:
   bool predictBounds(BoundsKey DstArrK, std::set<BoundsKey> &Neighbours,
                      AVarGraph &BKGraph);
 
-  void mergeReachableProgramVars(std::set<BoundsKey> &AllVars);
+  void mergeReachableProgramVars(BoundsKey TarBK, std::set<BoundsKey> &AllVars);
+
+  // Check if the pointer variable has impossible bounds.
+  bool hasImpossibleBounds(BoundsKey BK);
+  // Set the given pointer to have impossible bounds.
+  void setImpossibleBounds(BoundsKey BK);
+  // Infer bounds of the given pointer key from potential bounds.
+  bool inferFromPotentialBounds(BoundsKey BK, AVarGraph &BKGraph);
 
   AVarBoundsInfo *BI;
 
@@ -138,10 +149,37 @@ private:
   std::set<BoundsKey> BKsFailedFlowInference;
 };
 
+// Class that maintains information about potential bounds for
+// various pointer variables.
+class PotentialBoundsInfo {
+public:
+  PotentialBoundsInfo() {
+    PotentialCntBounds.clear();
+    PotentialCntPOneBounds.clear();
+  }
+  // Count Bounds, i.e., count(i).
+  bool hasPotentialCountBounds(BoundsKey PtrBK);
+  std::set<BoundsKey> &getPotentialBounds(BoundsKey PtrBK);
+  void addPotentialBounds(BoundsKey BK, const std::set<BoundsKey> &PotK);
+
+  // Count Bounds Plus one, i.e., count(i+1).
+  bool hasPotentialCountPOneBounds(BoundsKey PtrBK);
+  std::set<BoundsKey> &getPotentialBoundsPOne(BoundsKey PtrBK);
+  void addPotentialBoundsPOne(BoundsKey BK, const std::set<BoundsKey> &PotK);
+
+private:
+  // This is the map of pointer variable bounds key and set of bounds key
+  // which can be the count bounds.
+  std::map<BoundsKey, std::set<BoundsKey>> PotentialCntBounds;
+  // Potential count + 1 bounds.
+  std::map<BoundsKey, std::set<BoundsKey>> PotentialCntPOneBounds;
+};
+
 class AVarBoundsInfo {
 public:
-  AVarBoundsInfo() : ProgVarGraph(this), CtxSensProgVarGraph(this),
-                     RevCtxSensProgVarGraph(this), CSBKeyHandler(this) {
+  AVarBoundsInfo()
+      : ProgVarGraph(this), CtxSensProgVarGraph(this),
+        RevCtxSensProgVarGraph(this), CSBKeyHandler(this) {
     BCount = 1;
     PVarInfo.clear();
     InProgramArrPtrBoundsKeys.clear();
@@ -162,7 +200,10 @@ public:
   bool replaceBounds(BoundsKey L, BoundsPriority P, ABounds *B);
   ABounds *getBounds(BoundsKey L, BoundsPriority ReqP = Invalid,
                      BoundsPriority *RetP = nullptr);
-  bool updatePotentialCountBounds(BoundsKey BK, std::set<BoundsKey> &CntBK);
+  void updatePotentialCountBounds(BoundsKey BK,
+                                  const std::set<BoundsKey> &CntBK);
+  void updatePotentialCountPOneBounds(BoundsKey BK,
+                                      const std::set<BoundsKey> &CntBK);
 
   // Try and get BoundsKey, into R, for the given declaration. If the
   // declaration does not have a BoundsKey then return false.
@@ -189,19 +230,19 @@ public:
   bool addAssignment(clang::Decl *L, clang::Decl *R);
   bool addAssignment(clang::DeclRefExpr *L, clang::DeclRefExpr *R);
   bool addAssignment(BoundsKey L, BoundsKey R);
-  bool handlePointerAssignment(clang::Stmt *St, clang::Expr *L,
-                               clang::Expr *R,
-                               ASTContext *C,
-                               ConstraintResolver *CR);
+  bool handlePointerAssignment(clang::Stmt *St, clang::Expr *L, clang::Expr *R,
+                               ASTContext *C, ConstraintResolver *CR);
   bool handleAssignment(clang::Expr *L, const CVarSet &LCVars,
-                        const std::set<BoundsKey> &CSLKeys,
-                        clang::Expr *R, const CVarSet &RCVars,
-                        const std::set<BoundsKey> &CSRKeys,
-                        ASTContext *C, ConstraintResolver *CR);
-  bool handleAssignment(clang::Decl *L, CVarOption LCVar,
-                        clang::Expr *R, const CVarSet &RCVars,
-                        const std::set<BoundsKey> &CSRKeys,
-                        ASTContext *C, ConstraintResolver *CR);
+                        const std::set<BoundsKey> &CSLKeys, clang::Expr *R,
+                        const CVarSet &RCVars,
+                        const std::set<BoundsKey> &CSRKeys, ASTContext *C,
+                        ConstraintResolver *CR);
+  bool handleAssignment(clang::Decl *L, CVarOption LCVar, clang::Expr *R,
+                        const CVarSet &RCVars,
+                        const std::set<BoundsKey> &CSRKeys, ASTContext *C,
+                        ConstraintResolver *CR);
+
+  void mergeBoundsKey(BoundsKey To, BoundsKey From);
 
   // Handle the arithmetic expression. This is required to adjust bounds
   // for pointers that has pointer arithmetic performed on them.
@@ -220,8 +261,7 @@ public:
   // located at PSL.
   // If there exists no context-sensitive bounds key, we just return
   // the provided key.
-  BoundsKey getCtxSensCEBoundsKey(const PersistentSourceLoc &PSL,
-                                  BoundsKey BK);
+  BoundsKey getCtxSensCEBoundsKey(const PersistentSourceLoc &PSL, BoundsKey BK);
   // If E is a MemberAccess expression, then  this function returns the set
   // containing the context sensitive bounds key for the corresponding struct
   // access.
@@ -244,10 +284,14 @@ public:
 
   bool areSameProgramVar(BoundsKey B1, BoundsKey B2);
 
+  // Check if the provided BoundsKey is for a function param?
+  // If yes, provide the index of the parameter.
+  bool isFuncParamBoundsKey(BoundsKey BK, unsigned &PIdx);
+
 private:
   friend class AvarBoundsInference;
   friend class CtxSensitiveBoundsKeyHandler;
-  
+
   friend struct llvm::DOTGraphTraits<AVarGraph>;
   // List of bounds priority in descending order of priorities.
   static std::vector<BoundsPriority> PrioList;
@@ -272,6 +316,10 @@ private:
   // Set of BoundsKey that correspond to array pointers.
   std::set<BoundsKey> ArrPointerBoundsKey;
   std::set<BoundsKey> NtArrPointerBoundsKey;
+  // These are array and nt arr pointers which cannot have bounds.
+  // E.g., return value of strdup and in general any return value
+  // which is an nt array.
+  std::set<BoundsKey> PointersWithImpossibleBounds;
   // Set of BoundsKey that correspond to array pointers with in the program
   // being compiled i.e., it does not include array pointers that belong
   // to libraries.
@@ -297,9 +345,8 @@ private:
   AVarGraph RevCtxSensProgVarGraph;
   // Stats on techniques used to find length for various variables.
   AVarBoundsStats BoundsInferStats;
-  // This is the map of pointer variable bounds key and set of bounds key
-  // which can be the count bounds.
-  std::map<BoundsKey, std::set<BoundsKey>> PotentialCntBounds;
+  // Information about potential bounds.
+  PotentialBoundsInfo PotBoundsInfo;
   // Context-sensitive bounds key handler
   CtxSensitiveBoundsKeyHandler CSBKeyHandler;
 
@@ -332,9 +379,10 @@ private:
   // Perform worklist based inference on the requested array variables using
   // the provided graph and potential length variables.
   bool performWorkListInference(const std::set<BoundsKey> &ArrNeededBounds,
-                                AVarGraph &BKGraph, AvarBoundsInference &BI);
+                                AVarGraph &BKGraph, AvarBoundsInference &BI,
+                                bool FromPB);
 
   void insertParamKey(ParamDeclType ParamDecl, BoundsKey NK);
 };
 
-#endif // _AVARBOUNDSINFO_H
+#endif // LLVM_CLANG_3C_AVARBOUNDSINFO_H

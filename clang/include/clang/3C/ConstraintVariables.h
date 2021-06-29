@@ -86,7 +86,8 @@ public:
   // to be used inside an itype.
   virtual std::string mkString(Constraints &CS, bool EmitName = true,
                                bool ForItype = false, bool EmitPointee = false,
-                               bool UnmaskTypedef = false) const = 0;
+                               bool UnmaskTypedef = false,
+                               std::string UseName = "") const = 0;
 
   // Debug printing of the constraint variable.
   virtual void print(llvm::raw_ostream &O) const = 0;
@@ -114,18 +115,28 @@ public:
   virtual void constrainToWild(Constraints &CS, const std::string &Rsn,
                                PersistentSourceLoc *PL) const = 0;
 
+  // Return true if this variable was checked in the input. Checked variables
+  // might solve to WILD, and unchecked variables might solve to checked. Use
+  // isSolutionChecked if you want these final solved types.
+  virtual bool isOriginallyChecked() const = 0;
+
   // Returns true if any of the constraint variables 'within' this instance
   // have a binding in E other than top. E should be the EnvironmentMap that
   // results from running unification on the set of constraints and the
   // environment.
-  bool isChecked(const EnvironmentMap &E) const;
+  virtual bool isSolutionChecked(const EnvironmentMap &E) const = 0;
 
   // Returns true if this constraint variable has a different checked type after
   // running unification. Note that if the constraint variable had a checked
   // type in the input program, it will have the same checked type after solving
   // so, the type will not have changed. To test if the type is checked, use
-  // isChecked instead.
+  // isSolutionChecked instead.
   virtual bool anyChanges(const EnvironmentMap &E) const = 0;
+
+  // Return true if all atoms (pointer levels) in this variable are checked.
+  // This is in contrast to isSolutionChecked which will return true if any atom
+  // is checked.
+  virtual bool isSolutionFullyChecked(const EnvironmentMap &E) const = 0;
 
   // Here, AIdx is the pointer level which needs to be checked.
   // By default, we check for all pointer levels (or VarAtoms)
@@ -151,11 +162,29 @@ public:
   void setValidDecl() { IsForDecl = true; }
   bool isForValidDecl() const { return IsForDecl; }
 
+  // By default, 3C allows itypes to be re-solved arbitrarily. But in several
+  // cases, we need to restrict itype re-solving; this function applies those
+  // restrictions. (It isn't needed for fully checked types because 3C doesn't
+  // allow checked types to be re-solved yet.)
+  //
+  // In some cases, we don't want the checked portion of the type to change, but
+  // the itype can still become a fully checked type; we achieve that by copying
+  // ConstAtoms from SrcVars vector into the main VarAtoms vector, which forces
+  // the solved checked type for the variable to be the same as it was in the
+  // source. In other cases, we don't want the itype to change at all; to
+  // achieve that, we additionally constrain the internal variables to not
+  // change.
+  //
+  // Some cases in which the itype must not change at all are indicated by
+  // passing a reason for the "root cause of wildness" as ReasonUnchangeable.
+  // Otherwise ReasonUnchangeable should be set to the empty string.
+  virtual void equateWithItype(ProgramInfo &CS,
+                               const std::string &ReasonUnchangeable,
+                               PersistentSourceLoc *PSL) = 0;
+
   virtual ConstraintVariable *getCopy(Constraints &CS) = 0;
 
   virtual ~ConstraintVariable(){};
-
-  virtual bool getIsOriginallyChecked() const = 0;
 };
 
 typedef std::set<ConstraintVariable *> CVarSet;
@@ -213,9 +242,17 @@ public:
   static PointerVariableConstraint *getNamedNonPtrPVConstraint(StringRef Name,
                                                                Constraints &CS);
 
+  static PointerVariableConstraint *
+  addAtomPVConstraint(PointerVariableConstraint *PVC, ConstAtom *PtrTyp,
+                      Constraints &CS);
+
+  static PointerVariableConstraint *
+  derefPVConstraint(PointerVariableConstraint *PVC);
+
 private:
   std::string BaseType;
   CAtoms Vars;
+  std::vector<ConstAtom *> SrcVars;
   FunctionVariableConstraint *FV;
   std::map<uint32_t, std::set<Qualification>> QualMap;
   enum OriginalArrType { O_Pointer, O_SizedArray, O_UnSizedArray };
@@ -225,9 +262,10 @@ private:
   //  * A sized array, then U -> (a,b) , a = O_SizedArray, b is static size.
   //  * An unsized array, then U -(a,b) , a = O_UnSizedArray, b has no meaning.
   std::map<uint32_t, std::pair<OriginalArrType, uint64_t>> ArrSizes;
-  // If for all U in arrSizes, any U -> (a,b) where a = O_SizedArray or
-  // O_UnSizedArray, arrPresent is true.
-  bool ArrPresent;
+
+  // To help rewriting preserve macros and constant expressions in arrays size
+  // expressions, the source strings for bounds of arrays are also stored.
+  std::map<uint32_t, std::string> ArrSizeStrs;
 
   // True if this variable has an itype in the original source code.
   bool SrcHasItype;
@@ -242,9 +280,10 @@ private:
   void insertQualType(uint32_t TypeIdx, QualType &QTy);
   // This function tries to emit an array size for the variable.
   // and returns true if the variable is an array and a size is emitted.
-  bool emitArraySize(std::stack<std::string> &CheckedArrs, uint32_t TypeIdx,
-                     bool &AllArray, bool &ArrayRun, bool Nt) const;
-  void addArrayAnnotations(std::stack<std::string> &CheckedArrs,
+  bool emitArraySize(std::stack<std::string> &ConstSizeArrs, uint32_t TypeIdx,
+                     Atom::AtomKind Kind) const;
+
+  void addArrayAnnotations(std::stack<std::string> &ConstArrs,
                            std::deque<std::string> &EndStrs) const;
 
   // Utility used by the constructor to obtain a string representation of a
@@ -299,19 +338,19 @@ private:
   // Is this a pointer to void? Possibly with multiple levels of indirection.
   bool IsVoidPtr;
 
-public:
   // Constructor for when we know a CVars and a type string.
-  PointerVariableConstraint(CAtoms V, std::string T, std::string Name,
-                            FunctionVariableConstraint *F, bool IsArr,
-                            std::string Is, int Generic = -1)
+  PointerVariableConstraint(CAtoms V, std::vector<ConstAtom *> SV,
+                            std::string T, std::string Name,
+                            FunctionVariableConstraint *F, std::string Is,
+                            int Generic = -1)
       : ConstraintVariable(PointerVariable, "" /*not used*/, Name), BaseType(T),
-        Vars(V), FV(F), ArrPresent(IsArr), SrcHasItype(!Is.empty()),
-        ItypeStr(Is), PartOfFuncPrototype(false), Parent(nullptr),
-        BoundsAnnotationStr(""), GenericIndex(Generic), IsZeroWidthArray(false),
-        IsVoidPtr(false) {}
+        Vars(V), SrcVars(SV), FV(F), SrcHasItype(!Is.empty()), ItypeStr(Is),
+        PartOfFuncPrototype(false), Parent(nullptr), BoundsAnnotationStr(""),
+        GenericIndex(Generic), IsZeroWidthArray(false), IsVoidPtr(false) {}
 
+public:
   std::string getTy() const { return BaseType; }
-  bool getArrPresent() const { return ArrPresent; }
+  bool getArrPresent() const;
   // Check if the outermost pointer is an unsized array.
   bool isTopCvarUnsizedArr() const;
   // Check if any of the pointers is either a sized or unsized arr.
@@ -321,10 +360,7 @@ public:
   void setTypedef(TypedefNameDecl *T, std::string S);
 
   // Return true if this constraint had an itype in the original source code.
-  bool srcHasItype() const override {
-    assert(!SrcHasItype || !ItypeStr.empty() || !BoundsAnnotationStr.empty());
-    return SrcHasItype;
-  }
+  bool srcHasItype() const override { return SrcHasItype; }
 
   // Return the string representation of the itype for this constraint if an
   // itype was present in the original source code. Returns empty string
@@ -342,9 +378,12 @@ public:
   // This is important for two reasons: (1) externs that are checked should be
   // kept that way during solving, (2) nothing that was originally checked
   // should be modified during rewriting.
-  bool getIsOriginallyChecked() const override {
+  bool isOriginallyChecked() const override {
     return llvm::any_of(Vars, [](Atom *A) { return isa<ConstAtom>(A); });
   }
+
+  bool isSolutionChecked(const EnvironmentMap &E) const override;
+  bool isSolutionFullyChecked(const EnvironmentMap &E) const override;
 
   bool isVoidPtr() const { return IsVoidPtr; }
 
@@ -358,6 +397,8 @@ public:
   PointerVariableConstraint(clang::DeclaratorDecl *D, ProgramInfo &I,
                             const clang::ASTContext &C);
   PointerVariableConstraint(clang::TypedefDecl *D, ProgramInfo &I,
+                            const clang::ASTContext &C);
+  PointerVariableConstraint(clang::Expr *E, ProgramInfo &I,
                             const clang::ASTContext &C);
 
   // QT: Defines the type for the constraint variable. One atom is added for
@@ -385,7 +426,8 @@ public:
                             std::string *InFunc = nullptr,
                             int ForceGenericIndex = -1,
                             bool VarAtomForChecked = false,
-                            TypeSourceInfo *TSI = nullptr);
+                            TypeSourceInfo *TSI = nullptr,
+                            const clang::QualType &ItypeT = QualType());
 
   const CAtoms &getCvars() const { return Vars; }
 
@@ -401,7 +443,8 @@ public:
 
   std::string mkString(Constraints &CS, bool EmitName = true,
                        bool ForItype = false, bool EmitPointee = false,
-                       bool UnmaskTypedef = false) const override;
+                       bool UnmaskTypedef = false,
+                       std::string UseName = "") const override;
 
   FunctionVariableConstraint *getFV() const { return FV; }
 
@@ -412,7 +455,10 @@ public:
   void constrainToWild(Constraints &CS, const std::string &Rsn) const override;
   void constrainToWild(Constraints &CS, const std::string &Rsn,
                        PersistentSourceLoc *PL) const override;
-  void constrainOuterTo(Constraints &CS, ConstAtom *C, bool DoLB = false);
+  void constrainOuterTo(Constraints &CS, ConstAtom *C, bool DoLB = false,
+                        bool Soft = false);
+  void constrainIdxTo(Constraints &CS, ConstAtom *C, unsigned int Idx,
+                      bool DoLB = false, bool Soft = false);
   bool anyChanges(const EnvironmentMap &E) const override;
   bool anyArgumentIsWild(const EnvironmentMap &E);
   bool hasWild(const EnvironmentMap &E, int AIdx = -1) const override;
@@ -435,6 +481,9 @@ public:
   Atom *getAtom(unsigned int AtomIdx, Constraints &CS);
 
   ~PointerVariableConstraint() override{};
+
+  void equateWithItype(ProgramInfo &CS, const std::string &ReasonUnchangeable,
+                       PersistentSourceLoc *PSL) override;
 };
 
 typedef PointerVariableConstraint PVConstraint;
@@ -458,27 +507,38 @@ private:
 
   std::string SourceDeclaration;
 
+  void linkInternalExternal(ProgramInfo &I, bool EquateChecked) const;
+
 public:
   FVComponentVariable()
-    : InternalConstraint(nullptr), ExternalConstraint(nullptr),
-      SourceDeclaration("") {}
+      : InternalConstraint(nullptr), ExternalConstraint(nullptr),
+        SourceDeclaration("") {}
 
   FVComponentVariable(FVComponentVariable *Ot, Constraints &CS);
-  FVComponentVariable(const clang::QualType &QT, clang::DeclaratorDecl *D,
-                      std::string N, ProgramInfo &I, const clang::ASTContext &C,
-                      std::string *InFunc, bool HasItype);
+
+  FVComponentVariable(const clang::QualType &QT, const clang::QualType &ITypeT,
+                      clang::DeclaratorDecl *D, std::string N, ProgramInfo &I,
+                      const clang::ASTContext &C, std::string *InFunc,
+                      bool HasItype);
 
   void mergeDeclaration(FVComponentVariable *From, ProgramInfo &I,
                         std::string &ReasonFailed);
   std::string mkItypeStr(Constraints &CS) const;
-  std::string mkTypeStr(Constraints &CS, bool EmitName) const;
-  std::string mkString(Constraints &CS) const;
+  std::string mkTypeStr(Constraints &CS, bool EmitName,
+                        std::string UseName = "") const;
+  std::string mkString(Constraints &CS, bool EmitName = true) const;
 
   bool hasItypeSolution(Constraints &CS) const;
   bool hasCheckedSolution(Constraints &CS) const;
 
   PVConstraint *getInternal() const { return InternalConstraint; }
   PVConstraint *getExternal() const { return ExternalConstraint; }
+
+  void equateWithItype(ProgramInfo &CS, const std::string &ReasonUnchangeable,
+                       PersistentSourceLoc *PSL) const;
+
+  bool solutionEqualTo(Constraints &CS, const FVComponentVariable *CV,
+                       bool ComparePtyp) const;
 };
 
 // Constraints on a function type. Also contains a 'name' parameter for
@@ -530,9 +590,7 @@ public:
     return ReturnVar.InternalConstraint;
   }
 
-  const FVComponentVariable *getCombineReturn() const {
-    return &ReturnVar;
-  }
+  const FVComponentVariable *getCombineReturn() const { return &ReturnVar; }
 
   size_t numParams() const { return ParamVars.size(); }
 
@@ -575,7 +633,8 @@ public:
 
   std::string mkString(Constraints &CS, bool EmitName = true,
                        bool ForItype = false, bool EmitPointee = false,
-                       bool UnmaskTypedef = false) const override;
+                       bool UnmaskTypedef = false,
+                       std::string UseName = "") const override;
   void print(llvm::raw_ostream &O) const override;
   void dump() const override { print(llvm::errs()); }
   void dumpJson(llvm::raw_ostream &O) const override;
@@ -592,7 +651,12 @@ public:
 
   FunctionVariableConstraint *getCopy(Constraints &CS) override;
 
-  bool getIsOriginallyChecked() const override;
+  bool isOriginallyChecked() const override;
+  bool isSolutionChecked(const EnvironmentMap &E) const override;
+  bool isSolutionFullyChecked(const EnvironmentMap &E) const override;
+
+  void equateWithItype(ProgramInfo &CS, const std::string &ReasonUnchangeable,
+                       PersistentSourceLoc *PSL) override;
 
   ~FunctionVariableConstraint() override {}
 };
