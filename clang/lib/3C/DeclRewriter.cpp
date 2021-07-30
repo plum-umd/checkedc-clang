@@ -86,7 +86,7 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
 
   // Collect function and record declarations that need to be rewritten in a set
   // as well as their rewriten types in a map.
-  RSet RewriteThese(DComp(Context.getSourceManager()));
+  RSet RewriteThese;
 
   FunctionDeclBuilder *TRV = nullptr;
 #ifdef FIVE_C
@@ -118,7 +118,8 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
                 getStorageQualifierString(D) +
                 Var.mkString(Info.getConstraints(),
                              MKSTRING_OPTS(UnmaskTypedef = true));
-            RewriteThese.insert(new TypedefDeclReplacement(TD, nullptr, NewTy));
+            RewriteThese.insert(std::make_pair(
+                TD, new TypedefDeclReplacement(TD, nullptr, NewTy)));
           }
         }
       }
@@ -195,11 +196,14 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
                    ABRewriter.getBoundsString(PV, D);
         }
         if (auto *VD = dyn_cast<VarDecl>(D))
-          RewriteThese.insert(new VarDeclReplacement(VD, DS, NewTy));
+          RewriteThese.insert(
+              std::make_pair(VD, new VarDeclReplacement(VD, DS, NewTy)));
         else if (auto *FD = dyn_cast<FieldDecl>(D))
-          RewriteThese.insert(new FieldDeclReplacement(FD, DS, NewTy));
+          RewriteThese.insert(
+              std::make_pair(FD, new FieldDeclReplacement(FD, DS, NewTy)));
         else if (auto *PD = dyn_cast<ParmVarDecl>(D))
-          RewriteThese.insert(new ParmVarDeclReplacement(PD, DS, NewTy));
+          RewriteThese.insert(
+              std::make_pair(PD, new ParmVarDeclReplacement(PD, DS, NewTy)));
         else
           llvm_unreachable("Unrecognized declaration type.");
       }
@@ -219,12 +223,13 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
   DeclRewriter DeclR(R, Context, GVG);
   DeclR.rewrite(RewriteThese);
 
-  for (const auto *R : RewriteThese)
-    delete R;
+  for (auto Pair : RewriteThese)
+    delete Pair.second;
 }
 
 void DeclRewriter::rewrite(RSet &ToRewrite) {
-  for (auto *const N : ToRewrite) {
+  for (auto Pair : ToRewrite) {
+    DeclReplacement *N = Pair.second;
     assert(N->getDecl() != nullptr);
 
     if (Verbose) {
@@ -294,8 +299,10 @@ void DeclRewriter::rewriteFieldOrVarDecl(DRType *N, RSet &ToRewrite) {
                     std::is_same<DRType, VarDeclReplacement>::value,
                 "Method expects variable or field declaration replacement.");
 
+  bool IsVisitedMultiDeclMember = (VisitedMultiDeclMembers.find(N->getDecl()) !=
+                                   VisitedMultiDeclMembers.end());
   if (InlineVarDecls.find(N->getDecl()) != InlineVarDecls.end() &&
-      VisitedMultiDeclMembers.find(N) == VisitedMultiDeclMembers.end()) {
+      !IsVisitedMultiDeclMember) {
     std::vector<Decl *> SameLineDecls;
     getDeclsOnSameLine(N, SameLineDecls);
     if (std::find(SameLineDecls.begin(), SameLineDecls.end(),
@@ -304,7 +311,7 @@ void DeclRewriter::rewriteFieldOrVarDecl(DRType *N, RSet &ToRewrite) {
     rewriteMultiDecl(N, ToRewrite, SameLineDecls, true);
   } else if (isSingleDeclaration(N)) {
     rewriteSingleDecl(N, ToRewrite);
-  } else if (VisitedMultiDeclMembers.find(N) == VisitedMultiDeclMembers.end()) {
+  } else if (!IsVisitedMultiDeclMember) {
     std::vector<Decl *> SameLineDecls;
     getDeclsOnSameLine(N, SameLineDecls);
     if (isInlineStruct(SameLineDecls))
@@ -314,8 +321,7 @@ void DeclRewriter::rewriteFieldOrVarDecl(DRType *N, RSet &ToRewrite) {
     // Anything that reaches this case should be a multi-declaration that has
     // already been rewritten.
     assert("Declaration should have been rewritten." &&
-           !isSingleDeclaration(N) &&
-           VisitedMultiDeclMembers.find(N) != VisitedMultiDeclMembers.end());
+           !isSingleDeclaration(N) && IsVisitedMultiDeclMember);
   }
 }
 
@@ -339,22 +345,10 @@ void DeclRewriter::rewriteMultiDecl(DeclReplacement *N, RSet &ToRewrite,
   // need to avoid rewriting any of these declarations twice by updating the
   // Skip set to include the processed declarations.
 
-  // Step 1: get declaration replacement in the same statement
-  RSet RewritesForThisDecl(DComp(R.getSourceMgr()));
-  auto I = ToRewrite.find(N);
-  while (I != ToRewrite.end()) {
-    if (areDeclarationsOnSameLine(N, *I)) {
-      assert("Unexpected DeclReplacement kind." &&
-             (*I)->getKind() == N->getKind());
-      RewritesForThisDecl.insert(*I);
-    }
-    ++I;
-  }
-
-  // Step 2: For each decl in the original, build up a new string. If the
-  //         original decl was re-written, write that out instead. Existing
-  //         initializers are preserved, any declarations that an initializer to
-  //         be valid checked-c are given one.
+  // For each decl in the original, build up a new string. If the
+  // original decl was re-written, write that out instead. Existing
+  // initializers are preserved, any declarations that an initializer to
+  // be valid checked-c are given one.
 
   bool IsFirst = true;
   SourceLocation PrevEnd;
@@ -363,12 +357,12 @@ void DeclRewriter::rewriteMultiDecl(DeclReplacement *N, RSet &ToRewrite,
     // Find the declaration replacement object for the current declaration.
     DeclReplacement *SameLineReplacement;
     bool Found = false;
-    for (const auto &NLT : RewritesForThisDecl)
-      if (NLT->getDecl() == DL) {
-        SameLineReplacement = NLT;
-        Found = true;
-        break;
-      }
+    auto It = ToRewrite.find(DL);
+    if (It != ToRewrite.end()) {
+      SameLineReplacement = It->second;
+      Found = true;
+      VisitedMultiDeclMembers.insert(DL);
+    }
 
     if (IsFirst && ContainsInlineStruct) {
       // If it is an inline struct, the first thing we have to do
@@ -444,11 +438,6 @@ void DeclRewriter::rewriteMultiDecl(DeclReplacement *N, RSet &ToRewrite,
     // Offset by one to skip past what we've just added so it isn't overwritten.
     PrevEnd = End.getEnd().getLocWithOffset(1);
   }
-
-  // Step 3: Be sure and skip all of the declarations that we just dealt with by
-  //         adding them to the skip set.
-  for (const auto &TN : RewritesForThisDecl)
-    VisitedMultiDeclMembers.insert(TN);
 }
 
 // Common rewriting logic used to replace a single decl either on its own or as
@@ -535,27 +524,6 @@ SourceRange DeclRewriter::getNextCommaOrSemicolon(SourceLocation L) {
                                A.getLangOpts());
   }
   llvm_unreachable("Unable to find comma or semicolon at source location.");
-}
-
-bool DeclRewriter::areDeclarationsOnSameLine(DeclReplacement *N1,
-                                             DeclReplacement *N2) {
-  Decl *D1 = N1->getDecl();
-  Decl *D2 = N2->getDecl();
-  if (D1 && D2) {
-    // In the event that this is a FieldDecl,
-    // these statements will always be null
-    DeclStmt *Stmt1 = N1->getStatement();
-    DeclStmt *Stmt2 = N2->getStatement();
-    if (Stmt1 == nullptr && Stmt2 == nullptr) {
-      auto &DGroup = GP.getVarsOnSameLine(D1);
-      return llvm::is_contained(DGroup, D2);
-    }
-    if (Stmt1 == nullptr || Stmt2 == nullptr) {
-      return false;
-    }
-    return Stmt1 == Stmt2;
-  }
-  return false;
 }
 
 bool DeclRewriter::isSingleDeclaration(DeclReplacement *N) {
@@ -729,8 +697,9 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
 
   // Add new declarations to RewriteThese if it has changed
   if (RewriteReturn || RewriteParams) {
-    RewriteThese.insert(
-        new FunctionDeclReplacement(FD, NewSig, RewriteReturn, RewriteParams));
+    RewriteThese.insert(std::make_pair(
+        FD,
+        new FunctionDeclReplacement(FD, NewSig, RewriteReturn, RewriteParams)));
   }
 
   return true;
