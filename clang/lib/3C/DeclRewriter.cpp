@@ -167,6 +167,9 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
                  ABRewriter.hasNewBoundsString(PV, D));
       if (PVChanged && !PV->isPartOfFunctionPrototype()) {
         // Rewrite a declaration, only if it is not part of function prototype.
+        assert(!isa<ParmVarDecl>(D) &&
+               "Got a PVConstraint for a ParmVarDecl where "
+               "isPartOfFunctionPrototype returns false?");
         DeclStmt *DS = nullptr;
         if (VDLToStmtMap.find(D) != VDLToStmtMap.end())
           DS = VDLToStmtMap[D];
@@ -185,9 +188,7 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
           // is updated to handle structure/global itypes.
           std::string Type, IType;
           // VarDecl and FieldDecl subclass DeclaratorDecl, so the cast will
-          // always succeed. In fact, ParmVarDecl is also a subclass of
-          // DeclaratorDecl, so it should be possible to make the values in
-          // PSLMap DeclaratorDecls and avoid this cast altogether.
+          // always succeed.
           DeclRewriter::buildItypeDecl(PV, cast<DeclaratorDecl>(D), Type, IType,
                                        Info, ABRewriter);
           NewTy += Type + IType;
@@ -201,9 +202,6 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
         else if (auto *FD = dyn_cast<FieldDecl>(D))
           RewriteThese.insert(
               std::make_pair(FD, new FieldDeclReplacement(FD, DS, NewTy)));
-        else if (auto *PD = dyn_cast<ParmVarDecl>(D))
-          RewriteThese.insert(
-              std::make_pair(PD, new ParmVarDeclReplacement(PD, DS, NewTy)));
         else
           llvm_unreachable("Unrecognized declaration type.");
       }
@@ -239,10 +237,7 @@ void DeclRewriter::rewrite(RSet &ToRewrite) {
     }
 
     // Exact rewriting procedure depends on declaration type
-    if (auto *PVR = dyn_cast<ParmVarDeclReplacement>(N)) {
-      assert(N->getStatement() == nullptr);
-      rewriteParmVarDecl(PVR);
-    } else if (auto *VR = dyn_cast<VarDeclReplacement>(N)) {
+    if (auto *VR = dyn_cast<VarDeclReplacement>(N)) {
       rewriteFieldOrVarDecl(VR, ToRewrite);
     } else if (auto *FR = dyn_cast<FunctionDeclReplacement>(N)) {
       rewriteFunctionDecl(FR);
@@ -254,26 +249,6 @@ void DeclRewriter::rewrite(RSet &ToRewrite) {
       assert(false && "Unknown replacement type");
     }
   }
-}
-
-void DeclRewriter::rewriteParmVarDecl(ParmVarDeclReplacement *N) {
-  // First, find all the declarations of the containing function.
-  DeclContext *DF = N->getDecl()->getParentFunctionOrMethod();
-  assert(DF != nullptr && "no parent function or method for decl");
-  FunctionDecl *FD = cast<FunctionDecl>(DF);
-
-  // For each function, determine which parameter in the declaration
-  // matches PV, then, get the type location of that parameter
-  // declaration and re-write.
-  unsigned int PIdx = getParameterIndex(N->getDecl(), FD);
-
-  for (auto *CurFD = FD; CurFD != nullptr; CurFD = CurFD->getPreviousDecl())
-    if (PIdx < CurFD->getNumParams()) {
-      ParmVarDecl *Rewrite = CurFD->getParamDecl(PIdx);
-      assert(Rewrite != nullptr);
-      SourceRange TR = Rewrite->getSourceRange();
-      rewriteSourceRange(R, TR, N->getReplacement());
-    }
 }
 
 void DeclRewriter::rewriteTypedefDecl(TypedefDeclReplacement *TDR,
