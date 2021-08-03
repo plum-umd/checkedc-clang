@@ -302,7 +302,7 @@ static void emit(Rewriter &R, ASTContext &C) {
 
   if (StdoutMode && !StdoutModeSawMainFile) {
     // The main file is unchanged. Write out its original content.
-    outs() << SM.getBuffer(SM.getMainFileID())->getBuffer();
+    outs() << SM.getBufferOrFake(SM.getMainFileID()).getBuffer();
   }
 }
 
