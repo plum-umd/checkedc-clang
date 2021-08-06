@@ -71,6 +71,13 @@ void unwritable_func_with_itype_and_bounds(int *p
 // expected-warning@+1 {{Declaration in non-writable file}}
 _Itype_for_any(T) void my_generic_function(void *p : itype(_Ptr<T>));
 
+// expected-warning@+1 {{Declaration in non-writable file}}
+_Itype_for_any(T) void* my_generic_return(void) : itype(_Ptr<T>);
+
+void unwritable_type_return() { 
+  int *b; // expected-warning {{Declaration in non-writable file}}
+  b = my_generic_return(); // expected-warning {{Expression in non-writable file}}
+}
 void unwritable_type_argument() {
   int i;
   // This warning relates to the atom representing the temporary pointer of
