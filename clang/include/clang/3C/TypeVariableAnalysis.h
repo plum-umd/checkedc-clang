@@ -18,6 +18,8 @@
 
 class TypeVariableEntry {
 public:
+  // TODO is there a good reason for not initializing this instance var?
+  //    can we make it an optional?
   // Note: does not initialize TyVarType!
   TypeVariableEntry() : IsConsistent(false), TypeParamConsVar(nullptr) {}
   TypeVariableEntry(QualType Ty, std::set<ConstraintVariable *> &CVs,
@@ -33,7 +35,9 @@ public:
   }
 
   bool getIsConsistent() const;
+  // Note: undefined behaviour if `getIsConsistent` is false
   QualType getType();
+  // Note: undefined behaviour if `getIsConsistent` is false
   std::set<ConstraintVariable *> &getConstraintVariables();
   ConstraintVariable *getTypeParamConsVar();
 
@@ -53,6 +57,8 @@ private:
 
   // Collection of constraint variables generated for all uses of the type
   // variable. Also should not be used when IsConsistent is false.
+  // TODO: why? is it undefined, or just not meaningful? Can we reflect this
+  //   in the type?
   std::set<ConstraintVariable *> ArgConsVars;
 
   // A single constraint variable for solving the checked type of the type
@@ -65,6 +71,7 @@ private:
 // typed parameter. The values in the map are another maps from type variable
 // index in the called function's parameter list to the type the type variable
 // becomes (or null if it is not used consistently).
+// TODO: use a better map implementation?
 typedef std::map<CallExpr *, std::map<unsigned int, TypeVariableEntry>>
     TypeVariableMapT;
 

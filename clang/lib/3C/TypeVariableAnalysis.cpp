@@ -14,11 +14,13 @@ using namespace llvm;
 using namespace clang;
 
 std::set<ConstraintVariable *> &TypeVariableEntry::getConstraintVariables() {
+  // TODO : Doesn't check invariant specified in headers, reflect invariant in type?
   return ArgConsVars;
 }
 
 void TypeVariableEntry::insertConstraintVariables(
     std::set<ConstraintVariable *> &CVs) {
+  // TODO : Doesn't check invariant specified in headers, reflect invariant in type?
   ArgConsVars.insert(CVs.begin(), CVs.end());
 }
 
@@ -72,21 +74,26 @@ bool TypeVarVisitor::VisitCastExpr(CastExpr *CE) {
   if (CHKCBindTemporaryExpr *TempE = dyn_cast<CHKCBindTemporaryExpr>(SubExpr))
     SubExpr = TempE->getSubExpr();
 
-  if (auto *Call = dyn_cast<CallExpr>(SubExpr))
+  if (auto *Call = dyn_cast<CallExpr>(SubExpr)) {
     if (auto *FD = dyn_cast_or_null<FunctionDecl>(Call->getCalleeDecl())) {
       FunctionDecl *FDef = getDefinition(FD);
       if (FDef == nullptr)
         FDef = FD;
       if (auto *FVCon = Info.getFuncConstraint(FDef, Context)) {
+        bool ForcedInconsistent =
+            !typeArgsProvided(Call) &&
+            (!Rewriter::isRewritable(Call->getExprLoc()) ||
+             !canWrite(PersistentSourceLoc::mkPSL(Call, *Context).getFileName()));
         const int TyIdx = FVCon->getGenericIndex();
         if (TyIdx >= 0) {
           clang::QualType Ty = CE->getType();
           std::set<ConstraintVariable *> CVs =
               CR.getExprConstraintVarsSet(SubExpr);
-          insertBinding(Call, TyIdx, Ty, CVs);
+          insertBinding(Call, TyIdx, Ty, CVs, ForcedInconsistent);
         }
       }
     }
+  }
   return true;
 }
 
@@ -97,6 +104,7 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
       FDef = FD;
     if (auto *FVCon = Info.getFuncConstraint(FDef, Context)) {
       // if we need to rewrite it but can't (macro, etc), it isn't safe
+      // TODO: Maybe rewrite this so the expression is clearer? (also extract to function)
       bool ForcedInconsistent =
           !typeArgsProvided(CE) &&
           (!Rewriter::isRewritable(CE->getExprLoc()) ||
