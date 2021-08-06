@@ -18,8 +18,6 @@
 
 class TypeVariableEntry {
 public:
-  // TODO is there a good reason for not initializing this instance var?
-  //    can we make it an optional?
   // Note: does not initialize TyVarType!
   TypeVariableEntry() : IsConsistent(false), TypeParamConsVar(nullptr) {}
   TypeVariableEntry(QualType Ty, std::set<ConstraintVariable *> &CVs,
@@ -57,8 +55,7 @@ private:
 
   // Collection of constraint variables generated for all uses of the type
   // variable. Also should not be used when IsConsistent is false.
-  // TODO: why? is it undefined, or just not meaningful? Can we reflect this
-  //   in the type?
+  // TODO: accessor methods don't enforce this?
   std::set<ConstraintVariable *> ArgConsVars;
 
   // A single constraint variable for solving the checked type of the type
@@ -102,8 +99,7 @@ private:
   ConstraintResolver CR;
   TypeVariableMapT TVMap;
 
-  void insertBinding(CallExpr *CE, const int TyIdx, QualType Ty, CVarSet &CVs,
-                     bool ForceInconsistent = false);
+  void insertBinding(CallExpr *CE, const int TyIdx, QualType Ty, CVarSet &CVs);
 };
 
 bool typeArgsProvided(CallExpr *Call);
