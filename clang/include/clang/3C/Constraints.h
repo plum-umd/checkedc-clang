@@ -121,7 +121,9 @@ public:
     return false;
   }
 
-  bool operator!=(const Atom &Other) const override { return !(*this == Other); }
+  bool operator!=(const Atom &Other) const override {
+    return !(*this == Other);
+  }
 
   bool operator<(const Atom &Other) const override {
     if (const VarAtom *V = llvm::dyn_cast<VarAtom>(&Other))
@@ -169,7 +171,9 @@ public:
     return llvm::isa<NTArrAtom>(&Other);
   }
 
-  bool operator!=(const Atom &Other) const override { return !(*this == Other); }
+  bool operator!=(const Atom &Other) const override {
+    return !(*this == Other);
+  }
 
   bool operator<(const Atom &Other) const override { return !(*this == Other); }
 };
@@ -191,7 +195,9 @@ public:
     return llvm::isa<ArrAtom>(&Other);
   }
 
-  bool operator!=(const Atom &Other) const override { return !(*this == Other); }
+  bool operator!=(const Atom &Other) const override {
+    return !(*this == Other);
+  }
 
   bool operator<(const Atom &Other) const override {
     return !(llvm::isa<NTArrAtom>(&Other) || *this == Other);
@@ -215,7 +221,9 @@ public:
     return llvm::isa<PtrAtom>(&Other);
   }
 
-  bool operator!=(const Atom &Other) const override { return !(*this == Other); }
+  bool operator!=(const Atom &Other) const override {
+    return !(*this == Other);
+  }
 
   bool operator<(const Atom &Other) const override {
     return !(llvm::isa<ArrAtom>(&Other) || llvm::isa<NTArrAtom>(&Other) ||
@@ -240,7 +248,9 @@ public:
     return llvm::isa<WildAtom>(&Other);
   }
 
-  bool operator!=(const Atom &Other) const override { return !(*this == Other); }
+  bool operator!=(const Atom &Other) const override {
+    return !(*this == Other);
+  }
 
   bool operator<(const Atom &Other) const override {
     return !(llvm::isa<ArrAtom>(&Other) || llvm::isa<NTArrAtom>(&Other) ||
@@ -351,7 +361,9 @@ public:
     return false;
   }
 
-  bool operator!=(const Constraint &Other) const override { return !(*this == Other); }
+  bool operator!=(const Constraint &Other) const override {
+    return !(*this == Other);
+  }
 
   bool operator<(const Constraint &Other) const override {
     ConstraintKind K = Other.getKind();

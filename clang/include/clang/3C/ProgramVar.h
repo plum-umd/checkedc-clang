@@ -82,7 +82,9 @@ public:
     return clang::isa<GlobalScope>(&O);
   }
 
-  bool operator!=(const ProgramVarScope &O) const override { return !(*this == O); }
+  bool operator!=(const ProgramVarScope &O) const override {
+    return !(*this == O);
+  }
 
   bool operator<(const ProgramVarScope &O) const override { return false; }
 
@@ -113,7 +115,9 @@ public:
     return false;
   }
 
-  bool operator!=(const ProgramVarScope &O) const override { return !(*this == O); }
+  bool operator!=(const ProgramVarScope &O) const override {
+    return !(*this == O);
+  }
 
   bool operator<(const ProgramVarScope &O) const override {
     if (clang::isa<GlobalScope>(&O)) {
@@ -168,7 +172,9 @@ public:
     return false;
   }
 
-  bool operator!=(const ProgramVarScope &O) const override { return !(*this == O); }
+  bool operator!=(const ProgramVarScope &O) const override {
+    return !(*this == O);
+  }
 
   bool operator<(const ProgramVarScope &O) const override {
     if (clang::isa<GlobalScope>(&O) || clang::isa<StructScope>(&O)) {
@@ -223,7 +229,9 @@ public:
     return false;
   }
 
-  bool operator!=(const ProgramVarScope &O) const override { return !(*this == O); }
+  bool operator!=(const ProgramVarScope &O) const override {
+    return !(*this == O);
+  }
 
   bool operator<(const ProgramVarScope &O) const override {
     if (clang::isa<GlobalScope>(&O) || clang::isa<StructScope>(&O)) {
@@ -301,7 +309,9 @@ public:
     return false;
   }
 
-  bool operator!=(const ProgramVarScope &O) const override { return !(*this == O); }
+  bool operator!=(const ProgramVarScope &O) const override {
+    return !(*this == O);
+  }
 
   bool operator<(const ProgramVarScope &O) const override {
     if (clang::isa<GlobalScope>(&O) || clang::isa<FunctionParamScope>(&O) ||
@@ -358,7 +368,9 @@ public:
     return false;
   }
 
-  bool operator!=(const ProgramVarScope &O) const override { return !(*this == O); }
+  bool operator!=(const ProgramVarScope &O) const override {
+    return !(*this == O);
+  }
 
   bool operator<(const ProgramVarScope &O) const override {
     if (clang::isa<GlobalScope>(&O) || clang::isa<FunctionParamScope>(&O) ||

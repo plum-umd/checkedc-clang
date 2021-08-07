@@ -220,7 +220,8 @@ private:
 
   // For each pointer type in the declaration of D, add a variable to the
   // constraint system for that pointer type.
-  void addVariable(clang::DeclaratorDecl *D, clang::ASTContext *AstContext) override;
+  void addVariable(clang::DeclaratorDecl *D,
+                   clang::ASTContext *AstContext) override;
 };
 
 #endif
