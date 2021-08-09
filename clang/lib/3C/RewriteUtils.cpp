@@ -638,7 +638,7 @@ void RewriteConsumer::HandleTranslationUnit(ASTContext &Context) {
   }
 
   // Output files.
-  emit(R, Context, Info.StdoutModeEmittedMainFile);
+  emit(R, Context, StdoutModeEmittedMainFile);
 
   Info.getPerfStats().endRewritingTime();
 

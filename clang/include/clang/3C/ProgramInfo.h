@@ -146,12 +146,6 @@ public:
   void registerTranslationUnits(
       const std::vector<std::unique_ptr<clang::ASTUnit>> &ASTs);
 
-  // Hack to allow `emit` in RewriteUtils.cpp to avoid printing the main file to
-  // stdout multiple times in the edge case of a compilation database containing
-  // multiple translation units for the main file
-  // (https://github.com/correctcomputation/checkedc-clang/issues/374#issuecomment-893612654).
-  bool StdoutModeEmittedMainFile = false;
-
 private:
   // List of constraint variables for declarations, indexed by their location in
   // the source. This information persists across invocations of the constraint
