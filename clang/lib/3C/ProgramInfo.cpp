@@ -590,13 +590,13 @@ void ProgramInfo::specialCaseVarIntros(ValueDecl *D, ASTContext *Context) {
 
   if (isa<ParmVarDecl>(D))
     IsGeneric = PVC && PVC->getIsGeneric();
-  if (isVarArgType(D->getType().getAsString()) ||
-      (hasVoidType(D) && !IsGeneric)) {
+  bool IsVarArg = isVarArgType(D->getType().getAsString());
+  bool IsVoidPtr = hasVoidType(D) && !IsGeneric;
+  if (IsVarArg || IsVoidPtr) {
     // Set the reason for making this variable WILD.
-    std::string Rsn = "Variable type void.";
     PersistentSourceLoc PL = PersistentSourceLoc::mkPSL(D, *Context);
-    if (!D->getType()->isVoidType())
-      Rsn = "Variable type is va_list.";
+    std::string Rsn = IsVoidPtr ? "Variable type void."
+                                : "Variable type is va_list.";
     if (PVC != nullptr)
       PVC->constrainToWild(CS, Rsn, &PL);
   }
@@ -769,14 +769,8 @@ void ProgramInfo::unifyIfTypedef(const Type *Ty, ASTContext &Context,
 
 ProgramInfo::IDAndTranslationUnit ProgramInfo::getExprKey(Expr *E,
                                                           ASTContext *C) const {
-  // TODO: Main file name can be shared by multiple translation units if on file
-  //       is compiled multiple times with different defines
-  std::string Name =
-      C->getSourceManager()
-          .getFileEntryForID(C->getSourceManager().getMainFileID())
-          ->getName()
-          .str();
-  return std::make_pair(getStmtIdWorkaround(E, *C), Name);
+  return std::make_pair(getStmtIdWorkaround(E, *C),
+                        TranslationUnitIdxMap.at(C));
 }
 
 bool ProgramInfo::hasPersistentConstraints(Expr *E, ASTContext *C) const {
@@ -822,6 +816,24 @@ void ProgramInfo::storePersistentConstraints(Expr *E, const CSetBkeyPair &Vars,
   IDAndTranslationUnit Key = getExprKey(E, C);
   ExprConstraintVars[Key] = Vars;
   ExprLocations[Key] = PSL;
+}
+
+void ProgramInfo::removePersistentConstraints(Expr *E, ASTContext *C) {
+  assert(hasPersistentConstraints(E, C) &&
+         "Persistent constraints not present.");
+
+  IDAndTranslationUnit Key = getExprKey(E, C);
+
+  // Save VarAtom locations so they can be used to assign source locations to
+  // root causes.
+  for (auto *CV : ExprConstraintVars[Key].first)
+    if (auto *PVC  = dyn_cast<PointerVariableConstraint>(CV))
+      for (Atom *A : PVC->getCvars())
+        if (auto *VA = dyn_cast<VarAtom>(A))
+          DeletedAtomLocations[VA->getLoc()] = ExprLocations[Key];
+
+  ExprConstraintVars.erase(Key);
+  ExprLocations.erase(Key);
 }
 
 // The Rewriter won't let us re-write things that are in macros. So, we
@@ -995,20 +1007,6 @@ bool ProgramInfo::computeInterimConstraintState(
   std::set<Atom *> DirectWildVarAtoms;
   CS.getChkCG().getSuccessors(CS.getWild(), DirectWildVarAtoms);
 
-  // Maps each atom to the set of atoms which depend on it through an
-  // implication constraint. These atoms would not be associated with the
-  // correct root cause through a BFS because an explicit edge does not exist
-  // between the cause and these atoms. Implication firing adds an edge from
-  // WILD to the LHS conclusion ptr. The logical flow of WILDness, however, is
-  // from the premise LHS to conclusion LHS.
-  std::map<Atom *, std::set<Atom *>> ImpMap;
-  for (auto *C : getConstraints().getConstraints())
-    if (auto *Imp = dyn_cast<Implies>(C)) {
-      auto *Pre = Imp->getPremise();
-      auto *Con = Imp->getConclusion();
-      ImpMap[Pre->getLHS()].insert(Con->getLHS());
-    }
-
   CVars TmpCGrp;
   CVars OnlyIndirect;
   for (auto *A : DirectWildVarAtoms) {
@@ -1032,10 +1030,6 @@ bool ProgramInfo::computeInterimConstraintState(
       }
     };
     CS.getChkCG().visitBreadthFirst(VA, BFSVisitor);
-    if (ImpMap.find(A) != ImpMap.end())
-      for (Atom *ImpA : ImpMap[A])
-        if (isa<VarAtom>(ImpA))
-          CS.getChkCG().visitBreadthFirst(ImpA, BFSVisitor);
 
     CState.TotalNonDirectWildAtoms.insert(OnlyIndirect.begin(),
                                           OnlyIndirect.end());
@@ -1056,12 +1050,14 @@ bool ProgramInfo::computeInterimConstraintState(
   // Variables before ExprConstraintVars and making insertIntoPtrSourceMap not
   // overwrite a PSL already recorded for a given atom.
   for (const auto &I : Variables)
-    insertIntoPtrSourceMap(&(I.first), I.second);
+    insertIntoPtrSourceMap(I.first, I.second);
   for (const auto &I : ExprConstraintVars) {
-    PersistentSourceLoc *PSL = &ExprLocations[I.first];
+    PersistentSourceLoc PSL = ExprLocations[I.first];
     for (auto *J : I.second.first)
       insertIntoPtrSourceMap(PSL, J);
   }
+  for (auto E : DeletedAtomLocations)
+    CState.AtomSourceMap.insert(std::make_pair(E.first, E.second));
 
   auto &WildPtrsReason = CState.RootWildAtomsWithReason;
   for (auto *CurrC : CS.getConstraints()) {
@@ -1069,9 +1065,9 @@ bool ProgramInfo::computeInterimConstraintState(
       VarAtom *VLhs = dyn_cast<VarAtom>(EC->getLHS());
       if (EC->constraintIsChecked() && dyn_cast<WildAtom>(EC->getRHS())) {
         PersistentSourceLoc PSL = EC->getLocation();
-        const PersistentSourceLoc *APSL = CState.AtomSourceMap[VLhs->getLoc()];
-        if (!PSL.valid() && APSL && APSL->valid())
-          PSL = *APSL;
+        PersistentSourceLoc APSL = CState.AtomSourceMap[VLhs->getLoc()];
+        if (!PSL.valid() && APSL.valid())
+          PSL = APSL;
         WildPointerInferenceInfo Info(EC->getReason(), PSL);
         WildPtrsReason.insert(std::make_pair(VLhs->getLoc(), Info));
       }
@@ -1082,9 +1078,9 @@ bool ProgramInfo::computeInterimConstraintState(
   return true;
 }
 
-void ProgramInfo::insertIntoPtrSourceMap(const PersistentSourceLoc *PSL,
+void ProgramInfo::insertIntoPtrSourceMap(PersistentSourceLoc PSL,
                                          ConstraintVariable *CV) {
-  std::string FilePath = PSL->getFileName();
+  std::string FilePath = PSL.getFileName();
   if (canWrite(FilePath))
     CState.ValidSourceFiles.insert(FilePath);
 
@@ -1154,28 +1150,28 @@ void ProgramInfo::computePtrLevelStats() {
 void ProgramInfo::setTypeParamBinding(CallExpr *CE, unsigned int TypeVarIdx,
                                       ConstraintVariable *CV, ASTContext *C) {
 
-  auto PSL = PersistentSourceLoc::mkPSL(CE, *C);
-  auto CallMap = TypeParamBindings[PSL];
+  auto Key = getExprKey(CE, C);
+  auto CallMap = TypeParamBindings[Key];
   if (CallMap.find(TypeVarIdx) == CallMap.end()) {
-    TypeParamBindings[PSL][TypeVarIdx] = CV;
+    TypeParamBindings[Key][TypeVarIdx] = CV;
   } else {
     // If this CE/idx is at the same location, it's in a macro,
     // so mark it as inconsistent.
-    TypeParamBindings[PSL][TypeVarIdx] = nullptr;
+    TypeParamBindings[Key][TypeVarIdx] = nullptr;
   }
 }
 
 bool ProgramInfo::hasTypeParamBindings(CallExpr *CE, ASTContext *C) const {
-  auto PSL = PersistentSourceLoc::mkPSL(CE, *C);
-  return TypeParamBindings.find(PSL) != TypeParamBindings.end();
+  auto Key = getExprKey(CE, C);
+  return TypeParamBindings.find(Key) != TypeParamBindings.end();
 }
 
 const ProgramInfo::CallTypeParamBindingsT &
 ProgramInfo::getTypeParamBindings(CallExpr *CE, ASTContext *C) const {
-  auto PSL = PersistentSourceLoc::mkPSL(CE, *C);
+  auto Key = getExprKey(CE, C);
   assert("Type parameter bindings could not be found." &&
-         TypeParamBindings.find(PSL) != TypeParamBindings.end());
-  return TypeParamBindings.at(PSL);
+         TypeParamBindings.find(Key) != TypeParamBindings.end());
+  return TypeParamBindings.at(Key);
 }
 
 CVarOption ProgramInfo::lookupTypedef(PersistentSourceLoc PSL) {
@@ -1202,4 +1198,14 @@ void ProgramInfo::addTypedef(PersistentSourceLoc PSL, bool CanRewriteDef,
   }
   constrainWildIfMacro(V, TD->getLocation(), &PSL);
   this->TypedefVars[PSL] = {*V};
+}
+
+void ProgramInfo::registerTranslationUnits(
+    const std::vector<std::unique_ptr<clang::ASTUnit>> &ASTs) {
+  assert(TranslationUnitIdxMap.empty());
+  unsigned int Idx = 0;
+  for (const auto &AST : ASTs) {
+    TranslationUnitIdxMap[&(AST->getASTContext())] = Idx;
+    Idx++;
+  }
 }

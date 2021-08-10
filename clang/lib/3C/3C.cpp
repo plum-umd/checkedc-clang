@@ -59,6 +59,7 @@ std::set<std::string> FilePaths;
 bool DumpUnwritableChanges;
 bool AllowUnwritableChanges;
 bool AllowRewriteFailures;
+bool ItypesForExtern;
 
 #ifdef FIVE_C
 bool RemoveItypes;
@@ -159,7 +160,7 @@ public:
     return UnderlyingConsumer->getNumErrors() == 0;
   }
 
-  ~_3CDiagnosticConsumer() {
+  ~_3CDiagnosticConsumer() override {
     // We considered asserting that the state is S_Done here, but if
     // ASTUnit::LoadFromCompilerInvocation fails and returns null, the
     // _3CDiagnosticConsumer may be destructed without reaching S_Done. However,
@@ -354,6 +355,7 @@ _3CInterface::_3CInterface(const struct _3COptions &CCopt,
   DumpUnwritableChanges = CCopt.DumpUnwritableChanges;
   AllowUnwritableChanges = CCopt.AllowUnwritableChanges;
   AllowRewriteFailures = CCopt.AllowRewriteFailures;
+  ItypesForExtern = CCopt.ItypesForExtern;
 
 #ifdef FIVE_C
   RemoveItypes = CCopt.RemoveItypes;
@@ -508,6 +510,8 @@ bool _3CInterface::parseASTs() {
   _3CASTBuilderAction Action(ASTs);
   int ToolExitStatus = Tool->run(&Action);
   HadNonDiagnosticError |= (ToolExitStatus != 0);
+
+  GlobalProgramInfo.registerTranslationUnits(ASTs);
 
   return isSuccessfulSoFar();
 }

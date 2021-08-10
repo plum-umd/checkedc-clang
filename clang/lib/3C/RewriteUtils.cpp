@@ -21,73 +21,6 @@
 using namespace llvm;
 using namespace clang;
 
-SourceLocation DComp::getDeclBegin(DeclReplacement *D) const {
-  SourceLocation Begin =
-      (*D->getStatement()->decls().begin())->getSourceRange().getBegin();
-  for (const auto &DT : D->getStatement()->decls()) {
-    if (DT == D->getDecl())
-      return Begin;
-    Begin = DT->getSourceRange().getEnd();
-  }
-  llvm_unreachable("Declaration not found in DeclStmt.");
-}
-
-SourceRange DComp::getReplacementSourceRange(DeclReplacement *D) const {
-  SourceRange Range = D->getSourceRange(SM);
-
-  // Also take into account whether or not there is a multi-statement
-  // decl, because the generated ranges will overlap.
-  DeclStmt *LhStmt = D->getStatement();
-  if (LhStmt && !LhStmt->isSingleDecl()) {
-    SourceLocation NewBegin = getDeclBegin(D);
-    Range.setBegin(NewBegin);
-    // This is needed to make the subsequent test inclusive.
-    Range.setEnd(Range.getEnd().getLocWithOffset(-1));
-  }
-
-  return Range;
-}
-
-bool DComp::operator()(DeclReplacement *Lhs, DeclReplacement *Rhs) const {
-  // Does the source location of the Decl in lhs overlap at all with
-  // the source location of rhs?
-  SourceRange SrLhs = getReplacementSourceRange(Lhs);
-  SourceRange SrRhs = getReplacementSourceRange(Rhs);
-
-  SourceLocation X1 = SrLhs.getBegin();
-  SourceLocation X2 = SrLhs.getEnd();
-  SourceLocation Y1 = SrRhs.getBegin();
-  SourceLocation Y2 = SrRhs.getEnd();
-
-  if (Lhs->getStatement() == nullptr && Rhs->getStatement() == nullptr) {
-    // These are global declarations. Get the source location
-    // and compare them lexicographically.
-    PresumedLoc LHsPLocB = SM.getPresumedLoc(X2);
-    PresumedLoc RHsPLocE = SM.getPresumedLoc(Y2);
-
-    // Are both the source location valid?
-    if (LHsPLocB.isValid() && RHsPLocE.isValid()) {
-      // They are in same fine?
-      if (!strcmp(LHsPLocB.getFilename(), RHsPLocE.getFilename())) {
-        // Are they in same line?
-        if (LHsPLocB.getLine() == RHsPLocE.getLine())
-          return LHsPLocB.getColumn() < RHsPLocE.getColumn();
-
-        return LHsPLocB.getLine() < RHsPLocE.getLine();
-      }
-      return strcmp(LHsPLocB.getFilename(), RHsPLocE.getFilename()) > 0;
-    }
-    return LHsPLocB.isValid();
-  }
-
-  bool Contained = SM.isBeforeInTranslationUnit(X1, Y2) &&
-                   SM.isBeforeInTranslationUnit(Y1, X2);
-
-  if (Contained)
-    return false;
-  return SM.isBeforeInTranslationUnit(X2, Y1);
-}
-
 void GlobalVariableGroups::addGlobalDecl(Decl *VD, std::vector<Decl *> *VDVec) {
   if (VD && GlobVarGroups.find(VD) == GlobVarGroups.end()) {
     if (VDVec == nullptr)
@@ -183,12 +116,11 @@ void rewriteSourceRange(Rewriter &R, const CharSourceRange &Range,
   }
 }
 
-static void emit(Rewriter &R, ASTContext &C) {
+static void emit(Rewriter &R, ASTContext &C, bool &StdoutModeEmittedMainFile) {
   if (Verbose)
     errs() << "Writing files out\n";
 
   bool StdoutMode = (OutputPostfix == "-" && OutputDir.empty());
-  bool StdoutModeSawMainFile = false;
   SourceManager &SM = C.getSourceManager();
   // Iterate over each modified rewrite buffer.
   for (auto Buffer = R.buffer_begin(); Buffer != R.buffer_end(); ++Buffer) {
@@ -281,9 +213,15 @@ static void emit(Rewriter &R, ASTContext &C) {
 
       if (StdoutMode) {
         if (Buffer->first == SM.getMainFileID()) {
-          // This is the new version of the main file. Print it to stdout.
-          Buffer->second.write(outs());
-          StdoutModeSawMainFile = true;
+          // This is the new version of the main file. Print it to stdout,
+          // except in the edge case where we have a compilation database with
+          // multiple translation units with the same main file and we already
+          // emitted a copy of the main file for a previous translation unit
+          // (https://github.com/correctcomputation/checkedc-clang/issues/374#issuecomment-893612654).
+          if (!StdoutModeEmittedMainFile) {
+            Buffer->second.write(outs());
+            StdoutModeEmittedMainFile = true;
+          }
         } else {
           reportCustomDiagnostic(
               DE, UnwritableChangeDiagnosticLevel,
@@ -355,9 +293,10 @@ static void emit(Rewriter &R, ASTContext &C) {
     }
   }
 
-  if (StdoutMode && !StdoutModeSawMainFile) {
+  if (StdoutMode && !StdoutModeEmittedMainFile) {
     // The main file is unchanged. Write out its original content.
-    outs() << SM.getBuffer(SM.getMainFileID())->getBuffer();
+    outs() << SM.getBufferOrFake(SM.getMainFileID()).getBuffer();
+    StdoutModeEmittedMainFile = true;
   }
 }
 
@@ -410,7 +349,8 @@ private:
       // Replace the original type with this new one if the type has changed.
       if (CV->anyChanges(Vars)) {
         rewriteSourceRange(Writer, Range,
-                           CV->mkString(Info.getConstraints(), false));
+                           CV->mkString(Info.getConstraints(),
+                                        MKSTRING_OPTS(EmitName = false)));
         PState.incrementNumFixedCasts();
       }
   }
@@ -439,8 +379,9 @@ public:
         for (auto Entry : Info.getTypeParamBindings(CE, Context))
           if (Entry.second != nullptr) {
             AllInconsistent = false;
-            std::string TyStr = Entry.second->mkString(Info.getConstraints(),
-                                                       false, false, true);
+            std::string TyStr = Entry.second->mkString(
+                Info.getConstraints(),
+                MKSTRING_OPTS(EmitName = false, EmitPointee = true));
             if (TyStr.back() == ' ')
               TyStr.pop_back();
             TypeParamString += TyStr + ",";
@@ -682,7 +623,7 @@ void RewriteConsumer::HandleTranslationUnit(ASTContext &Context) {
   }
 
   // Output files.
-  emit(R, Context);
+  emit(R, Context, StdoutModeEmittedMainFile);
 
   Info.getPerfStats().endRewritingTime();
 

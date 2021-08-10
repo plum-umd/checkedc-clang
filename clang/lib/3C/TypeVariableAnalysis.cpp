@@ -72,7 +72,7 @@ bool TypeVarVisitor::VisitCastExpr(CastExpr *CE) {
   if (CHKCBindTemporaryExpr *TempE = dyn_cast<CHKCBindTemporaryExpr>(SubExpr))
     SubExpr = TempE->getSubExpr();
 
-  if (auto *Call = dyn_cast<CallExpr>(SubExpr))
+  if (auto *Call = dyn_cast<CallExpr>(SubExpr)) {
     if (auto *FD = dyn_cast_or_null<FunctionDecl>(Call->getCalleeDecl())) {
       FunctionDecl *FDef = getDefinition(FD);
       if (FDef == nullptr)
@@ -87,6 +87,7 @@ bool TypeVarVisitor::VisitCastExpr(CastExpr *CE) {
         }
       }
     }
+  }
   return true;
 }
 
@@ -96,11 +97,6 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
     if (FDef == nullptr)
       FDef = FD;
     if (auto *FVCon = Info.getFuncConstraint(FDef, Context)) {
-      // if we need to rewrite it but can't (macro, etc), it isn't safe
-      bool ForcedInconsistent =
-          !typeArgsProvided(CE) &&
-          (!Rewriter::isRewritable(CE->getExprLoc()) ||
-           !canWrite(PersistentSourceLoc::mkPSL(CE, *Context).getFileName()));
       // Visit each function argument, and if it use a type variable, insert it
       // into the type variable binding map.
       unsigned int I = 0;
@@ -113,7 +109,7 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
           Expr *Uncast = A->IgnoreImpCasts();
           std::set<ConstraintVariable *> CVs =
               CR.getExprConstraintVarsSet(Uncast);
-          insertBinding(CE, TyIdx, Uncast->getType(), CVs, ForcedInconsistent);
+          insertBinding(CE, TyIdx, Uncast->getType(), CVs);
         }
         ++I;
       }
@@ -131,12 +127,27 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
 
         // Constrain this variable GEQ the function arguments using the type
         // variable so if any of them are wild, the type argument will also be
-        // an unchecked pointer.
-        constrainConsVarGeq(P, TVEntry.second.getConstraintVariables(),
+        // an unchecked pointer. Except for realloc, which has special casing
+        // elsewhere, especially `ConstraintResolver::getExprConstraintVars`
+        // using variable `ReallocFlow`. Because `realloc` can take a wild
+        // pointer and return a safe one.
+        if (FD->getNameAsString() == "realloc") {
+          constrainConsVarGeq(P, TVEntry.second.getConstraintVariables(),
+                              Info.getConstraints(), nullptr, Wild_to_Safe, false,
+                              &Info);
+
+        } else {
+          constrainConsVarGeq(P, TVEntry.second.getConstraintVariables(),
                             Info.getConstraints(), nullptr, Safe_to_Wild, false,
                             &Info);
+      }
 
         TVEntry.second.setTypeParamConsVar(P);
+        // Since we've changed the constraint variable for this context, we
+        // need to remove the cache from the old one. Our new info will be
+        // used next request.
+        if (Info.hasPersistentConstraints(CE,Context))
+          Info.removePersistentConstraints(CE,Context);
       } else {
         // TODO: This might be too cautious.
         CR.constraintAllCVarsToWild(TVEntry.second.getConstraintVariables(),
@@ -150,8 +161,13 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
 // the exact type variable is identified by the call expression where it is
 // used and the index of the type variable type in the function declaration.
 void TypeVarVisitor::insertBinding(CallExpr *CE, const int TyIdx,
-                                   clang::QualType Ty, CVarSet &CVs,
-                                   bool ForceInconsistent) {
+                                   clang::QualType Ty, CVarSet &CVs) {
+  // if we need to rewrite it but can't (macro, etc), it isn't safe
+  bool ForceInconsistent =
+      !typeArgsProvided(CE) &&
+      (!Rewriter::isRewritable(CE->getExprLoc()) ||
+       !canWrite(PersistentSourceLoc::mkPSL(CE, *Context).getFileName()));
+
   assert(TyIdx >= 0 &&
          "Creating a type variable binding without a type variable.");
   auto &CallTypeVarMap = TVMap[CE];
