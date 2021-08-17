@@ -567,16 +567,11 @@ ProgramInfo::insertNewFVConstraint(FunctionDecl *FD, FVConstraint *NewC,
     return (*Map)[FuncName];
 
   // Error reporting
-  { // block to force DiagBuilder destructor and emit message
-    clang::DiagnosticsEngine &DE = C->getDiagnostics();
-    unsigned FailID = DE.getCustomDiagID(DiagnosticsEngine::Fatal,
-                                         "merging failed for %q0 due to %1");
-    const auto Pointer = reinterpret_cast<intptr_t>(FD);
-    const auto Kind = clang::DiagnosticsEngine::ArgumentKind::ak_nameddecl;
-    auto DiagBuilder = DE.Report(FD->getLocation(), FailID);
-    DiagBuilder.AddTaggedVal(Pointer, Kind);
-    DiagBuilder.AddString(ReasonFailed);
-  }
+  reportCustomDiagnostic(C->getDiagnostics(),
+                         DiagnosticsEngine::Fatal,
+                         "merging failed for %q0 due to %1",
+                         FD->getLocation())
+      << FD << ReasonFailed;
   // A failed merge will provide poor data, but the diagnostic error report
   // will cause the program to terminate after the variable adder step.
   return (*Map)[FuncName];
@@ -716,8 +711,8 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
 
   assert("We shouldn't be adding a null CV to Variables map." && NewCV);
   if (!canWrite(PLoc.getFileName())) {
-    NewCV->equateWithItype(*this, "Declaration in non-writable file", &PLoc);
-    NewCV->constrainToWild(CS, "Declaration in non-writable file", &PLoc);
+    NewCV->equateWithItype(*this, UNWRITABLE_REASON, &PLoc);
+    NewCV->constrainToWild(CS, UNWRITABLE_REASON, &PLoc);
   }
   constrainWildIfMacro(NewCV, D->getLocation());
   Variables[PLoc] = NewCV;
@@ -746,14 +741,8 @@ void ProgramInfo::unifyIfTypedef(const Type *Ty, ASTContext &Context,
 
 ProgramInfo::IDAndTranslationUnit ProgramInfo::getExprKey(Expr *E,
                                                           ASTContext *C) const {
-  // TODO: Main file name can be shared by multiple translation units if on file
-  //       is compiled multiple times with different defines
-  std::string Name =
-      C->getSourceManager()
-          .getFileEntryForID(C->getSourceManager().getMainFileID())
-          ->getName()
-          .str();
-  return std::make_pair(getStmtIdWorkaround(E, *C), Name);
+  return std::make_pair(getStmtIdWorkaround(E, *C),
+                        TranslationUnitIdxMap.at(C));
 }
 
 bool ProgramInfo::hasPersistentConstraints(Expr *E, ASTContext *C) const {
@@ -794,7 +783,7 @@ void ProgramInfo::storePersistentConstraints(Expr *E, const CSetBkeyPair &Vars,
   auto PSL = PersistentSourceLoc::mkPSL(E, *C);
   if (PSL.valid() && !canWrite(PSL.getFileName()))
     for (ConstraintVariable *CVar : Vars.first)
-      CVar->constrainToWild(CS, "Expression in non-writable file", &PSL);
+      CVar->constrainToWild(CS, UNWRITABLE_REASON, &PSL);
 
   IDAndTranslationUnit Key = getExprKey(E, C);
   ExprConstraintVars[Key] = Vars;
@@ -1135,28 +1124,28 @@ void ProgramInfo::setTypeParamBinding(CallExpr *CE, unsigned int TypeVarIdx,
                                       ConstraintVariable *Ident,
                                       ASTContext *C) {
 
-  auto PSL = PersistentSourceLoc::mkPSL(CE, *C);
-  auto CallMap = TypeParamBindings[PSL];
+  auto Key = getExprKey(CE, C);
+  auto CallMap = TypeParamBindings[Key];
   if (CallMap.find(TypeVarIdx) == CallMap.end()) {
-    TypeParamBindings[PSL][TypeVarIdx] = std::make_pair(CV,Ident);
+    TypeParamBindings[Key][TypeVarIdx] = std::make_pair(CV,Ident);
   } else {
     // If this CE/idx is at the same location, it's in a macro,
     // so mark it as inconsistent.
-    TypeParamBindings[PSL][TypeVarIdx] = std::make_pair(nullptr,nullptr);
+    TypeParamBindings[Key][TypeVarIdx] = std::make_pair(nullptr,nullptr);
   }
 }
 
 bool ProgramInfo::hasTypeParamBindings(CallExpr *CE, ASTContext *C) const {
-  auto PSL = PersistentSourceLoc::mkPSL(CE, *C);
-  return TypeParamBindings.find(PSL) != TypeParamBindings.end();
+  auto Key = getExprKey(CE, C);
+  return TypeParamBindings.find(Key) != TypeParamBindings.end();
 }
 
 const ProgramInfo::CallTypeParamBindingsT &
 ProgramInfo::getTypeParamBindings(CallExpr *CE, ASTContext *C) const {
-  auto PSL = PersistentSourceLoc::mkPSL(CE, *C);
+  auto Key = getExprKey(CE, C);
   assert("Type parameter bindings could not be found." &&
-         TypeParamBindings.find(PSL) != TypeParamBindings.end());
-  return TypeParamBindings.at(PSL);
+         TypeParamBindings.find(Key) != TypeParamBindings.end());
+  return TypeParamBindings.at(Key);
 }
 
 CVarOption ProgramInfo::lookupTypedef(PersistentSourceLoc PSL) {
@@ -1175,12 +1164,22 @@ void ProgramInfo::addTypedef(PersistentSourceLoc PSL, bool CanRewriteDef,
   else
     V = new PointerVariableConstraint(TD, *this, C);
 
-  auto *const Rsn = !CanRewriteDef
-                        ? "Unable to rewrite a typedef with multiple names"
-                        : "Declaration in non-writable file";
-  if (!(CanRewriteDef && canWrite(PSL.getFileName()))) {
-    V->constrainToWild(this->getConstraints(), Rsn, &PSL);
-  }
+  if (!CanRewriteDef)
+    V->constrainToWild(this->getConstraints(), "Unable to rewrite a typedef with multiple names", &PSL);
+
+  if (!canWrite(PSL.getFileName()))
+    V->constrainToWild(this->getConstraints(), UNWRITABLE_REASON, &PSL);
+
   constrainWildIfMacro(V, TD->getLocation(), &PSL);
   this->TypedefVars[PSL] = {*V};
+}
+
+void ProgramInfo::registerTranslationUnits(
+    const std::vector<std::unique_ptr<clang::ASTUnit>> &ASTs) {
+  assert(TranslationUnitIdxMap.empty());
+  unsigned int Idx = 0;
+  for (const auto &AST : ASTs) {
+    TranslationUnitIdxMap[&(AST->getASTContext())] = Idx;
+    Idx++;
+  }
 }

@@ -97,40 +97,38 @@ void rewriteSourceRange(Rewriter &R, const CharSourceRange &Range,
   if (!RewriteSuccess) {
     clang::DiagnosticsEngine &DE = R.getSourceMgr().getDiagnostics();
     bool ReportError = ErrFail && !AllowRewriteFailures;
-    {
-      // Put this in a block because Clang only allows one DiagnosticBuilder to
-      // exist at a time.
-      unsigned ErrorId = DE.getCustomDiagID(
-          ReportError ? DiagnosticsEngine::Error : DiagnosticsEngine::Warning,
-          "Unable to rewrite converted source range. Intended rewriting: "
-          "\"%0\"");
-      auto ErrorBuilder = DE.Report(Range.getBegin(), ErrorId);
-      ErrorBuilder.AddSourceRange(R.getSourceMgr().getExpansionRange(Range));
-      ErrorBuilder.AddString(NewText);
-    }
+    reportCustomDiagnostic(
+        DE,
+        ReportError ? DiagnosticsEngine::Error : DiagnosticsEngine::Warning,
+        "Unable to rewrite converted source range. Intended rewriting: "
+        "\"%0\"",
+        Range.getBegin())
+        << R.getSourceMgr().getExpansionRange(Range) << NewText;
     if (ReportError) {
-      unsigned NoteId = DE.getCustomDiagID(
-          DiagnosticsEngine::Note,
+      reportCustomDiagnostic(
+          DE, DiagnosticsEngine::Note,
           "you can use the -allow-rewrite-failures option to temporarily "
-          "downgrade this error to a warning");
-      // If we pass the location here, the macro call stack gets dumped again,
-      // which looks silly.
-      DE.Report(NoteId);
+          "downgrade this error to a warning",
+          // If we pass the location here, the macro call stack gets dumped
+          // again, which looks silly.
+          SourceLocation());
     }
   }
 }
 
-static void emit(Rewriter &R, ASTContext &C) {
+static void emit(Rewriter &R, ASTContext &C, bool &StdoutModeEmittedMainFile) {
   if (Verbose)
     errs() << "Writing files out\n";
 
   bool StdoutMode = (OutputPostfix == "-" && OutputDir.empty());
-  bool StdoutModeSawMainFile = false;
   SourceManager &SM = C.getSourceManager();
   // Iterate over each modified rewrite buffer.
   for (auto Buffer = R.buffer_begin(); Buffer != R.buffer_end(); ++Buffer) {
     if (const FileEntry *FE = SM.getFileEntryForID(Buffer->first)) {
       assert(FE->isValid());
+      // Used for diagnostics related to the file.
+      SourceLocation BeginningOfFileSourceLoc =
+          SM.translateFileLineCol(FE, 1, 1);
 
       DiagnosticsEngine &DE = C.getDiagnostics();
       DiagnosticsEngine::Level UnwritableChangeDiagnosticLevel =
@@ -140,18 +138,18 @@ static void emit(Rewriter &R, ASTContext &C) {
         // With -dump-unwritable-changes and not -allow-unwritable-changes, we
         // want the -allow-unwritable-changes note before the dump.
         if (!DumpUnwritableChanges) {
-          unsigned DumpNoteId = DE.getCustomDiagID(
-              DiagnosticsEngine::Note,
+          reportCustomDiagnostic(
+              DE, DiagnosticsEngine::Note,
               "use the -dump-unwritable-changes option to see the new version "
-              "of the file");
-          DE.Report(DumpNoteId);
+              "of the file",
+              SourceLocation());
         }
         if (!AllowUnwritableChanges) {
-          unsigned AllowNoteId = DE.getCustomDiagID(
-              DiagnosticsEngine::Note,
+          reportCustomDiagnostic(
+              DE, DiagnosticsEngine::Note,
               "you can use the -allow-unwritable-changes option to temporarily "
-              "downgrade this error to a warning");
-          DE.Report(AllowNoteId);
+              "downgrade this error to a warning",
+              SourceLocation());
         }
         if (DumpUnwritableChanges) {
           errs() << "=== Beginning of new version of " << FE->getName()
@@ -174,68 +172,63 @@ static void emit(Rewriter &R, ASTContext &C) {
       std::string FeAbsS = "";
       std::error_code EC = tryGetCanonicalFilePath(ToConv, FeAbsS);
       if (EC) {
-        unsigned ErrorId = DE.getCustomDiagID(
-            UnwritableChangeDiagnosticLevel,
+        reportCustomDiagnostic(
+            DE, UnwritableChangeDiagnosticLevel,
             "3C internal error: not writing the new version of this file due "
-            "to failure to re-canonicalize the file path provided by Clang");
-        DE.Report(SM.translateFileLineCol(FE, 1, 1), ErrorId);
-        {
-          // Put this in a block because Clang only allows one DiagnosticBuilder
-          // to exist at a time and the call to PrintExtraUnwritableChangeInfo
-          // below may create more DiagnosticBuilders.
-          unsigned NoteId =
-              DE.getCustomDiagID(DiagnosticsEngine::Note,
-                                 "file path from Clang was %0; error was: %1");
-          auto ErrorBuilder = DE.Report(NoteId);
-          ErrorBuilder.AddString(ToConv);
-          ErrorBuilder.AddString(EC.message());
-        }
+            "to failure to re-canonicalize the file path provided by Clang",
+            BeginningOfFileSourceLoc);
+        reportCustomDiagnostic(
+            DE, DiagnosticsEngine::Note,
+            "file path from Clang was %0; error was: %1",
+            SourceLocation())
+            << ToConv << EC.message();
         PrintExtraUnwritableChangeInfo();
         continue;
       }
       if (FeAbsS != ToConv) {
-        unsigned ErrorId = DE.getCustomDiagID(
-            UnwritableChangeDiagnosticLevel,
+        reportCustomDiagnostic(
+            DE, UnwritableChangeDiagnosticLevel,
             "3C internal error: not writing the new version of this file "
-            "because the file path provided by Clang was not canonical");
-        DE.Report(SM.translateFileLineCol(FE, 1, 1), ErrorId);
-        {
-          // Ditto re the block.
-          unsigned NoteId = DE.getCustomDiagID(
-              DiagnosticsEngine::Note, "file path from Clang was %0; "
-                                       "re-canonicalized file path is %1");
-          auto ErrorBuilder = DE.Report(NoteId);
-          ErrorBuilder.AddString(ToConv);
-          ErrorBuilder.AddString(FeAbsS);
-        }
+            "because the file path provided by Clang was not canonical",
+            BeginningOfFileSourceLoc);
+        reportCustomDiagnostic(
+            DE, DiagnosticsEngine::Note,
+            "file path from Clang was %0; re-canonicalized file path is %1",
+            SourceLocation())
+            << ToConv << FeAbsS;
         PrintExtraUnwritableChangeInfo();
         continue;
       }
       if (!canWrite(FeAbsS)) {
-        unsigned ID =
-            DE.getCustomDiagID(UnwritableChangeDiagnosticLevel,
+        reportCustomDiagnostic(DE, UnwritableChangeDiagnosticLevel,
                                "3C internal error: 3C generated changes to "
                                "this file even though it is not allowed to "
                                "write to the file "
                                "(https://github.com/correctcomputation/"
-                               "checkedc-clang/issues/387)");
-        DE.Report(SM.translateFileLineCol(FE, 1, 1), ID);
+                               "checkedc-clang/issues/387)",
+                               BeginningOfFileSourceLoc);
         PrintExtraUnwritableChangeInfo();
         continue;
       }
 
       if (StdoutMode) {
         if (Buffer->first == SM.getMainFileID()) {
-          // This is the new version of the main file. Print it to stdout.
-          Buffer->second.write(outs());
-          StdoutModeSawMainFile = true;
+          // This is the new version of the main file. Print it to stdout,
+          // except in the edge case where we have a compilation database with
+          // multiple translation units with the same main file and we already
+          // emitted a copy of the main file for a previous translation unit
+          // (https://github.com/correctcomputation/checkedc-clang/issues/374#issuecomment-893612654).
+          if (!StdoutModeEmittedMainFile) {
+            Buffer->second.write(outs());
+            StdoutModeEmittedMainFile = true;
+          }
         } else {
-          unsigned ID = DE.getCustomDiagID(
-              UnwritableChangeDiagnosticLevel,
+          reportCustomDiagnostic(
+              DE, UnwritableChangeDiagnosticLevel,
               "3C generated changes to this file, which is under the base dir "
               "but is not the main file and thus cannot be written in stdout "
-              "mode");
-          DE.Report(SM.translateFileLineCol(FE, 1, 1), ID);
+              "mode",
+              BeginningOfFileSourceLoc);
           PrintExtraUnwritableChangeInfo();
         }
         continue;
@@ -273,11 +266,11 @@ static void emit(Rewriter &R, ASTContext &C) {
         NFile = std::string(Tmp.str());
         EC = llvm::sys::fs::create_directories(sys::path::parent_path(NFile));
         if (EC) {
-          unsigned ID = DE.getCustomDiagID(
-              DiagnosticsEngine::Error,
-              "failed to create parent directory of output file \"%0\"");
-          auto DiagBuilder = DE.Report(SM.translateFileLineCol(FE, 1, 1), ID);
-          DiagBuilder.AddString(NFile);
+          reportCustomDiagnostic(
+              DE, DiagnosticsEngine::Error,
+              "failed to create parent directory of output file \"%0\"",
+              BeginningOfFileSourceLoc)
+              << NFile;
           continue;
         }
       }
@@ -289,10 +282,10 @@ static void emit(Rewriter &R, ASTContext &C) {
           errs() << "writing out " << NFile << "\n";
         Buffer->second.write(Out);
       } else {
-        unsigned ID = DE.getCustomDiagID(DiagnosticsEngine::Error,
-                                         "failed to write output file \"%0\"");
-        auto DiagBuilder = DE.Report(SM.translateFileLineCol(FE, 1, 1), ID);
-        DiagBuilder.AddString(NFile);
+        reportCustomDiagnostic(DE, DiagnosticsEngine::Error,
+                               "failed to write output file \"%0\"",
+                               BeginningOfFileSourceLoc)
+            << NFile;
         // This is awkward. What to do? Since we're iterating, we could have
         // created other files successfully. Do we go back and erase them? Is
         // that surprising? For now, let's just keep going.
@@ -300,9 +293,10 @@ static void emit(Rewriter &R, ASTContext &C) {
     }
   }
 
-  if (StdoutMode && !StdoutModeSawMainFile) {
+  if (StdoutMode && !StdoutModeEmittedMainFile) {
     // The main file is unchanged. Write out its original content.
     outs() << SM.getBufferOrFake(SM.getMainFileID()).getBuffer();
+    StdoutModeEmittedMainFile = true;
   }
 }
 
@@ -609,10 +603,7 @@ void RewriteConsumer::emitRootCauseDiagnostics(ASTContext &Context) {
           // SL is invalid when the File is not in the current translation unit.
           if (SL.isValid()) {
             EmittedDiagnostics.insert(PSL);
-            auto DiagBuilder = DE.Report(SL, ID);
-            DiagBuilder.AddTaggedVal(PtrCount,
-                                     DiagnosticsEngine::ArgumentKind::ak_uint);
-            DiagBuilder.AddString(WReason.second.getWildPtrReason());
+            DE.Report(SL, ID) << PtrCount << WReason.second.getWildPtrReason();
           }
         }
       }
@@ -662,7 +653,7 @@ void RewriteConsumer::HandleTranslationUnit(ASTContext &Context) {
   }
 
   // Output files.
-  emit(R, Context);
+  emit(R, Context, StdoutModeEmittedMainFile);
 
   Info.getPerfStats().endRewritingTime();
 

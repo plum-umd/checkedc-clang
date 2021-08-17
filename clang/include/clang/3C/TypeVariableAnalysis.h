@@ -100,8 +100,9 @@ public:
   bool VisitCastExpr(CastExpr *CE);
   bool VisitCallExpr(CallExpr *CE);
 
-  void getConsistentTypeParams(CallExpr *CE, std::set<unsigned int> &Types);
-  void setProgramInfoTypeVars();
+  void getConsistentTypeParams(CallExpr *CE,
+                               std::set<unsigned int> &Types) override;
+  void setProgramInfoTypeVars() override;
 
 private:
   ASTContext *Context;

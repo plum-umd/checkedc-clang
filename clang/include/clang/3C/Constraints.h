@@ -33,6 +33,7 @@ class ConstraintsGraph;
 #define DEFAULT_REASON "UNKNOWN_REASON"
 #define POINTER_IS_ARRAY_REASON "Pointer is array but alltypes is disabled."
 #define VOID_TYPE_REASON "Default void* type"
+#define UNWRITABLE_REASON "Source code in non-writable file."
 
 template <typename T> struct PComp {
   bool operator()(const T Lhs, const T Rhs) const { return *Lhs < *Rhs; }
@@ -106,25 +107,27 @@ public:
     return "";
   }
 
-  void print(llvm::raw_ostream &O) const {
+  void print(llvm::raw_ostream &O) const override {
     O << varKindToStr(KindV) << Name << "_" << Loc;
   }
 
-  void dump(void) const { print(llvm::errs()); }
+  void dump(void) const override { print(llvm::errs()); }
 
-  void dumpJson(llvm::raw_ostream &O) const {
+  void dumpJson(llvm::raw_ostream &O) const override {
     O << "\"" << varKindToStr(KindV) << Name << "_" << Loc << "\"";
   }
 
-  bool operator==(const Atom &Other) const {
+  bool operator==(const Atom &Other) const override {
     if (const VarAtom *V = llvm::dyn_cast<VarAtom>(&Other))
       return V->Loc == Loc;
     return false;
   }
 
-  bool operator!=(const Atom &Other) const { return !(*this == Other); }
+  bool operator!=(const Atom &Other) const override {
+    return !(*this == Other);
+  }
 
-  bool operator<(const Atom &Other) const {
+  bool operator<(const Atom &Other) const override {
     if (const VarAtom *V = llvm::dyn_cast<VarAtom>(&Other))
       return Loc < V->Loc;
     return false;
@@ -160,19 +163,21 @@ public:
 
   static bool classof(const Atom *S) { return S->getKind() == A_NTArr; }
 
-  void print(llvm::raw_ostream &O) const { O << "NTARR"; }
+  void print(llvm::raw_ostream &O) const override { O << "NTARR"; }
 
-  void dump(void) const { print(llvm::errs()); }
+  void dump(void) const override { print(llvm::errs()); }
 
-  void dumpJson(llvm::raw_ostream &O) const { O << "\"NTARR\""; }
+  void dumpJson(llvm::raw_ostream &O) const override { O << "\"NTARR\""; }
 
-  bool operator==(const Atom &Other) const {
+  bool operator==(const Atom &Other) const override {
     return llvm::isa<NTArrAtom>(&Other);
   }
 
-  bool operator!=(const Atom &Other) const { return !(*this == Other); }
+  bool operator!=(const Atom &Other) const override {
+    return !(*this == Other);
+  }
 
-  bool operator<(const Atom &Other) const { return !(*this == Other); }
+  bool operator<(const Atom &Other) const override { return !(*this == Other); }
 };
 
 // This refers to the constant ARR.
@@ -182,19 +187,21 @@ public:
 
   static bool classof(const Atom *S) { return S->getKind() == A_Arr; }
 
-  void print(llvm::raw_ostream &O) const { O << "ARR"; }
+  void print(llvm::raw_ostream &O) const override { O << "ARR"; }
 
-  void dump(void) const { print(llvm::errs()); }
+  void dump(void) const override { print(llvm::errs()); }
 
-  void dumpJson(llvm::raw_ostream &O) const { O << "\"ARR\""; }
+  void dumpJson(llvm::raw_ostream &O) const override { O << "\"ARR\""; }
 
-  bool operator==(const Atom &Other) const {
+  bool operator==(const Atom &Other) const override {
     return llvm::isa<ArrAtom>(&Other);
   }
 
-  bool operator!=(const Atom &Other) const { return !(*this == Other); }
+  bool operator!=(const Atom &Other) const override {
+    return !(*this == Other);
+  }
 
-  bool operator<(const Atom &Other) const {
+  bool operator<(const Atom &Other) const override {
     return !(llvm::isa<NTArrAtom>(&Other) || *this == Other);
   }
 };
@@ -206,19 +213,21 @@ public:
 
   static bool classof(const Atom *S) { return S->getKind() == A_Ptr; }
 
-  void print(llvm::raw_ostream &O) const { O << "PTR"; }
+  void print(llvm::raw_ostream &O) const override { O << "PTR"; }
 
-  void dump(void) const { print(llvm::errs()); }
+  void dump(void) const override { print(llvm::errs()); }
 
-  void dumpJson(llvm::raw_ostream &O) const { O << "\"PTR\""; }
+  void dumpJson(llvm::raw_ostream &O) const override { O << "\"PTR\""; }
 
-  bool operator==(const Atom &Other) const {
+  bool operator==(const Atom &Other) const override {
     return llvm::isa<PtrAtom>(&Other);
   }
 
-  bool operator!=(const Atom &Other) const { return !(*this == Other); }
+  bool operator!=(const Atom &Other) const override {
+    return !(*this == Other);
+  }
 
-  bool operator<(const Atom &Other) const {
+  bool operator<(const Atom &Other) const override {
     return !(llvm::isa<ArrAtom>(&Other) || llvm::isa<NTArrAtom>(&Other) ||
              *this == Other);
   }
@@ -231,19 +240,21 @@ public:
 
   static bool classof(const Atom *S) { return S->getKind() == A_Wild; }
 
-  void print(llvm::raw_ostream &O) const { O << "WILD"; }
+  void print(llvm::raw_ostream &O) const override { O << "WILD"; }
 
-  void dump(void) const { print(llvm::errs()); }
+  void dump(void) const override { print(llvm::errs()); }
 
-  void dumpJson(llvm::raw_ostream &O) const { O << "\"WILD\""; }
+  void dumpJson(llvm::raw_ostream &O) const override { O << "\"WILD\""; }
 
-  bool operator==(const Atom &Other) const {
+  bool operator==(const Atom &Other) const override {
     return llvm::isa<WildAtom>(&Other);
   }
 
-  bool operator!=(const Atom &Other) const { return !(*this == Other); }
+  bool operator!=(const Atom &Other) const override {
+    return !(*this == Other);
+  }
 
-  bool operator<(const Atom &Other) const {
+  bool operator<(const Atom &Other) const override {
     return !(llvm::isa<ArrAtom>(&Other) || llvm::isa<NTArrAtom>(&Other) ||
              llvm::isa<PtrAtom>(&Other) || *this == Other);
   }
@@ -278,8 +289,12 @@ public:
   virtual bool operator==(const Constraint &Other) const = 0;
   virtual bool operator!=(const Constraint &Other) const = 0;
   virtual bool operator<(const Constraint &Other) const = 0;
-  virtual std::string getReason() { return REASON; }
+  virtual std::string getReason() const { return REASON; }
   virtual void setReason(const std::string &Rsn) { REASON = Rsn; }
+
+  bool isUnwritable(void) const {
+    return getReason() == UNWRITABLE_REASON;
+  }
 
   const PersistentSourceLoc &getLocation() const { return PL; }
 };
@@ -305,7 +320,7 @@ public:
 
   static bool classof(const Constraint *C) { return C->getKind() == C_Geq; }
 
-  void print(llvm::raw_ostream &O) const {
+  void print(llvm::raw_ostream &O) const override {
     Lhs->print(O);
     std::string Kind = IsCheckedConstraint ? " (C)>= " : " (P)>= ";
     O << Kind;
@@ -313,9 +328,9 @@ public:
     O << ", Reason:" << REASON;
   }
 
-  void dump(void) const { print(llvm::errs()); }
+  void dump(void) const override { print(llvm::errs()); }
 
-  void dumpJson(llvm::raw_ostream &O) const {
+  void dumpJson(llvm::raw_ostream &O) const override {
     O << "{\"Geq\":{\"Atom1\":";
     Lhs->dumpJson(O);
     O << ", \"Atom2\":";
@@ -345,16 +360,18 @@ public:
 
   bool constraintIsChecked(void) const { return IsCheckedConstraint; }
 
-  bool operator==(const Constraint &Other) const {
+  bool operator==(const Constraint &Other) const override {
     if (const Geq *E = llvm::dyn_cast<Geq>(&Other))
       return *Lhs == *E->Lhs && *Rhs == *E->Rhs &&
              IsCheckedConstraint == E->IsCheckedConstraint;
     return false;
   }
 
-  bool operator!=(const Constraint &Other) const { return !(*this == Other); }
+  bool operator!=(const Constraint &Other) const override {
+    return !(*this == Other);
+  }
 
-  bool operator<(const Constraint &Other) const {
+  bool operator<(const Constraint &Other) const override {
     ConstraintKind K = Other.getKind();
     if (K == C_Geq) {
       const Geq *E = llvm::dyn_cast<Geq>(&Other);

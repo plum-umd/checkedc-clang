@@ -133,7 +133,7 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
                       dyn_cast<PVConstraint>(&Var.getValue()))
                 if (GenVar->isGeneric()) {
                   insertBinding(CE,TyIdx,Uncast->getType(),
-                                CVs,ForcedInconsistent,GenVar);
+                                CVs,GenVar);
                   ++I;
                   continue;
                 }
