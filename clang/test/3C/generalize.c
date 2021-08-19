@@ -55,6 +55,10 @@ void nameless(void *a, char *b)
 _Itype_for_any(T) void has_safe_params(_Ptr<T> i, int *t : itype(_Ptr<int>)) {}
 // CHECK: _For_any(T) void has_safe_params(_Ptr<T> i, _Ptr<int> t) _Checked {}
 
+// itypes are not conveted to generics
+int recv0(void *buf : itype(_Array_ptr<void>) byte_count(n), int n) {}
+// CHECK: int recv0(void *buf : itype(_Array_ptr<void>) byte_count(n), int n) {}
+
 // Code reduced from parsons
 _Itype_for_any(T) void sys_free(void *free_ptr : itype(_Ptr<T>));
 void extern_fp((*free_fun)(void*));

@@ -1098,17 +1098,16 @@ FunctionVariableConstraint::FunctionVariableConstraint(
   ReturnVar = FVComponentVariable(RT, RTIType, D, RETVAR, I, Ctx,
                                   &N, true, ReturnHasItype);
 
-  // Locate the void* params for potential generic use, or to mark wild
+  // Locate the void* params that were not marked wild above
+  // to either do so or use as generics
   std::vector<int> Voids;
   auto Ext = ReturnVar.ExternalConstraint;
-  if(Ext->isVoidPtr() && !Ext->isGeneric() && !Ext->isOriginallyChecked() &&
-      !Ext->srcHasItype() && Ext->getCvars().size() == 1) {
+  if(Ext->isVoidPtr() && !Ext->isGeneric()) {
     Voids.push_back(-1);
   }
   for(unsigned i=0; i < ParamVars.size();i++) {
     auto Ext = ParamVars[i].ExternalConstraint;
-    if(Ext->isVoidPtr() && !Ext->isGeneric() && !Ext->isOriginallyChecked() &&
-        !Ext->srcHasItype() && Ext->getCvars().size() == 1) {
+    if(Ext->isVoidPtr() && !Ext->isGeneric()) {
       Voids.push_back(i);
     }
   }
@@ -1116,31 +1115,24 @@ FunctionVariableConstraint::FunctionVariableConstraint(
   // Otherwise, we need to constraint the void*'s to wild
   // Exclude unwritables, external functions,
   // function pointers, and source generics for now
-  if(canWrite(FileName) && hasBody() && !IsFunctionPtr && TypeParams == 0
-       && Voids.size() == 1){
-    int Index = Voids[0];
-    if(Index == -1) {
-      ReturnVar.setGenericIndex(0);
+  // Also exclude params that are checked or have itypes
+  bool ConvertFunc = canWrite(FileName) && hasBody() && !IsFunctionPtr &&
+                        TypeParams == 0 && Voids.size() == 1;
+  bool DidConvert = false;
+  auto &CS = I.getConstraints();
+  for(int idx : Voids) {
+    FVComponentVariable *FVCV = idx == -1 ? &ReturnVar : &ParamVars[idx];
+    auto Ext = FVCV->ExternalConstraint;
+    if (ConvertFunc && !Ext->isOriginallyChecked() && !Ext->srcHasItype()) {
+      FVCV->setGenericIndex(0);
+      DidConvert = true;
     } else {
-      ParamVars[Index].setGenericIndex(0);
-    }
-    TypeParams = 1;
-  } else {
-    auto &CS = I.getConstraints();
-    for(int idx : Voids)
-      if(idx == -1){
-        auto Ext = ReturnVar.ExternalConstraint;
-        if (!Ext->isOriginallyChecked()) {
-          Ext->constrainToWild(CS, VOID_TYPE_REASON);
-        }
-      } else {
-        auto Ext = ParamVars[idx].ExternalConstraint;
-        if (!Ext->isOriginallyChecked()) {
-          Ext->constrainToWild(CS, VOID_TYPE_REASON);
-        }
+      if (!Ext->isOriginallyChecked()) {
+        Ext->constrainToWild(CS, VOID_TYPE_REASON);
       }
+    }
   }
-
+  if (DidConvert) TypeParams = 1;
 }
 
 void FunctionVariableConstraint::constrainToWild(Constraints &CS,
