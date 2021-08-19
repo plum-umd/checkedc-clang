@@ -1100,15 +1100,15 @@ FunctionVariableConstraint::FunctionVariableConstraint(
 
   // Locate the void* params for potential generic use, or to mark wild
   std::vector<int> Voids;
-  if(ReturnVar.ExternalConstraint->isVoidPtr() &&
-      !ReturnVar.ExternalConstraint->isGeneric() &&
-      ReturnVar.ExternalConstraint->getCvars().size() == 1) {
+  auto Ext = ReturnVar.ExternalConstraint;
+  if(Ext->isVoidPtr() && !Ext->isGeneric() && !Ext->isOriginallyChecked() &&
+      !Ext->srcHasItype() && Ext->getCvars().size() == 1) {
     Voids.push_back(-1);
   }
   for(unsigned i=0; i < ParamVars.size();i++) {
-    if(ParamVars[i].ExternalConstraint->isVoidPtr() &&
-        !ParamVars[i].ExternalConstraint->isGeneric() &&
-        ParamVars[i].ExternalConstraint->getCvars().size() == 1) {
+    auto Ext = ParamVars[i].ExternalConstraint;
+    if(Ext->isVoidPtr() && !Ext->isGeneric() && !Ext->isOriginallyChecked() &&
+        !Ext->srcHasItype() && Ext->getCvars().size() == 1) {
       Voids.push_back(i);
     }
   }
@@ -1129,11 +1129,15 @@ FunctionVariableConstraint::FunctionVariableConstraint(
     auto &CS = I.getConstraints();
     for(int idx : Voids)
       if(idx == -1){
-        ReturnVar.ExternalConstraint->constrainToWild(
-            CS, VOID_TYPE_REASON);
+        auto Ext = ReturnVar.ExternalConstraint;
+        if (!Ext->isOriginallyChecked()) {
+          Ext->constrainToWild(CS, VOID_TYPE_REASON);
+        }
       } else {
-        ParamVars[idx].ExternalConstraint->constrainToWild(
-            CS, VOID_TYPE_REASON);
+        auto Ext = ParamVars[idx].ExternalConstraint;
+        if (!Ext->isOriginallyChecked()) {
+          Ext->constrainToWild(CS, VOID_TYPE_REASON);
+        }
       }
   }
 
