@@ -581,6 +581,12 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
       && !FD->isGenericFunction() && !FD->isItypeGenericFunction())
     RewriteGeneric = true;
 
+  // If this was an itype but is now checked, we'll be changing
+  // "_Itype_for_any" to "_For_any"
+  if (!RewriteGeneric && FD->isItypeGenericFunction() &&
+      FDConstraint->isSolutionChecked(Info.getConstraints().getVariables()))
+    RewriteGeneric = true;
+
   // Get rewritten parameter variable declarations. Try to use
   // the source for as much as possible.
   std::vector<std::string> ParmStrs;
