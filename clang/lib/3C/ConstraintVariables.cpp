@@ -1123,7 +1123,8 @@ FunctionVariableConstraint::FunctionVariableConstraint(
   for(int idx : Voids) {
     FVComponentVariable *FVCV = idx == -1 ? &ReturnVar : &ParamVars[idx];
     auto Ext = FVCV->ExternalConstraint;
-    if (ConvertFunc && !Ext->isOriginallyChecked() && !Ext->srcHasItype()) {
+    if (ConvertFunc && !Ext->isOriginallyChecked() && !Ext->srcHasItype() &&
+        Ext->getCvars().size() == 1) {
       FVCV->setGenericIndex(0);
       DidConvert = true;
     } else {

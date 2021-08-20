@@ -59,6 +59,10 @@ _Itype_for_any(T) void has_safe_params(_Ptr<T> i, int *t : itype(_Ptr<int>)) {}
 int recv0(void *buf : itype(_Array_ptr<void>) byte_count(n), int n) {}
 // CHECK: int recv0(void *buf : itype(_Array_ptr<void>) byte_count(n), int n) {}
 
+// greater depth pointers are not converted to generics
+void double_ptr(void** dp) {}
+// CHECK: void double_ptr(void** dp) {}
+
 // Code reduced from parsons
 _Itype_for_any(T) void sys_free(void *free_ptr : itype(_Ptr<T>));
 void extern_fp((*free_fun)(void*));
