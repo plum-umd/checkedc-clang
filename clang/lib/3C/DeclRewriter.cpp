@@ -581,12 +581,6 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
       && !FD->isGenericFunction() && !FD->isItypeGenericFunction())
     RewriteGeneric = true;
 
-  // If this was an itype but is now checked, we'll be changing
-  // "_Itype_for_any" to "_For_any"
-  if (!RewriteGeneric && FD->isItypeGenericFunction() &&
-      FDConstraint->isSolutionChecked(Info.getConstraints().getVariables()))
-    RewriteGeneric = true;
-
   // Get rewritten parameter variable declarations. Try to use
   // the source for as much as possible.
   std::vector<std::string> ParmStrs;
@@ -647,6 +641,11 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
 
   ProtoHasItype |= !ItypeStr.empty();
 
+  // Generic forany and return are in the same rewrite location, so
+  // we must rewrite the return if rewriting generic
+  if (RewriteGeneric)
+    RewriteReturn = true;
+
   // If the return is a function pointer, we need to rewrite the whole
   // declaration even if no actual changes were made to the parameters because
   // the parameter for the function pointer type appear later in the source than
@@ -655,12 +654,10 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
   if (FD->getReturnType()->isFunctionPointerType() && RewriteReturn)
     RewriteParams = true;
 
-  // If we're making this into a generic function, the return must be rewritten
-  // because it's between the generic indicator and parameters, and we'll also
+  // If we're making this into a generic function, we'll
   // rewrite parameters in case there's an itype in there that won't trigger
-  // a normal rewrite.
+  // a normal rewrite. Temp fix for #678 in generics case.
   if (RewriteGeneric) {
-    RewriteReturn = true;
     RewriteParams = true;
   }
 
@@ -684,6 +681,13 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
   if (!RewriteGeneric && FDConstraint->getGenericParams() > 0
       && !FD->isGenericFunction() && !FD->isItypeGenericFunction())
     FDConstraint->resetGenericParams();
+
+  // If this was an itype but is now checked, we'll be changing
+  // "_Itype_for_any" to "_For_any"
+  if (!RewriteGeneric && FD->isItypeGenericFunction() && !ProtoHasItype) {
+    RewriteGeneric = true;
+    RewriteReturn = true;
+  }
 
   // Combine parameter and return variables rewritings into a single rewriting
   // for the entire function declaration.

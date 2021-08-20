@@ -55,7 +55,7 @@ void nameless(void *a, char *b)
 _Itype_for_any(T) void has_safe_params(_Ptr<T> i, int *t : itype(_Ptr<int>)) {}
 // CHECK: _For_any(T) void has_safe_params(_Ptr<T> i, _Ptr<int> t) _Checked {}
 
-// itypes are not conveted to generics
+// itypes are not converted to generics
 int recv0(void *buf : itype(_Array_ptr<void>) byte_count(n), int n) {}
 // CHECK: int recv0(void *buf : itype(_Array_ptr<void>) byte_count(n), int n) {}
 
