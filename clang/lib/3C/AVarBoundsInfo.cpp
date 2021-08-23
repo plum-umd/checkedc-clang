@@ -592,18 +592,37 @@ void PotentialBoundsInfo::addPotentialBoundsPOne(
 }
 
 bool AVarBoundsInfo::isValidBoundVariable(clang::Decl *D) {
+  if (D == nullptr)
+    return false;
+
+  // Any pointer declaration in an unwritable file without existing bounds
+  // annotations is not valid. This ensures we do not add bounds onto pointers
+  // where attempting to rewrite the variable to insert the bound would be an
+  // error. If there are existing bounds, no new bound will be inferred, so no
+  // rewriting will be attempted. By leaving existing bounds as valid, these
+  // bounds can be used infer bounds on other (writeable) declarations.
+  // Non-pointer types are also still valid because these will never need bounds
+  // expression, and they need to remain valid so that they can be used by
+  // existing array pointer bounds.
+  auto PSL = PersistentSourceLoc::mkPSL(D, D->getASTContext());
+  if (!canWrite(PSL.getFileName())) {
+    if (auto *DD = dyn_cast<DeclaratorDecl>(D))
+      return !DD->getType()->isPointerType() || DD->hasBoundsExpr();
+    return false;
+  }
+
   // All return and field values are valid bound variables.
-  if (D && (isa<FunctionDecl>(D) || isa<FieldDecl>(D)))
+  if (isa<FunctionDecl>(D) || isa<FieldDecl>(D))
     return true;
 
   // For Parameters, check if they belong to a valid function.
   // Function pointer types are not considered valid functions, so function
-  // pointer parameters are are disqualified as valid bound variables here.
-  if (auto *PD = dyn_cast_or_null<ParmVarDecl>(D))
+  // pointer parameters are disqualified as valid bound variables here.
+  if (auto *PD = dyn_cast<ParmVarDecl>(D))
     return PD->getParentFunctionOrMethod() != nullptr;
 
-  // For VarDecls, check if these are are not dummy and have a name.
-  if (auto *VD = dyn_cast_or_null<VarDecl>(D))
+  // For VarDecls, check if these are not dummy and have a name.
+  if (auto *VD = dyn_cast<VarDecl>(D))
     return !VD->getNameAsString().empty();
 
   return false;
@@ -662,9 +681,6 @@ bool AVarBoundsInfo::tryGetVariable(clang::Expr *E, const ASTContext &C,
     } else if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(E)) {
       auto *D = DRE->getDecl();
       Ret = tryGetVariable(D, Res);
-      if (!Ret) {
-        assert(false && "Invalid declaration found inside bounds expression");
-      }
     } else if (MemberExpr *ME = dyn_cast<MemberExpr>(E)) {
       return tryGetVariable(ME->getMemberDecl(), Res);
     } else {
