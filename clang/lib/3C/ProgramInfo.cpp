@@ -1127,11 +1127,11 @@ void ProgramInfo::setTypeParamBinding(CallExpr *CE, unsigned int TypeVarIdx,
   auto Key = getExprKey(CE, C);
   auto CallMap = TypeParamBindings[Key];
   if (CallMap.find(TypeVarIdx) == CallMap.end()) {
-    TypeParamBindings[Key][TypeVarIdx] = std::make_pair(CV,Ident);
+    TypeParamBindings[Key][TypeVarIdx] = TypeParamConstraint(CV,Ident);
   } else {
     // If this CE/idx is at the same location, it's in a macro,
     // so mark it as inconsistent.
-    TypeParamBindings[Key][TypeVarIdx] = std::make_pair(nullptr,nullptr);
+    TypeParamBindings[Key][TypeVarIdx] = TypeParamConstraint(nullptr,nullptr);
   }
 }
 

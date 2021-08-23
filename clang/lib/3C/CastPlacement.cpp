@@ -58,17 +58,9 @@ bool CastPlacementVisitor::VisitCallExpr(CallExpr *CE) {
       if (FD && PIdx < FD->getNumParams()) {
         const int TyVarIdx = FV->getExternalParam(PIdx)->getGenericIndex();
         // Check if local type vars are available
-        if (TypeVars.find(TyVarIdx) != TypeVars.end() &&
-            TypeVars[TyVarIdx].first != nullptr) {
-          if (TypeVars[TyVarIdx].second != nullptr &&
-              TypeVars[TyVarIdx].second->isSolutionChecked(
-                  Info.getConstraints().getVariables())) {
-            // use special case if available and safe
-            TypeVar = TypeVars[TyVarIdx].second;
-          } else {
-            // use common case
-            TypeVar = TypeVars[TyVarIdx].first;
-          }
+        if (TypeVars.find(TyVarIdx) != TypeVars.end()) {
+          TypeVar = TypeVars[TyVarIdx].getConstraint(
+                  Info.getConstraints().getVariables());
         }
       }
       if (TypeVar != nullptr)

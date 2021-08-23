@@ -43,18 +43,40 @@ protected:
 
 typedef std::pair<CVarSet, BKeySet> CSetBkeyPair;
 
+// The pair of CVs are the type param constraint and an optional
+// constraint used to get the generic index. A better solution would have
+// generic constraints saved within ConstraintVariables, but those don't
+// exist at this time.
+struct TypeParamConstraint {
+  ConstraintVariable *MainConstraint;
+  ConstraintVariable *GenericAddition;
+  TypeParamConstraint() :
+      MainConstraint(nullptr), GenericAddition(nullptr) {}
+  TypeParamConstraint(ConstraintVariable *M, ConstraintVariable *G) :
+      MainConstraint(M), GenericAddition(G) {}
+  // Fast. Whether `getConstraint` will return something other than nullptr.
+  bool isConsistent() const { return MainConstraint != nullptr; }
+  // Provides generic information if available and safe. This is somewhat of
+  // a hack for nested generics and returns (the constraint for) a local
+  // parameter. Otherwise, returns the generated constraint, which can also be
+  // accessed as `MainConstraint`.
+  ConstraintVariable *getConstraint(const EnvironmentMap &E) {
+    if (MainConstraint != nullptr && GenericAddition != nullptr &&
+        GenericAddition->isSolutionChecked(E)) {
+      return GenericAddition;
+    } else {
+      return MainConstraint;
+    }
+  }
+};
+
 class ProgramInfo : public ProgramVariableAdder {
 public:
 
   // This map holds similar information as the type variable map in
   // ConstraintBuilder.cpp, but it is stored in a form that is usable during
   // rewriting.
-  // The pair of CVs are the type param constraint (first) and an optional
-  // constraint for the single identifier argument, used to get the generic
-  // index if the first is void.
-  typedef std::map<unsigned int,
-                   std::pair<ConstraintVariable *,
-                             ConstraintVariable *>> CallTypeParamBindingsT;
+  typedef std::map<unsigned int, TypeParamConstraint> CallTypeParamBindingsT;
 
   typedef std::map<std::string, FVConstraint *> ExternalFunctionMapType;
   typedef std::map<std::string, ExternalFunctionMapType> StaticFunctionMapType;

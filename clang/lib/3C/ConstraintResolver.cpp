@@ -162,15 +162,9 @@ ConstraintVariable *localReturnConstraint(
   int TyVarIdx = FV->getExternalReturn()->getGenericIndex();
   // Check if local type vars are available
   if (TypeVars.find(TyVarIdx) != TypeVars.end() &&
-      TypeVars[TyVarIdx].first != nullptr) {
-    ConstraintVariable *CV = nullptr;
-    if (TypeVars[TyVarIdx].second != nullptr &&
-        TypeVars[TyVarIdx].second->isSolutionChecked(
-            Info.getConstraints().getVariables())) {
-      CV = TypeVars[TyVarIdx].second;
-    } else {
-      CV = TypeVars[TyVarIdx].first;
-    }
+      TypeVars[TyVarIdx].isConsistent()) {
+    ConstraintVariable *CV = TypeVars[TyVarIdx].getConstraint(
+            Info.getConstraints().getVariables());
     if (FV->getExternalReturn()->hasBoundsKey())
       CV->setBoundsKey(FV->getExternalReturn()->getBoundsKey());
     return CV;
@@ -462,15 +456,9 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
           bool DidInsert = false;
           IsAllocator = true;
           if (TypeVars.find(0) != TypeVars.end() &&
-              TypeVars[0].first != nullptr) {
-            ConstraintVariable *CV = nullptr;
-            if (TypeVars[0].second != nullptr
-                && TypeVars[0].second->isSolutionChecked(
-                       Info.getConstraints().getVariables())) {
-              CV = TypeVars[0].second;
-            } else {
-              CV = TypeVars[0].first;
-            }
+              TypeVars[0].isConsistent()) {
+            ConstraintVariable *CV = TypeVars[0].getConstraint(
+                       Info.getConstraints().getVariables());
             ReturnCVs.insert(CV);
             DidInsert = true;
           } else if (CE->getNumArgs() > 0) {

@@ -384,17 +384,12 @@ public:
         std::string TypeParamString;
         bool AllInconsistent = true;
         for (auto Entry : Info.getTypeParamBindings(CE, Context))
-          if (Entry.second.first != nullptr) {
+          if (Entry.second.isConsistent()) {
             AllInconsistent = false;
-            std::string TyStr;
-            if (Entry.second.second != nullptr &&
-                Entry.second.second->isSolutionChecked(Info.getConstraints().getVariables())) {
-              TyStr = Entry.second.second->mkString(
-                  Info.getConstraints(), MKSTRING_OPTS(EmitName = false, EmitPointee = true));
-            } else {
-              TyStr = Entry.second.first->mkString(
-                  Info.getConstraints(), MKSTRING_OPTS(EmitName = false, EmitPointee = true));
-            }
+            std::string TyStr = Entry.second.getConstraint(
+                Info.getConstraints().getVariables()
+              )->mkString(Info.getConstraints(), MKSTRING_OPTS(
+                EmitName = false, EmitPointee = true));
             if (TyStr.back() == ' ')
               TyStr.pop_back();
             TypeParamString += TyStr + ",";
