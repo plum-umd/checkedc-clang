@@ -63,6 +63,26 @@ int recv0(void *buf : itype(_Array_ptr<void>) byte_count(n), int n) {}
 void double_ptr(void** dp) {}
 // CHECK: void double_ptr(void** dp) {}
 
+// externs are not converted to generics
+void elsewhere(void *x, int *y);
+// CHECK: void elsewhere(void *x, int *y);
+
+// existing generics are not rewritten
+_For_any(T) void forany(T* t, _Ptr<T> p, void * v) {}
+// CHECK: _For_any(T) void forany(_Ptr<T> t, _Ptr<T> p, void * v) {}
+
+// functions with multiple potential generics are not rewritten
+void twoparams(void *a, void *b) {}
+void* inout(void *in) {}
+// CHECK: void twoparams(void *a, void *b) {}
+// CHECK: void* inout(void *in) {}
+
+// safe pointers are not converted to generics
+void safevoid(_Ptr<void> s){}
+// CHECK: void safevoid(_Ptr<void> s){}
+
+
+
 // Code reduced from parsons
 _Itype_for_any(T) void sys_free(void *free_ptr : itype(_Ptr<T>));
 void extern_fp((*free_fun)(void*));
