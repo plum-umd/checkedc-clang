@@ -447,7 +447,7 @@ void DeclRewriter::doDeclRewrite(SourceRange &SR, DeclReplacement *N) {
   rewriteSourceRange(R, SR, Replacement);
 }
 
-void DeclRewriter::rewriteFunctionDecl(FunctionDeclReplacement *N){
+void DeclRewriter::rewriteFunctionDecl(FunctionDeclReplacement *N) {
   rewriteSourceRange(R, N->getSourceRange(A.getSourceManager()),
                      N->getReplacement());
 }
