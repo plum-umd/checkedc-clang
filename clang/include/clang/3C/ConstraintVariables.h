@@ -617,11 +617,6 @@ private:
   void equateFVConstraintVars(ConstraintVariable *CV, ProgramInfo &Info) const;
 
 public:
-  FunctionVariableConstraint()
-      : ConstraintVariable(FunctionVariable, "", ""), FileName(""),
-        Hasproto(false), Hasbody(false), IsStatic(false), Parent(nullptr),
-        IsFunctionPtr(false), TypeParams(0) {}
-
   FunctionVariableConstraint(clang::DeclaratorDecl *D, ProgramInfo &I,
                              const clang::ASTContext &C);
   FunctionVariableConstraint(clang::TypedefDecl *D, ProgramInfo &I,
