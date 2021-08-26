@@ -670,24 +670,25 @@ bool AVarBoundsInfo::tryGetVariable(clang::Decl *D, BoundsKey &R) {
 
 bool AVarBoundsInfo::tryGetVariable(clang::Expr *E, const ASTContext &C,
                                     BoundsKey &Res) {
-  Optional<llvm::APSInt> OptConsVal;
-  bool Ret = false;
   if (E != nullptr) {
     E = E->IgnoreParenCasts();
-    if (E->getType()->isArithmeticType() &&
-        (OptConsVal = E->getIntegerConstantExpr(C))) {
+
+    // Get the BoundsKey for the constant value if the expression is a constant
+    // integer expression.
+    Optional<llvm::APSInt> OptConsVal = E->getIntegerConstantExpr(C);
+    if (E->getType()->isArithmeticType() && OptConsVal.hasValue()) {
       Res = getVarKey(*OptConsVal);
-      Ret = true;
-    } else if (DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(E)) {
-      auto *D = DRE->getDecl();
-      Ret = tryGetVariable(D, Res);
-    } else if (MemberExpr *ME = dyn_cast<MemberExpr>(E)) {
-      return tryGetVariable(ME->getMemberDecl(), Res);
-    } else {
-      // assert(false && "Variable inside bounds declaration is an expression");
+      return true;
     }
+
+    // For declarations or struct member references, get the bounds key for the
+    // references variables or field.
+    if (auto *DRE = dyn_cast<DeclRefExpr>(E))
+      return tryGetVariable(DRE->getDecl(), Res);
+    if (auto *ME = dyn_cast<MemberExpr>(E))
+      return tryGetVariable(ME->getMemberDecl(), Res);
   }
-  return Ret;
+  return false;
 }
 
 // Merging bounds B with the present bounds of key L at the same priority P
