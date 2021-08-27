@@ -705,18 +705,16 @@ void PointerVariableConstraint::addArrayAnnotations(
 
 bool PointerVariableConstraint::isTypedef(void) const { return IsTypedef; }
 
-void
-PointerVariableConstraint::setTypedef(ConstraintVariable *TypedefVar,
-                                      std::string S) {
+void PointerVariableConstraint::setTypedef(ConstraintVariable *TDVar,
+                                           std::string S) {
   IsTypedef = true;
+  TypedefVar = TDVar;
   TypedefString = S;
-  this->TypedefVar = TypedefVar;
 }
 
-const ConstraintVariable *
-PointerVariableConstraint::getTypedefVar() const {
+const ConstraintVariable *PointerVariableConstraint::getTypedefVar() const {
   assert(isTypedef());
-  return this->TypedefVar;
+  return TypedefVar;
 }
 
 // Mesh resolved constraints with the PointerVariableConstraints set of

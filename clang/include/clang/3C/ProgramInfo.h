@@ -162,7 +162,7 @@ public:
   void ensureNtCorrect(const QualType &QT, const ASTContext &C,
                        PointerVariableConstraint *PV);
 
-  void unifyIfTypedef(const clang::Type *, clang::ASTContext &,
+  void unifyIfTypedef(const QualType &QT, clang::ASTContext &,
                       PVConstraint *, ConsAction CA = Same_to_Same);
 
   CVarOption lookupTypedef(PersistentSourceLoc PSL);
