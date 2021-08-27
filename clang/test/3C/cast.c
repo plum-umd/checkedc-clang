@@ -45,10 +45,10 @@ void test_generic_casts(void) {
 }
 
 // Check that casts to generics use the local type variables
-int *mk_ptr(void);
+void *mk_ptr(void);
 _For_any(T) void free_ptr(_Ptr<T> p_ptr) {}
 void work (void) {
-  int *node = mk_ptr(); // wild because extern unavailable
+  int *node = mk_ptr(); // wild because void pointer
   free_ptr<int>(node);
   // CHECK: free_ptr<int>(_Assume_bounds_cast<_Ptr<int>>(node));
 }

@@ -22,7 +22,8 @@ void test3() { int *a = foo3(); }
 
 int *foo4(void);
 void test4() { int *a = foo4(); }
-//CHECK: void test4() { int *a = foo4(); }
+//CHECK: int *foo4(void) : itype(_Ptr<int>);
+//CHECK: void test4() { _Ptr<int> a = foo4(); }
 
 int *foo5(void) : itype(_Ptr<int>);
 void test5() { int *a = foo5(); }
@@ -30,13 +31,9 @@ void test5() { int *a = foo5(); }
 
 extern int *foo6(void);
 void test6() { int *a = foo6(); }
-//CHECK: void test6() { int *a = foo6(); }
+//CHECK: extern int *foo6(void) : itype(_Ptr<int>);
+//CHECK: void test6() { _Ptr<int> a = foo6(); }
 
 extern int *foo7(void) : itype(_Ptr<int>);
 void test7() { int *a = foo7(); }
 //CHECK: void test7() { _Ptr<int> a = foo7(); }
-
-// parameters are not defined and therefore unchecked
-extern int *foo8() : itype(_Ptr<int>);
-void test8() { int *a = foo8(); }
-//CHECK: void test8() { int *a = foo8(); }

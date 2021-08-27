@@ -567,8 +567,8 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
 
   // If this is an external function, there is no need to rewrite the
   // declaration. We cannot change the signature of external functions.
-  if (!FDConstraint->hasBody())
-    return true;
+  //if (!FDConstraint->hasBody())
+  //  return true;
 
   // RewriteParams and RewriteReturn track if we will need to rewrite the
   // parameter and return type declarations on this function. They are first

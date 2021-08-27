@@ -16,8 +16,8 @@ static void static_foo(int *a) {}
 //CHECK: static void static_foo(_Ptr<int> a) _Checked {}
 
 // Don't give a function an itype if it wouldn't normally be checked
-void undef_foo(int *a);
-//CHECK: void undef_foo(int *a);
+void undef_foo(void *a);
+//CHECK: void undef_foo(void *a);
 
 int *bar() { return 0; }
 //CHECK: int *bar(void) : itype(_Ptr<int>) _Checked { return 0; }

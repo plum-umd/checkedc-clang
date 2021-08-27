@@ -8,7 +8,8 @@
 #include <stdlib.h>
 
 void func(int *x : itype(_Array_ptr<int>));
-//CHECK: void func(int *x : itype(_Array_ptr<int>));
+//CHECK_NOALL: void func(int *x : itype(_Array_ptr<int>));
+//CHECK_ALL: void func(int *x : itype(_Array_ptr<int>) count(5));
 
 void foo(int *w) {
   //CHECK: void foo(_Ptr<int> w) {

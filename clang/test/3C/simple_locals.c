@@ -80,7 +80,7 @@ void gg(void) {
 #define ONE 1
 
 int goo(int *, int);
-//CHECK: int goo(int *, int);
+//CHECK: int goo(int * : itype(_Ptr<int>), int);
 
 struct blah {
   int a;
@@ -213,6 +213,7 @@ void dknbhd(void) {
 //CHECK-NEXT: int *d = *c;
 
 extern void dfefwefrw(int **);
+//CHECK: extern void dfefwefrw(int ** : itype(_Ptr<_Ptr<int>>));
 
 void cvxqqef(void) {
   int a = 0;
@@ -223,9 +224,9 @@ void cvxqqef(void) {
 
   dfefwefrw(&b);
 }
-//CHECK: void cvxqqef(void) {
+//CHECK: void cvxqqef(void) _Checked {
 //CHECK-NEXT: int a = 0;
-//CHECK-NEXT: int *b = &a;
+//CHECK-NEXT: _Ptr<int> b = &a;
 //CHECK-NEXT: _Ptr<int> c = &a;
 
 // Check that constraints involving arrays work.

@@ -11,9 +11,9 @@
 
 typedef void foo(int *);
 foo foo_impl;
-void foo_imp(int *a) {}
-//CHECK: foo foo_impl;
-//CHECK: void foo_imp(_Ptr<int> a) _Checked {}
+void foo_impl(int *a) {}
+//CHECK: void foo_impl(_Ptr<int> a);
+//CHECK: void foo_impl(_Ptr<int> a) _Checked {}
 
 typedef int *bar();
 bar bar_impl;
@@ -26,3 +26,7 @@ baz baz_impl;
 int *baz_impl(int *a) { return 0; }
 //CHECK: _Ptr<int> baz_impl(_Ptr<int> a);
 //CHECK: _Ptr<int> baz_impl(_Ptr<int> a) _Checked { return 0; }
+
+typedef void biz(int *);
+biz biz_impl;
+//CHECK: void biz_impl(int * : itype(_Ptr<int>));

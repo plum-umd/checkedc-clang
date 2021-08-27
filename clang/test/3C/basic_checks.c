@@ -54,7 +54,7 @@ int *id(int *a) { return a; }
 //CHECK: _Ptr<int> id(_Ptr<int> a) { return a; }
 
 extern int *fry(void);
-//CHECK: extern int *fry(void);
+//CHECK: extern int *fry(void) : itype(_Ptr<int>);
 
 void fret_driver(void) {
   int a = 0;
@@ -66,7 +66,7 @@ void fret_driver(void) {
 //CHECK-NEXT: int a = 0;
 //CHECK-NEXT: _Ptr<int> b = &a;
 //CHECK-NEXT: _Ptr<int> c = id(b);
-//CHECK-NEXT: int *d = fry();
+//CHECK-NEXT: _Ptr<int> d = fry();
 
 typedef int *(*fooptr)(int *, int);
 //CHECK: typedef _Ptr<_Ptr<int> (_Ptr<int>, int)> fooptr;

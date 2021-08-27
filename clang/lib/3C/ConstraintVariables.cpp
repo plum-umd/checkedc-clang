@@ -2257,7 +2257,8 @@ void FVComponentVariable::equateWithItype(ProgramInfo &I,
             "for which 3C currently does not support re-solving."
           : ReasonUnchangeable;
   bool HasBounds = ExternalConstraint->srcHasBounds();
-  bool HasItype = ExternalConstraint->srcHasItype();
+  bool SrcChecked = ExternalConstraint->isOriginallyChecked() ||
+                    ExternalConstraint->srcHasItype();
   // If the type cannot change at all (ReasonUnchangeable2 is set), then we
   // constrain both the external and internal types to not change. Otherwise, if
   // the variable has bounds, then we don't want the checked (external) portion
@@ -2265,7 +2266,7 @@ void FVComponentVariable::equateWithItype(ProgramInfo &I,
   // allow the internal type to change so that the type can change from an itype
   // to fully checked.
   bool MustConstrainInternalType = !ReasonUnchangeable2.empty();
-  if (HasItype && (MustConstrainInternalType || HasBounds)) {
+  if (SrcChecked && (MustConstrainInternalType || HasBounds)) {
     ExternalConstraint->equateWithItype(I, ReasonUnchangeable2, PSL);
     if (ExternalConstraint != InternalConstraint)
       linkInternalExternal(I, false);

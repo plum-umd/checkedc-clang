@@ -122,14 +122,14 @@ void bounds_call(void *p) {
   // CHECK: bounds_fn(p);
 }
 
-char *unused_return_unchecked();
+void *unused_return_unchecked();
 char *unused_return_checked() { return 0; }
 char *unused_return_itype() { return 1; }
-char **unused_return_unchecked_ptrptr();
-//CHECK: char *unused_return_unchecked();
+void **unused_return_unchecked_ptrptr();
+//CHECK: void *unused_return_unchecked();
 //CHECK: _Ptr<char> unused_return_checked(void) _Checked { return 0; }
 //CHECK: char *unused_return_itype(void) : itype(_Ptr<char>) _Checked { return 1; }
-//CHECK: char **unused_return_unchecked_ptrptr();
+//CHECK: void **unused_return_unchecked_ptrptr();
 
 void dont_cast_unused_return() {
   unused_return_unchecked();

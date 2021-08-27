@@ -16,7 +16,7 @@ _Array_ptr<int> baz(_Array_ptr<int> b) {
   return b;
 }
 
-void buz(int *);
+void buz(void *);
 void fiz(int * a : itype(_Array_ptr<int>) count(n), int n);
 void fuz(int * a : itype(_Array_ptr<int>)) {
 //CHECK_ALL: void fuz(int * a : itype(_Array_ptr<int>) count(4)) {

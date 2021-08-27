@@ -12,10 +12,15 @@ extern void luaC_checkGC(lua_State *);
 extern void lua_unlock(lua_State *);
 extern const char *luaO_pushvfstring(lua_State *L, const char *fmt,
                                      va_list argp);
+//CHECK: extern void lua_lock(lua_State * : itype(_Ptr<lua_State>));
+//CHECK: extern void luaC_checkGC(lua_State * : itype(_Ptr<lua_State>));
+//CHECK: extern void lua_unlock(lua_State * : itype(_Ptr<lua_State>));
+//CHECK: extern const char *luaO_pushvfstring(lua_State *L : itype(_Ptr<lua_State>), const char *fmt : itype(_Ptr<const char>), va_list argp) : itype(_Ptr<const char>);
+
 const char *lua_pushfstring(lua_State *L, const char *fmt, ...) {
-  //CHECK: const char *lua_pushfstring(lua_State *L : itype(_Ptr<lua_State>), const char *fmt : itype(_Ptr<const char>), ...) : itype(_Ptr<const char>) {
+  //CHECK: _Ptr<const char> lua_pushfstring(_Ptr<lua_State> L, _Ptr<const char> fmt, ...) {
   const char *ret;
-  //CHECK: const char *ret;
+  //CHECK: _Ptr<const char> ret = ((void *)0);
   va_list argp;
   lua_lock(L);
   va_start(argp, fmt);
