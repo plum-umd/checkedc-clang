@@ -65,7 +65,7 @@ void double_ptr(void** dp) {}
 
 // externs are not converted to generics
 void elsewhere(void *x, int *y);
-// CHECK: void elsewhere(void *x, int *y : itype(_Ptr<int>));
+// CHECK: void elsewhere(void *x, int *y);
 
 // existing generics are not rewritten
 _For_any(T) void forany(T* t, _Ptr<T> p, void * v) {}

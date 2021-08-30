@@ -8,14 +8,13 @@
 
 struct foo {
   int (*fp)(int *p);
-  // CHECK: _Ptr<int (int *p : itype(_Ptr<int>))> fp;
+  // CHECK: _Ptr<int (int *p)> fp;
 };
 
 extern int xfunc(int *arg);
-// CHECK: extern int xfunc(int *arg : itype(_Ptr<int>));
 
 int func(int *q) {
-  // CHECK: int func(int *q : itype(_Ptr<int>)) {
+  // CHECK: int func(int *q) {
   return *q;
 }
 

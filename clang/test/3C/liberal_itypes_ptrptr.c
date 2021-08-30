@@ -46,8 +46,8 @@ void ptrptr_caller() {
   //CHECK: ptrptr(_Assume_bounds_cast<_Ptr<int *>>(*g));
 }
 
-void ptrptr_wild(void **y);
-//CHECK: void ptrptr_wild(void **y);
+void ptrptr_wild(int **y);
+//CHECK: void ptrptr_wild(int **y);
 int **ptrptr_ret() { return 0; }
 //CHECK: _Ptr<int *> ptrptr_ret(void) { return 0; }
 void ptrptr_wild_caller() {

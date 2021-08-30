@@ -40,19 +40,10 @@ void baz(void) {
 }
 
 extern int xfunc(int *arg);
-//CHECK: extern int xfunc(int *arg : itype(_Ptr<int>));
 int (*fp)(int *);
-//CHECK: _Ptr<int (int * : itype(_Ptr<int>))> fp = ((void *)0);
+//CHECK: _Ptr<int (int *)> fp = ((void *)0);
 
-extern int xvoid_func(void *arg);
-//CHECK: extern int xvoid_func(void *arg);
-int (*void_fp)(void *);
-//CHECK: _Ptr<int (void *)> void_fp = ((void *)0);
-
-void addrof(void) {
-  fp = &xfunc;
-  void_fp = &xvoid_func;
-}
+void addrof(void) { fp = &xfunc; }
 
 void bif(int **x) {
   //CHECK: void bif(_Ptr<_Ptr<int>> x) _Checked {

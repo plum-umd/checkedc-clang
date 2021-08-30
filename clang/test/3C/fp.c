@@ -6,19 +6,11 @@
 // RUN: 3c -base-dir=%t.checked -alltypes %t.checked/fp.c -- | diff %t.checked/fp.c -
 
 int f(int *p);
-//CHECK: int f(int *p : itype(_Ptr<int>));
+//CHECK: int f(int *p);
 void bar() {
   int (*fp)(int *p) = f;
-  //CHECK: _Ptr<int (int *p : itype(_Ptr<int>))> fp = f;
+  //CHECK: _Ptr<int (int *p)> fp = f;
   f((void *)0);
-}
-
-int void_f(void *p);
-//CHECK: int void_f(void *p);
-void void_bar() {
-  int (*fp)(void *p) = void_f;
-  //CHECK: _Ptr<int (void *p)> fp = void_f;
-  void_f((void *)0);
 }
 
 int mul_by_2(int x) {

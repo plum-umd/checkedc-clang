@@ -1,9 +1,9 @@
 // RUN: rm -rf %t*
-// RUN: 3c -base-dir=%S -alltypes -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_ALL","CHECK" %s
-// RUN: 3c -base-dir=%S -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" %s
-// RUN: 3c -base-dir=%S -alltypes -addcr %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -
-// RUN: 3c -base-dir=%S -alltypes -output-dir=%t.checked %s --
-// RUN: 3c -base-dir=%t.checked -alltypes %t.checked/itype_undef.c -- | diff %t.checked/itype_undef.c -
+// RUN: 3c -base-dir=%S --infer-types-for-undefs -alltypes -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_ALL","CHECK" %s
+// RUN: 3c -base-dir=%S --infer-types-for-undefs -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_NOALL","CHECK" %s
+// RUN: 3c -base-dir=%S --infer-types-for-undefs -alltypes -addcr %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -
+// RUN: 3c -base-dir=%S --infer-types-for-undefs -alltypes -output-dir=%t.checked %s --
+// RUN: 3c -base-dir=%t.checked --infer-types-for-undefs -alltypes %t.checked/itype_undef.c -- | diff %t.checked/itype_undef.c -
 
 // Basic checks for adding itypes on undefined functions.
 void test0(int *a);
