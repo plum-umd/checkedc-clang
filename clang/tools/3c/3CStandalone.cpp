@@ -236,6 +236,19 @@ static cl::opt<bool> OptItypesForExtern(
            "unsafe."),
   cl::init(false), cl::cat(_3CCategory));
 
+static cl::opt<bool> OptInferTypesForUndef(
+  "infer-types-for-undefs",
+  cl::desc("Enable type inference for undefined functions. Under this flag, "
+           "types for undefined functions are inferred according to the same "
+           "rules as defined functions with the caveat that an undefined "
+           "function will only solve to an itype and not a fully checked type. "
+           "Because 3c is not able to examine the body the function, the "
+           "inferred pointer types and array bounds are not necessarily "
+           "accurate which may lead to inaccurate inference elsewhere in the "
+           "program.  It is important to manually review type inferred for "
+           "undefined functions for this reason." ),
+  cl::init(false), cl::cat(_3CCategory));
+
 #ifdef FIVE_C
 static cl::opt<bool> OptRemoveItypes(
     "remove-itypes",
@@ -302,6 +315,7 @@ int main(int argc, const char **argv) {
   CcOptions.AllowUnwritableChanges = OptAllowUnwritableChanges;
   CcOptions.AllowRewriteFailures = OptAllowRewriteFailures;
   CcOptions.ItypesForExtern = OptItypesForExtern;
+  CcOptions.InferTypesForUndefs = OptInferTypesForUndef;
 
 #ifdef FIVE_C
   CcOptions.RemoveItypes = OptRemoveItypes;
