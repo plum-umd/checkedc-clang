@@ -488,11 +488,7 @@ bool _3CInterface::buildInitialConstraints() {
 
   std::lock_guard<std::mutex> Lock(InterfaceMutex);
 
-  if (!GlobalProgramInfo.link()) {
-    errs() << "Linking failed!\n";
-    HadNonDiagnosticError = true;
-    return isSuccessfulSoFar(); // False, of course, but follow the pattern.
-  }
+  GlobalProgramInfo.link();
 
   // 2. Gather constraints.
   ConstraintBuilderConsumer CB =

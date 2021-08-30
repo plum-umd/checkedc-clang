@@ -130,7 +130,7 @@ public:
   // Called when we are done adding constraints and visiting ASTs.
   // Links information about global symbols together and adds
   // constraints where appropriate.
-  bool link();
+  void link();
 
   const VariableMap &getVarMap() const { return Variables; }
   Constraints &getConstraints() { return CS; }
@@ -269,6 +269,8 @@ private:
   // constraint system for that pointer type.
   void addVariable(clang::DeclaratorDecl *D,
                    clang::ASTContext *AstContext) override;
+
+  void linkFunction(FunctionVariableConstraint *FV);
 };
 
 #endif

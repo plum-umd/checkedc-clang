@@ -376,7 +376,7 @@ void ProgramInfo::printStats(const std::set<std::string> &F, raw_ostream &O,
   }
 }
 
-bool ProgramInfo::link() {
+void ProgramInfo::link() {
   // For every global symbol in all the global symbols that we have found
   // go through and apply rules for whether they are functions or variables.
   if (_3CGlobalOptions.Verbose)
@@ -418,47 +418,8 @@ bool ProgramInfo::link() {
 
   // For every global function that is an unresolved external, constrain
   // its parameter types to be wild. Unless it has a bounds-safe annotation.
-  for (const auto &U : ExternalFunctionFVCons) {
-    std::string FuncName = U.first;
-    FVConstraint *G = U.second;
-
-    // If there was a checked type on a variable in the input program, it
-    // should stay that way. Otherwise, we shouldn't be adding a checked type
-    // to an extern function.
-    std::string Rsn = (G->hasBody() ? ""
-                                    : "Unchecked pointer in parameter or "
-                                      "return of external function " +
-                                          FuncName);
-
-    // Handle the cases where itype parameters should not be treated as their
-    // unchecked type.
-    // TODO: Ditto re getting a PSL (in the case in which Rsn is non-empty and
-    // it is actually used).
-    G->equateWithItype(*this, Rsn, nullptr);
-
-    // If we've seen this symbol, but never seen a body for it, constrain
-    // everything about it.
-    // Some global symbols we don't need to constrain to wild, like
-    // malloc and free. Check those here and skip if we find them.
-    if (!G->hasBody()) {
-      const FVComponentVariable *Ret = G->getCombineReturn();
-      Ret->getInternal()->constrainToWild(CS, Rsn);
-      if (!_3CGlobalOptions.InferTypesForUndefs &&
-          !Ret->getExternal()->srcHasItype() &&
-          !Ret->getExternal()->isGeneric())
-        Ret->getExternal()->constrainToWild(CS, Rsn);
-
-
-      for (unsigned I = 0; I < G->numParams(); I++) {
-        const FVComponentVariable *Param = G->getCombineParam(I);
-        Param->getInternal()->constrainToWild(CS, Rsn);
-        if (!_3CGlobalOptions.InferTypesForUndefs &&
-            !Param->getExternal()->srcHasItype() &&
-            !Param->getExternal()->isGeneric())
-          Param->getExternal()->constrainToWild(CS, Rsn);
-      }
-    }
-  }
+  for (const auto &U : ExternalFunctionFVCons)
+    linkFunction(U.second);
 
   // Repeat for static functions.
   //
@@ -466,42 +427,39 @@ bool ProgramInfo::link() {
   // error during compilation. They may still be useful as code is developed,
   // so we treat them as if they are external, and constrain parameters
   // to wild as appropriate.
-  for (const auto &U : StaticFunctionFVCons) {
-    for (const auto &V : U.second) {
+  for (const auto &U : StaticFunctionFVCons)
+    for (const auto &V : U.second)
+      linkFunction(V.second);
+}
 
-      std::string FileName = U.first;
-      std::string FuncName = V.first;
-      FVConstraint *G = V.second;
+void ProgramInfo::linkFunction(FunctionVariableConstraint *FV) {
+  // If there was a checked type on a variable in the input program, it
+  // should stay that way. Otherwise, we shouldn't be adding a checked type
+  // to an undefined function.
+  std::string Rsn = (FV->hasBody() ? "" : "Unchecked pointer in parameter or "
+                                          "return of undefined function " +
+                                          FV->getName());
 
-      std::string Rsn = (G->hasBody() ? ""
-                                      : "Unchecked pointer in parameter or "
-                                        "return of static function " +
-                                            FuncName + " in " + FileName);
+  // Handle the cases where itype parameters should not be treated as their
+  // unchecked type.
+  // TODO: Ditto re getting a PSL (in the case in which Rsn is non-empty and
+  // it is actually used).
+  FV->equateWithItype(*this, Rsn, nullptr);
 
-      // TODO: Ditto re getting a PSL
-      G->equateWithItype(*this, Rsn, nullptr);
+  auto LinkComponent = [this, Rsn](const FVComponentVariable *FVC) {
+    FVC->getInternal()->constrainToWild(CS, Rsn);
+    if (!_3CGlobalOptions.InferTypesForUndefs &&
+        !FVC->getExternal()->srcHasItype() && !FVC->getExternal()->isGeneric())
+      FVC->getExternal()->constrainToWild(CS, Rsn);
+  };
 
-      if (!G->hasBody()) {
-
-        const FVComponentVariable *Ret = G->getCombineReturn();
-        Ret->getInternal()->constrainToWild(CS, Rsn);
-        if (!_3CGlobalOptions.InferTypesForUndefs &&
-            !Ret->getExternal()->srcHasItype() &&
-            !Ret->getExternal()->isGeneric())
-          Ret->getExternal()->constrainToWild(CS, Rsn);
-        for (unsigned I = 0; I < G->numParams(); I++) {
-          const FVComponentVariable *Param = G->getCombineParam(I);
-          Param->getInternal()->constrainToWild(CS, Rsn);
-          if (!_3CGlobalOptions.InferTypesForUndefs &&
-              !Param->getExternal()->srcHasItype() &&
-              !Param->getExternal()->isGeneric())
-            Param->getExternal()->constrainToWild(CS, Rsn);
-        }
-      }
-    }
+  // If we've seen this symbol, but never seen a body for it, constrain
+  // everything about it.
+  if (!FV->hasBody()) {
+    LinkComponent(FV->getCombineReturn());
+    for (unsigned I = 0; I < FV->numParams(); I++)
+      LinkComponent(FV->getCombineParam(I));
   }
-
-  return true;
 }
 
 // Populate Variables, VarDeclToStatement, RVariables, and DepthMap with
