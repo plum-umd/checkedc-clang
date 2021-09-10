@@ -41,8 +41,6 @@ struct _3COptions {
 
   bool HandleVARARGS;
 
-  bool EnablePropThruIType;
-
   std::string BaseDir;
   bool AllowSourcesOutsideBaseDir;
 

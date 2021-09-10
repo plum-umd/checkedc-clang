@@ -139,13 +139,6 @@ static cl::opt<bool> OptHandleVARARGS("handle-varargs",
                                                "sound manner"),
                                       cl::init(false), cl::cat(_3CCategory));
 
-static cl::opt<bool>
-    OptEnablePropThruIType("enable-itypeprop",
-                           cl::desc("Enable propagation of "
-                                    "constraints through ityped "
-                                    "parameters/returns."),
-                           cl::init(false), cl::cat(_3CCategory));
-
 static cl::opt<bool> OptAllTypes("alltypes",
                                  cl::desc("Consider all Checked C types for "
                                           "conversion"),
@@ -343,7 +336,6 @@ int main(int argc, const char **argv) {
   struct _3COptions CcOptions;
   CcOptions.BaseDir = OptBaseDir.getValue();
   CcOptions.AllowSourcesOutsideBaseDir = OptAllowSourcesOutsideBaseDir;
-  CcOptions.EnablePropThruIType = OptEnablePropThruIType;
   CcOptions.HandleVARARGS = OptHandleVARARGS;
   CcOptions.DumpStats = OptDumpStats;
   CcOptions.OutputPostfix = OptOutputPostfix.getValue();
