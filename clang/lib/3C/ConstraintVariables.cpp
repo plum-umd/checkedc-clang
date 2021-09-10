@@ -14,7 +14,6 @@
 #include "clang/3C/ProgramInfo.h"
 #include "clang/Lex/Lexer.h"
 #include "llvm/ADT/StringSwitch.h"
-#include "llvm/Support/CommandLine.h"
 #include <sstream>
 
 using namespace clang;
