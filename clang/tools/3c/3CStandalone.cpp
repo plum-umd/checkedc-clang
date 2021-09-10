@@ -254,6 +254,49 @@ static cl::opt<bool> OptInferTypesForUndef(
            "available documentation)."),
   cl::init(false), cl::cat(_3CCategory));
 
+
+static cl::OptionCategory SolverCategory("solver options");
+static cl::opt<bool> OptDebugSolver("debug-solver",
+                                 cl::desc("Dump intermediate solver state"),
+                                 cl::init(false), cl::cat(SolverCategory));
+static cl::opt<bool> OptOnlyGreatestSol(
+  "only-g-sol",
+  cl::desc("Perform only greatest solution for Pty Constrains."),
+  cl::init(false), cl::cat(SolverCategory));
+
+static cl::opt<bool>
+  OptOnlyLeastSol("only-l-sol",
+               cl::desc("Perform only least solution for Pty Constrains."),
+               cl::init(false), cl::cat(SolverCategory));
+
+static cl::OptionCategory OptimizationCategory("Optimization category");
+static llvm::cl::opt<bool>
+  OptDisableRDs("disable-rds",
+             llvm::cl::desc("Disable reverse edges for Checked Constraints."),
+             llvm::cl::init(false), llvm::cl::cat(OptimizationCategory));
+
+static llvm::cl::opt<bool> OptDisableFunctionEdges(
+  "disable-fnedgs",
+  llvm::cl::desc("Disable reverse edges for external functions."),
+  llvm::cl::init(false), llvm::cl::cat(OptimizationCategory));
+
+static cl::OptionCategory ArrBoundsInferCat("Array bounds inference options");
+static cl::opt<bool>
+  OptDisableArrH("disable-arr-hu",
+                 cl::desc("Disable Array Bounds Inference Heuristics."),
+                 cl::init(false), cl::cat(ArrBoundsInferCat));
+
+static cl::opt<bool>
+  DebugArrSolver("debug-arr-solver",
+                 cl::desc("Dump array bounds inference graph"),
+                 cl::init(false), cl::cat(ArrBoundsInferCat));
+
+static cl::opt<bool> OptDisableInfDecls("disable-arr-missd",
+                                     cl::desc("Disable ignoring of missed "
+                                              "bounds from declarations."),
+                                     cl::init(false),
+                                     cl::cat(ArrBoundsInferCat));
+
 #ifdef FIVE_C
 static cl::opt<bool> OptRemoveItypes(
     "remove-itypes",
@@ -321,6 +364,14 @@ int main(int argc, const char **argv) {
   CcOptions.AllowRewriteFailures = OptAllowRewriteFailures;
   CcOptions.ItypesForExtern = OptItypesForExtern;
   CcOptions.InferTypesForUndefs = OptInferTypesForUndef;
+  CcOptions.DebugSolver = OptDebugSolver;
+  CcOptions.OnlyGreatestSol = OptOnlyGreatestSol;
+  CcOptions.OnlyLeastSol = OptOnlyLeastSol;
+  CcOptions.DisableRDs = OptDisableRDs;
+  CcOptions.DisableFunctionEdges = OptDisableFunctionEdges;
+  CcOptions.DisableInfDecls = OptDisableInfDecls;
+  CcOptions.DisableArrH = OptDisableArrH;
+  CcOptions.DebugArrSolver = DebugArrSolver;
 
 #ifdef FIVE_C
   CcOptions.RemoveItypes = OptRemoveItypes;

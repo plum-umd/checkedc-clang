@@ -69,6 +69,22 @@ struct _3COptions {
   bool ItypesForExtern;
 
   bool InferTypesForUndefs;
+
+  bool DebugSolver;
+
+  bool OnlyGreatestSol;
+
+  bool OnlyLeastSol;
+
+  bool DisableRDs;
+
+  bool DisableFunctionEdges;
+
+  bool DisableInfDecls;
+
+  bool DisableArrH;
+
+  bool DebugArrSolver;
 };
 
 // NOLINTNEXTLINE(readability-identifier-naming)
