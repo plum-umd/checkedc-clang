@@ -971,11 +971,7 @@ bool ProgramInfo::computeInterimConstraintState(
 
   CState.clear();
   std::set<Atom *> DirectWildVarAtoms;
-  std::vector<ConstraintsGraph::EdgeType*> DWVA;
-  CS.getChkCG().getSuccessors(CS.getWild(), DWVA);
-  for (auto A : DWVA) {
-    DirectWildVarAtoms.insert(A->getTargetNode().getData());
-  }
+  CS.getChkCG().getSuccessors(CS.getWild(), DirectWildVarAtoms);
 
   CVars TmpCGrp;
   CVars OnlyIndirect;

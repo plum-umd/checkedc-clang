@@ -156,13 +156,15 @@ public:
     }
   }
 
-  bool getNeighbors(Data D, std::set<Data> &DataSet, bool Succ,
-                    bool Append = false, bool IgnoreSoftEdges = false) {
+  // This version provides more info by returning graph edges
+  // rather than data items
+  bool getIncidentEdges(Data D, std::set<EdgeType*> &EdgeSet, bool Succ,
+                        bool Append = false, bool IgnoreSoftEdges = false) {
     NodeType *N = this->findNode(D);
     if (N == nullptr)
       return false;
     if (!Append)
-      DataSet.clear();
+      EdgeSet.clear();
     llvm::SetVector<EdgeType *> Edges;
     if (Succ)
       Edges = N->getEdges();
@@ -170,8 +172,30 @@ public:
       Edges = N->getPredecessors();
     for (auto *E : Edges)
       if (!E->IsSoft || !IgnoreSoftEdges)
-        DataSet.insert(E->getTargetNode().getData());
+        EdgeSet.insert(E);
+    return !EdgeSet.empty();
+  }
+
+  bool getNeighbors(Data D, std::set<Data> &DataSet, bool Succ,
+                    bool Append = false, bool IgnoreSoftEdges = false) {
+    if (!Append)
+      DataSet.clear();
+
+    std::set<EdgeType *> Edges;
+    getIncidentEdges(D, Edges, Succ, Append, IgnoreSoftEdges);
+    for (auto *E : Edges)
+      DataSet.insert(E->getTargetNode().getData());
     return !DataSet.empty();
+  }
+
+  bool getSuccessorsEdges(Atom *A, std::set<EdgeType*> &EdgeSet,
+                     bool Append = false) {
+    return getIncidentEdges(A, EdgeSet, true, Append);
+  }
+
+  bool getPredecessorsEdges(Atom *A, std::set<EdgeType*> &EdgeSet,
+                            bool Append = false) {
+    return getIncidentEdges(A, EdgeSet, false, Append);
   }
 
   bool getSuccessors(Data D, std::set<Data> &DataSet, bool Append = false) {
@@ -242,33 +266,6 @@ public:
   std::set<ConstAtom *> &getAllConstAtoms();
 
   typedef DataEdge<Atom*> EdgeType;
-
-  // This version provides more info by returning graph edges
-  // rather than data items
-  bool getNeighbors(Atom *A, std::vector<EdgeType*> &DataSet, bool Succ,
-                    bool Append = false, bool IgnoreSoftEdges = false) {
-    NodeType *N = this->findNode(A);
-    if (N == nullptr)
-      return false;
-    if (!Append)
-      DataSet.clear();
-    auto Edges = Succ ? N->getEdges() : N->getPredecessors();
-    for (auto *E : Edges)
-      if (!E->IsSoft || !IgnoreSoftEdges)
-        DataSet.push_back(E);
-    return !DataSet.empty();
-  }
-
-  bool getSuccessors(Atom *A, std::vector<EdgeType*> &DataSet,
-                     bool Append = false) {
-    return getNeighbors(A, DataSet, true, Append);
-  }
-
-  bool getPredecessors(Atom *A, std::vector<EdgeType*> &DataSet,
-                       bool Append = false) {
-    return getNeighbors(A, DataSet, false, Append);
-  }
-
 protected:
   // Add vertex is overridden to save const atoms as they are added to the graph
   // so that getAllConstAtoms can efficiently retrieve them.
