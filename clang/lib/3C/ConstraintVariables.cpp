@@ -1172,7 +1172,7 @@ FunctionVariableConstraint::FunctionVariableConstraint(
       DidConvert = true;
     } else {
       if (!Ext->isOriginallyChecked()) {
-        Ext->constrainToWild(CS, ReasonLoc(VOID_TYPE_REASON,PSL));
+        Ext->constrainToWild(CS, ReasonLoc(VOID_TYPE_REASON, PSL));
       }
     }
   }
