@@ -725,7 +725,7 @@ void ProgramInfo::unifyIfTypedef(const QualType &QT, ASTContext &Context,
     auto *TDecl = TDT->getDecl();
     auto PSL = PersistentSourceLoc::mkPSL(TDecl, Context);
     auto O = lookupTypedef(PSL);
-    auto Rsn = ReasonLoc("typedef",PSL);
+    auto Rsn = ReasonLoc("typedef", PSL);
     if (O.hasValue()) {
       auto *Bounds = &O.getValue();
       P->setTypedef(Bounds, TDecl->getNameAsString());
