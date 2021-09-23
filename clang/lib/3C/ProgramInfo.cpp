@@ -450,7 +450,7 @@ void ProgramInfo::linkFunction(FunctionVariableConstraint *FV) {
   // unchecked type.
   // TODO: Ditto re getting a PSL (in the case in which Rsn is non-empty and
   // it is actually used).
-  auto Reason = ReasonLoc(Rsn,PersistentSourceLoc());
+  auto Reason = ReasonLoc(Rsn, PersistentSourceLoc());
   FV->equateWithItype(*this, Reason);
 
   // Used to apply constraints to parameters and returns for function without a
