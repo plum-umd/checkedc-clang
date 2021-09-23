@@ -438,7 +438,10 @@ bool Constraints::graphBasedSolve() {
         auto ConflictAtom = Conflict->getTargetNode().getData();
         assert(ConflictAtom != nullptr);
         ReasonLoc Rsn1 = Conflict->EdgeConstraint->getReason();
-        // determine a second reason
+        // Determine a second from the constraints immediately indecent to the
+        // conflicting atom. A future improvement should traverse the
+        // constraint graph to find the contradictory constraints to constant
+        // atoms. See correctcomputation/checkedc-clang#680.
         auto Succs = Conflict->getTargetNode().getEdges();
         ReasonLoc Rsn2;
         for (auto *Succ : Succs) {
