@@ -384,7 +384,7 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
             if (auto *PCV = dyn_cast<PVConstraint>(CV)) {
               // On the other hand, CheckedC does let you take the address of
               // constant sized arrays.
-              if (!PCV->getArrPresent()) {
+              if (!PCV->isConstantArr()) {
                 auto Rsn = ReasonLoc(
                     "Operand of address-of has PTR lower bound", ExprPSL);
                 PCV->constrainOuterTo(CS, CS.getPtr(), Rsn, true);
