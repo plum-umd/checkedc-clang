@@ -490,7 +490,7 @@ PointerVariableConstraint::PointerVariableConstraint(
 
       // Incomplete arrays are lower bounded to ARR because the transformation
       // int[] -> _Ptr<int> is permitted while int[1] -> _Ptr<int> is not.
-      auto Rsn = ReasonLoc(ARRAY_REASON,PSL);
+      auto Rsn = ReasonLoc(ARRAY_REASON, PSL);
       if (IsIncompleteArr)
         CS.addConstraint(CS.createGeq(VA, CS.getArr(), Rsn, false));
       else if (IsArr)
