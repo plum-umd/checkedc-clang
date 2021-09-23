@@ -607,7 +607,7 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
         // function to the function map anyways. The function map indexes by
         // function name, so there's no collision.
         insertNewFVConstraint(FD, F, AstContext);
-        constrainWildIfMacro(F, FD->getLocation(),ReasonLoc(MACRO_REASON, PLoc));
+        constrainWildIfMacro(F, FD->getLocation(), ReasonLoc(MACRO_REASON, PLoc));
       } else {
         // A function with the same name exists in the same source location.
         // This happens when a function is defined in a header file which is
