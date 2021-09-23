@@ -1044,7 +1044,7 @@ bool ProgramInfo::computeInterimConstraintState(
           PersistentSourceLoc P = Reason.Location;
           if (!P.valid() && APSL.valid())
             P = APSL;
-          Info.addReason(ReasonLoc(Reason.Reason,P));
+          Info.addReason(ReasonLoc(Reason.Reason, P));
         }
         WildPtrsReason.insert(std::make_pair(VLhs->getLoc(), Info));
       }
