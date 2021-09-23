@@ -556,7 +556,7 @@ PointerVariableConstraint::PointerVariableConstraint(
       VarAtom *VI = dyn_cast<VarAtom>(Vars[VarIdx]);
       VarAtom *VJ = dyn_cast<VarAtom>(Vars[VarIdx + 1]);
       if (VI && VJ)
-        CS.addConstraint(new Geq(VJ, VI,ReasonLoc(INNER_POINTER_REASON,PSL)));
+        CS.addConstraint(new Geq(VJ, VI, ReasonLoc(INNER_POINTER_REASON, PSL)));
     }
   }
 }
