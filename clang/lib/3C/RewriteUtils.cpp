@@ -605,7 +605,7 @@ void RewriteConsumer::emitRootCauseDiagnostics(ASTContext &Context) {
                 SM.getFileManager().getFile(NPSL.getFileName());
             if (!NFile.getError()) {
               SourceLocation NSL = SM.translateFileLineCol(
-                  *File, NPSL.getLineNo(), NPSL.getColSNo());
+                  *NFile, NPSL.getLineNo(), NPSL.getColSNo());
               if (NSL.isValid()) {
                 unsigned NID = DE.getCustomDiagID(DiagnosticsEngine::Note, "%0");
                 DE.Report(NSL, NID) << Note.Reason;
