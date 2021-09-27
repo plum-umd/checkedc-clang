@@ -599,6 +599,11 @@ void RewriteConsumer::emitRootCauseDiagnostics(ASTContext &Context) {
             EmittedDiagnostics.insert(PSL);
             DE.Report(SL, ID) << PtrCount << WReason.second.getReason();
           }
+          // if notes have sources in other files, these files may not
+          // be in the same TU and will not be displayed. At the initial
+          // time of this comment, that was expected to be very rare.
+          // see https://github.com/correctcomputation/checkedc-clang/pull/708#discussion_r716903129
+          // for a discussion
           for (auto &Note : WReason.second.additionalNotes()) {
             PersistentSourceLoc NPSL = Note.Location;
             llvm::ErrorOr<const clang::FileEntry *> NFile =
