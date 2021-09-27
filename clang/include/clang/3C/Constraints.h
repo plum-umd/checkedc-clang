@@ -307,7 +307,11 @@ public:
   virtual bool operator<(const Constraint &Other) const = 0;
   virtual std::string getReasonText() const { return Reason.Reason; }
   virtual const ReasonLoc &getReason() const { return Reason; }
-  virtual void setReason(const ReasonLoc &Rsn) { Reason = Rsn; }
+  // Alter the internal reason and remove any additional reasons
+  virtual void setReason(const ReasonLoc &Rsn) {
+    Reason = Rsn;
+    ExtraReasons.clear();
+  }
   virtual std::vector<ReasonLoc> &additionalReasons() { return ExtraReasons; }
   // include additional reasons that will appear in output as notes
   virtual void addReason(const ReasonLoc &Rsn) {
