@@ -833,10 +833,31 @@ PointerVariableConstraint::mkString(Constraints &CS,
     if (!ForItype && InferredGenericIndex == -1 && isVoidPtr())
       K = Atom::A_Wild;
 
+    // In a case like `_Ptr<T> g[1]`, we need to push the ` g` onto EndStrs
+    // before we can push the `>` and start drilling into T.
+    //
+    // Exception: In a case like `int *g[1]`, we don't want an extra space after
+    // the `*` but we don't yet know whether we have a `*`, so we skip emitting
+    // the name. We have to also skip the addArrayAnnotations because it would
+    // cause the array annotations to be emitted before the name.
+    //
+    // Exception to the exception: In a case like `void (*fs[2])()`, we still
+    // want to avoid emitting the name (which would add an extra space after the
+    // `*`), but we _do_ need to call addArrayAnnotations so the array
+    // annotations end up with the variable name rather than after the function
+    // parameter list. The function pointer code knows to emit the name before
+    // EndStrs.
+    //
+    // This passes the current regression tests but feels very ad-hoc.
+    // REVIEW: Help me redesign this code!
     if (PrevArr && ArrSizes.at(TypeIdx).first != O_SizedArray && !EmittedName) {
-      EmittedName = true;
-      addArrayAnnotations(ConstArrs, EndStrs);
-      EndStrs.push_front(" " + UseName);
+      if (K != Atom::A_Wild || FV != nullptr) {
+        addArrayAnnotations(ConstArrs, EndStrs);
+      }
+      if (K != Atom::A_Wild) {
+        EmittedName = true;
+        EndStrs.push_front(" " + UseName);
+      }
     }
     PrevArr = ArrSizes.at(TypeIdx).first == O_SizedArray;
 
@@ -926,6 +947,8 @@ PointerVariableConstraint::mkString(Constraints &CS,
   // the the stack array type.
   if (PrevArr && !EmittedName && AllArrays) {
     EmittedName = true;
+    // Note: If the whole type is an array, we can't have a "*", so we don't
+    // need to worry about an extra space.
     EndStrs.push_front(" " + UseName);
   }
 
