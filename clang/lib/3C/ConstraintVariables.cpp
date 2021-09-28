@@ -1001,7 +1001,7 @@ PointerVariableConstraint::mkString(Constraints &CS,
       Ss << Str;
   }
 
-  if (IsReturn && !ForItype)
+  if (IsReturn && !ForItype && !StringRef(Ss.str()).endswith("*"))
     Ss << " ";
 
   return Ss.str();
