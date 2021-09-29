@@ -848,8 +848,11 @@ PointerVariableConstraint::mkString(Constraints &CS,
     // parameter list. The function pointer code knows to emit the name before
     // EndStrs.
     //
-    // This passes the current regression tests but feels very ad-hoc.
-    // REVIEW: Help me redesign this code!
+    // This feels very ad-hoc but currently helps a number of the more complex
+    // regression tests and makes mkString correct in some additional cases in
+    // which 3C currently doesn't use it but might use it in the future. We hope
+    // to eventually overhaul this code
+    // (https://github.com/correctcomputation/checkedc-clang/issues/703).
     if (PrevArr && ArrSizes.at(TypeIdx).first != O_SizedArray && !EmittedName) {
       if (K != Atom::A_Wild || FV != nullptr) {
         addArrayAnnotations(ConstArrs, EndStrs);
