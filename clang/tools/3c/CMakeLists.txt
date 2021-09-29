@@ -32,3 +32,7 @@ target_link_libraries(3c
 
 install(TARGETS 3c
   RUNTIME DESTINATION bin)
+
+# Currently, clang/tools/3c/utils/code_style has a CMakeLists.txt file but
+# clang/tools/3c/utils does not.
+add_subdirectory(utils/code_style)

@@ -45,8 +45,8 @@ void DeclRewriter::buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
   // checked type, it is not rewritten, so it remains unchecked in the converted
   // code.
   bool IsUncheckedTypedef =
-    Defn->isTypedef() && (_3COpts.ItypesForExtern ||
-                          !Defn->getTypedefVar()->isSolutionChecked(Env));
+      Defn->isTypedef() && (_3COpts.ItypesForExtern ||
+                            !Defn->getTypedefVar()->isSolutionChecked(Env));
   // True if this variable is defined by a typedef, and the constraint variable
   // representing the typedef solves to a checked type. Notably not the negation
   // of IsUncheckedTypedef because both require the variable type be defined
@@ -69,9 +69,9 @@ void DeclRewriter::buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
     // extra set of parenthesis (e.g. `void ((*f)())` instead of `void (f*)()`)
     // for the declaration to parse correctly. qtyToStr (which is used by
     // getOriginalTypeWithName) does not support adding these parentheses.
-    Type = Defn->mkString(Info.getConstraints(),
-                          MKSTRING_OPTS(UnmaskTypedef = IsCheckedTypedef,
-                                        ForItypeBase = true));
+    Type = Defn->mkString(
+        Info.getConstraints(),
+        MKSTRING_OPTS(UnmaskTypedef = IsCheckedTypedef, ForItypeBase = true));
   } else {
     // In the remaining cases, the unchecked portion of the itype is just the
     // original type of the pointer. The first branch tries to generate the type
@@ -190,8 +190,8 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
 
         std::string NewTy = getStorageQualifierString(D);
         bool IsExternGlobalVar =
-          isa<VarDecl>(D) &&
-          cast<VarDecl>(D)->getFormalLinkage() == Linkage::ExternalLinkage;
+            isa<VarDecl>(D) &&
+            cast<VarDecl>(D)->getFormalLinkage() == Linkage::ExternalLinkage;
         if (_3COpts.ItypesForExtern &&
             (isa<FieldDecl>(D) || IsExternGlobalVar)) {
           // Give record fields and global variables itypes when using
@@ -599,8 +599,8 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
   }
 
   // If we've made this generic we need add "_For_any" or "_Itype_for_any"
-  if (FDConstraint->getGenericParams() > 0
-      && !FD->isGenericFunction() && !FD->isItypeGenericFunction())
+  if (FDConstraint->getGenericParams() > 0 && !FD->isGenericFunction() &&
+      !FD->isItypeGenericFunction())
     RewriteGeneric = true;
 
   // Get rewritten parameter variable declarations. Try to use
@@ -656,8 +656,8 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
   // For now we still need to check if this needs rewriting, see FIXME below
   // if (!DeclIsTypedef)
   this->buildDeclVar(FDConstraint->getCombineReturn(), FD, ReturnVar, ItypeStr,
-                   "", RewriteGeneric, RewriteParams,
-                   RewriteReturn, FD->isStatic());
+                     "", RewriteGeneric, RewriteParams, RewriteReturn,
+                     FD->isStatic());
 
   ProtoHasItype |= !ItypeStr.empty();
 
@@ -707,8 +707,8 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
   // Mirrors the check above that sets RewriteGeneric to true.
   // If we've decided against making this generic, remove the generic params
   // so later rewrites (of typeparams) don't happen
-  if (!RewriteGeneric && FDConstraint->getGenericParams() > 0
-      && !FD->isGenericFunction() && !FD->isItypeGenericFunction())
+  if (!RewriteGeneric && FDConstraint->getGenericParams() > 0 &&
+      !FD->isGenericFunction() && !FD->isItypeGenericFunction())
     FDConstraint->resetGenericParams();
 
   // If this was an itype but is now checked, we'll be changing
@@ -726,10 +726,9 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
       NewSig += "_Itype_for_any(T";
     else
       NewSig += "_For_any(T";
-    for (int i = 0; i < FDConstraint->getGenericParams() - 1; i++) {
-      assert(i < 2 &&
-             "Need an unexpected number of type variables");
-      NewSig += std::begin({",U",",V"})[i];
+    for (int I = 0; I < FDConstraint->getGenericParams() - 1; I++) {
+      assert(I < 2 && "Need an unexpected number of type variables");
+      NewSig += std::begin({",U", ",V"})[I];
     }
     NewSig += ") ";
   }
@@ -758,9 +757,8 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
   // Add new declarations to RewriteThese if it has changed
   if (RewriteReturn || RewriteParams) {
     RewriteThese.insert(std::make_pair(
-        FD,
-        new FunctionDeclReplacement(FD, NewSig, RewriteReturn,
-                                    RewriteParams, RewriteGeneric)));
+        FD, new FunctionDeclReplacement(FD, NewSig, RewriteReturn,
+                                        RewriteParams, RewriteGeneric)));
   }
 
   return true;
@@ -778,7 +776,6 @@ void FunctionDeclBuilder::buildCheckedDecl(
                  isa_and_nonnull<ParmVarDecl>(Decl);
   RewriteRet |= isa_and_nonnull<FunctionDecl>(Decl);
 }
-
 
 void FunctionDeclBuilder::buildItypeDecl(PVConstraint *Defn,
                                          DeclaratorDecl *Decl,
@@ -819,7 +816,7 @@ void FunctionDeclBuilder::buildDeclVar(const FVComponentVariable *CV,
   if (!CheckedSolution && CV->getExternal()->isGenericChanged())
     RewriteGen = false;
 
-// If the type of the pointer hasn't changed, then neither of the above
+  // If the type of the pointer hasn't changed, then neither of the above
   // branches will be taken, but it's still possible for the bounds of an array
   // pointer to change.
   if (ABRewriter.hasNewBoundsString(CV->getExternal(), Decl)) {

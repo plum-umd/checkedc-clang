@@ -254,7 +254,7 @@ void CtxSensitiveBoundsKeyHandler::contextualizeCVar(MemberExpr *ME,
 void CtxSensitiveBoundsKeyHandler::contextualizeCVar(VarDecl *VD, ASTContext *C,
                                                      ProgramInfo &I) {
   const auto *RT = dyn_cast_or_null<RecordType>(
-    VD->getType()->getUnqualifiedDesugaredType());
+      VD->getType()->getUnqualifiedDesugaredType());
   if (RecordDecl *RD = RT != nullptr ? RT->getDecl() : nullptr) {
     // Get structure access key.
     StructAccessVisitor SKV(C);

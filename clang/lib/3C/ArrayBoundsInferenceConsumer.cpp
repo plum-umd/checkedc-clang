@@ -118,8 +118,8 @@ static bool needArrayBounds(Expr *E, ProgramInfo &Info, ASTContext *C) {
   return false;
 }
 
-static bool
-needArrayBounds(ConstraintVariable *CV, ProgramInfo &Info, bool IsNtArr) {
+static bool needArrayBounds(ConstraintVariable *CV, ProgramInfo &Info,
+                            bool IsNtArr) {
   const auto &E = Info.getConstraints().getVariables();
   if (IsNtArr)
     return needNTArrayBounds(CV, E);
@@ -181,7 +181,7 @@ bool tryGetValidBoundsKey(Expr *E, BoundsKey &BK, ProgramInfo &I,
   return Ret;
 }
 
-bool hasValidBoundsKey(Expr *E, ProgramInfo &I, ASTContext *C)  {
+bool hasValidBoundsKey(Expr *E, ProgramInfo &I, ASTContext *C) {
   BoundsKey Unused;
   return tryGetValidBoundsKey(E, Unused, I, C);
 }
@@ -766,10 +766,10 @@ private:
 };
 
 LengthVarInference::LengthVarInference(ProgramInfo &In, ASTContext *AC,
-                                       FunctionDecl *F) :
-    I(In), C(AC), CurBB(nullptr),
-    Cfg(CFG::buildCFG(nullptr, F->getBody(), AC, CFG::BuildOptions())),
-    CDG(Cfg.get()) {
+                                       FunctionDecl *F)
+    : I(In), C(AC), CurBB(nullptr),
+      Cfg(CFG::buildCFG(nullptr, F->getBody(), AC, CFG::BuildOptions())),
+      CDG(Cfg.get()) {
   for (auto *CBlock : *(Cfg.get())) {
     for (auto &CfgElem : *CBlock) {
       if (CfgElem.getKind() == clang::CFGElement::Statement) {

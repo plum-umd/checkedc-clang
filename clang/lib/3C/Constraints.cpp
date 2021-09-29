@@ -171,11 +171,9 @@ bool Constraints::removeReasonBasedConstraint(Constraint *C) {
 //---- for all edges (k --> q) in G, confirm that sol(k) <: q; else fail
 //---- add k to W
 
-static bool
-doSolve(ConstraintsGraph &CG,
-        ConstraintsEnv &Env, Constraints *CS, bool DoLeastSolution,
-        std::set<VarAtom *> *InitVs,
-        std::set<ConstraintsGraph::EdgeType *> &Conflicts) {
+static bool doSolve(ConstraintsGraph &CG, ConstraintsEnv &Env, Constraints *CS,
+                    bool DoLeastSolution, std::set<VarAtom *> *InitVs,
+                    std::set<ConstraintsGraph::EdgeType *> &Conflicts) {
 
   std::vector<Atom *> WorkList;
 
@@ -215,7 +213,7 @@ doSolve(ConstraintsGraph &CG,
   }
 
   // Check Upper/lower bounds hold; collect failures in conflicts set.
-  std::set<ConstraintsGraph::EdgeType*> IncidentEdges;
+  std::set<ConstraintsGraph::EdgeType *> IncidentEdges;
   bool Ok = true;
   for (ConstAtom *Cbound : CG.getAllConstAtoms()) {
     if (CG.getIncidentEdges(Cbound, IncidentEdges, !DoLeastSolution)) {
@@ -448,7 +446,7 @@ bool Constraints::graphBasedSolve() {
         for (auto *Succ : Succs) {
           if (auto *SuccGeq = dyn_cast<Geq>(Succ->EdgeConstraint)) {
             if (Env.getAssignment(ConflictAtom) ==
-                Env.getAssignment(SuccGeq->getLHS()) ||
+                    Env.getAssignment(SuccGeq->getLHS()) ||
                 Env.getAssignment(ConflictAtom) ==
                     Env.getAssignment(SuccGeq->getRHS())) {
               Rsn2 = Succ->EdgeConstraint->getReason();
@@ -456,8 +454,8 @@ bool Constraints::graphBasedSolve() {
             }
           }
         }
-        auto Rsn = ReasonLoc("Inferred conflicting types",
-                             PersistentSourceLoc());
+        auto Rsn =
+            ReasonLoc("Inferred conflicting types", PersistentSourceLoc());
         Geq *ConflictConstraint = createGeq(ConflictAtom, getWild(), Rsn);
         ConflictConstraint->addReason(Rsn1);
         ConflictConstraint->addReason(Rsn2);

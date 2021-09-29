@@ -98,8 +98,7 @@ void rewriteSourceRange(Rewriter &R, const CharSourceRange &Range,
     clang::DiagnosticsEngine &DE = R.getSourceMgr().getDiagnostics();
     bool ReportError = ErrFail && !_3COpts.AllowRewriteFailures;
     reportCustomDiagnostic(
-        DE,
-        ReportError ? DiagnosticsEngine::Error : DiagnosticsEngine::Warning,
+        DE, ReportError ? DiagnosticsEngine::Error : DiagnosticsEngine::Warning,
         "Unable to rewrite converted source range. Intended rewriting: "
         "\"%0\"",
         Range.getBegin())
@@ -132,8 +131,8 @@ static void emit(Rewriter &R, ASTContext &C, bool &StdoutModeEmittedMainFile) {
 
       DiagnosticsEngine &DE = C.getDiagnostics();
       DiagnosticsEngine::Level UnwritableChangeDiagnosticLevel =
-        _3COpts.AllowUnwritableChanges ? DiagnosticsEngine::Warning
-                                       : DiagnosticsEngine::Error;
+          _3COpts.AllowUnwritableChanges ? DiagnosticsEngine::Warning
+                                         : DiagnosticsEngine::Error;
       auto PrintExtraUnwritableChangeInfo = [&]() {
         // With -dump-unwritable-changes and not -allow-unwritable-changes, we
         // want the -allow-unwritable-changes note before the dump.
@@ -177,10 +176,9 @@ static void emit(Rewriter &R, ASTContext &C, bool &StdoutModeEmittedMainFile) {
             "3C internal error: not writing the new version of this file due "
             "to failure to re-canonicalize the file path provided by Clang",
             BeginningOfFileSourceLoc);
-        reportCustomDiagnostic(
-            DE, DiagnosticsEngine::Note,
-            "file path from Clang was %0; error was: %1",
-            SourceLocation())
+        reportCustomDiagnostic(DE, DiagnosticsEngine::Note,
+                               "file path from Clang was %0; error was: %1",
+                               SourceLocation())
             << ToConv << EC.message();
         PrintExtraUnwritableChangeInfo();
         continue;
@@ -375,7 +373,7 @@ public:
       // If the function is not generic, we have nothing to do.
       // This could happen even if it has type param binding if we
       // reset generics because of wildness
-      if (Info.getFuncConstraint(FD,Context)->getGenericParams() == 0 &&
+      if (Info.getFuncConstraint(FD, Context)->getGenericParams() == 0 &&
           !FD->isItypeGenericFunction())
         return true;
 
@@ -387,10 +385,12 @@ public:
         for (auto Entry : Info.getTypeParamBindings(CE, Context))
           if (Entry.second.isConsistent()) {
             AllInconsistent = false;
-            std::string TyStr = Entry.second.getConstraint(
-                Info.getConstraints().getVariables()
-              )->mkString(Info.getConstraints(), MKSTRING_OPTS(
-                EmitName = false, EmitPointee = true));
+            std::string TyStr =
+                Entry.second
+                    .getConstraint(Info.getConstraints().getVariables())
+                    ->mkString(
+                        Info.getConstraints(),
+                        MKSTRING_OPTS(EmitName = false, EmitPointee = true));
             if (TyStr.back() == ' ')
               TyStr.pop_back();
             TypeParamString += TyStr + ",";
@@ -431,7 +431,7 @@ private:
 SourceRange DeclReplacement::getSourceRange(SourceManager &SM) const {
   SourceRange SR = getDecl()->getSourceRange();
   SourceLocation OldEnd = SR.getEnd();
-  SourceLocation NewEnd  = getCheckedCAnnotationsEnd(getDecl());
+  SourceLocation NewEnd = getCheckedCAnnotationsEnd(getDecl());
   if (NewEnd.isValid() &&
       (!OldEnd.isValid() || SM.isBeforeInTranslationUnit(OldEnd, NewEnd)))
     SR.setEnd(NewEnd);
@@ -440,8 +440,9 @@ SourceRange DeclReplacement::getSourceRange(SourceManager &SM) const {
 }
 
 SourceRange FunctionDeclReplacement::getSourceRange(SourceManager &SM) const {
-  SourceLocation Begin = RewriteGeneric ? getDeclBegin(SM) :
-                      (RewriteReturn ? getReturnBegin(SM) : getParamBegin(SM));
+  SourceLocation Begin =
+      RewriteGeneric ? getDeclBegin(SM)
+                     : (RewriteReturn ? getReturnBegin(SM) : getParamBegin(SM));
   SourceLocation End = RewriteParams ? getDeclEnd(SM) : getReturnEnd(SM);
   // Begin can be equal to End if the SourceRange only contains one token.
   assert("Invalid FunctionDeclReplacement SourceRange!" &&
@@ -454,7 +455,8 @@ SourceLocation FunctionDeclReplacement::getDeclBegin(SourceManager &SM) const {
   return Begin;
 }
 
-SourceLocation FunctionDeclReplacement::getReturnBegin(SourceManager &SM) const {
+SourceLocation
+FunctionDeclReplacement::getReturnBegin(SourceManager &SM) const {
   // TODO: more accuracy
   // This code gets the point after a modifier like "static"
   // But currently, that leads to multiple "static"s
@@ -578,7 +580,7 @@ void RewriteConsumer::emitRootCauseDiagnostics(ASTContext &Context) {
   SourceManager &SM = Context.getSourceManager();
   for (auto &WReason : I.RootWildAtomsWithReason) {
     // Avoid emitting the same diagnostic message twice.
-    const PersistentSourceLoc& PSL = WReason.second.getLocation();
+    const PersistentSourceLoc &PSL = WReason.second.getLocation();
 
     if (PSL.valid() &&
         EmittedDiagnostics.find(PSL) == EmittedDiagnostics.end()) {
@@ -612,7 +614,8 @@ void RewriteConsumer::emitRootCauseDiagnostics(ASTContext &Context) {
               SourceLocation NSL = SM.translateFileLineCol(
                   *NFile, NPSL.getLineNo(), NPSL.getColSNo());
               if (NSL.isValid()) {
-                unsigned NID = DE.getCustomDiagID(DiagnosticsEngine::Note, "%0");
+                unsigned NID =
+                    DE.getCustomDiagID(DiagnosticsEngine::Note, "%0");
                 DE.Report(NSL, NID) << Note.Reason;
               }
             }

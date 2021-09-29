@@ -325,7 +325,7 @@ static bool castCheck(clang::QualType DstType, clang::QualType SrcType) {
   // Both are pointers? check their pointee
   if (SrcPtrTypePtr && DstPtrTypePtr) {
     return castCheck(DstPtrTypePtr->getPointeeType(),
-                SrcPtrTypePtr->getPointeeType());
+                     SrcPtrTypePtr->getPointeeType());
   }
 
   if (SrcPtrTypePtr || DstPtrTypePtr)
@@ -339,8 +339,7 @@ static bool castCheck(clang::QualType DstType, clang::QualType SrcType) {
       return false;
 
     for (unsigned I = 0; I < SrcFnType->getNumParams(); I++)
-      if (!castCheck(SrcFnType->getParamType(I),
-                     DstFnType->getParamType(I)))
+      if (!castCheck(SrcFnType->getParamType(I), DstFnType->getParamType(I)))
         return false;
 
     return castCheck(SrcFnType->getReturnType(), DstFnType->getReturnType());

@@ -65,8 +65,7 @@ private:
                                                     ConstraintVariable *TypeVar,
                                                     CastNeeded CastKind);
 
-  void surroundByCast(ConstraintVariable *Dst,
-                      ConstraintVariable *TypeVar,
+  void surroundByCast(ConstraintVariable *Dst, ConstraintVariable *TypeVar,
                       CastNeeded CastKind, Expr *E);
   void reportCastInsertionFailure(Expr *E, const std::string &CastStr);
   void updateRewriteStats(CastNeeded CastKind);

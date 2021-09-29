@@ -50,17 +50,19 @@ problems arising from your 3C pull request and/or we may ask you to
 make specific changes to your pull request to accommodate 5C's code.
 
 At the appropriate time during development of a pull request, please
-run the [regression tests](development.md#regression-tests) and
+run the [regression tests](development.md#regression-tests) and the
+[automated style checks](development.md#code-style-automation) and
 correct any failures. (For example, it may not make sense to do this
 on a draft pull request containing an unfinished demonstration of an
-idea.) All regression tests must pass (or be disabled if appropriate)
-before your pull request can be merged. If you're changing behavior
-(as opposed to just cleaning up the code), we'll typically require you
-to add or update enough tests to exercise the important behavior
-changes (i.e., those tests fail before your code change and pass after
-it). If there's a concern that your change might affect other cases
-that are not adequately tested yet, we may ask you to add tests for
-those cases as well.
+idea.) All regression tests and automated style checks must pass (or
+be disabled if appropriate) before your pull request can be merged.
+
+If you're changing behavior (as opposed to just cleaning up the code),
+we'll typically require you to add or update enough regression tests
+to exercise the important behavior changes (i.e., those tests fail
+before your code change and pass after it). If there's a concern that
+your change might affect other cases that are not adequately tested
+yet, we may ask you to add tests for those cases as well.
 
 See the [developer's guide](development.md) for additional information
 that may be helpful as you work on 3C.

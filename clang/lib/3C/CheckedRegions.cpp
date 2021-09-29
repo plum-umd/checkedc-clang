@@ -88,9 +88,8 @@ bool CheckedRegionAdder::VisitCallExpr(CallExpr *C) {
 
 typedef std::pair<const CompoundStmt *, int> StmtPair;
 
-StmtPair
-CheckedRegionAdder::findParentCompound(const DynTypedNode &N,
-                                       int Distance = 1) {
+StmtPair CheckedRegionAdder::findParentCompound(const DynTypedNode &N,
+                                                int Distance = 1) {
   auto Parents = Context->getParents(N);
   if (Parents.empty())
     return std::make_pair(nullptr, INT_MAX);
@@ -440,10 +439,9 @@ void CheckedRegionFinder::emitCauseDiagnostic(PersistentSourceLoc PSL) {
     SourceLocation SL =
         SM.translateFileLineCol(*File, PSL.getLineNo(), PSL.getColSNo());
     if (SL.isValid())
-      reportCustomDiagnostic(Context->getDiagnostics(),
-                             DiagnosticsEngine::Warning,
-                             "Root cause of unchecked region: Variadic Call",
-                             SL);
+      reportCustomDiagnostic(
+          Context->getDiagnostics(), DiagnosticsEngine::Warning,
+          "Root cause of unchecked region: Variadic Call", SL);
     Emitted.insert(PSL);
   }
 }

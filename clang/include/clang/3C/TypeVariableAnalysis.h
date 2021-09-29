@@ -20,9 +20,9 @@ class TypeVariableEntry {
 public:
   // Note: does not initialize TyVarType!
   TypeVariableEntry() : IsConsistent(false), TypeParamConsVar(nullptr) {}
-  TypeVariableEntry(QualType Ty, std::set<ConstraintVariable *> &CVs
-                    , bool ForceInconsistent = false
-                    , ConstraintVariable *IdentCV = nullptr)
+  TypeVariableEntry(QualType Ty, std::set<ConstraintVariable *> &CVs,
+                    bool ForceInconsistent = false,
+                    ConstraintVariable *IdentCV = nullptr)
       : TypeParamConsVar(nullptr) {
     // We'll need a name to provide the type arguments during rewriting, so no
     // anonymous types are allowed.
@@ -110,8 +110,8 @@ private:
   ConstraintResolver CR;
   TypeVariableMapT TVMap;
 
-  void insertBinding(CallExpr *CE, const int TyIdx, QualType Ty,
-                     CVarSet &CVs, ConstraintVariable *IdentCV = nullptr);
+  void insertBinding(CallExpr *CE, const int TyIdx, QualType Ty, CVarSet &CVs,
+                     ConstraintVariable *IdentCV = nullptr);
 };
 
 bool typeArgsProvided(CallExpr *Call);

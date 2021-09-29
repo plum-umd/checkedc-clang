@@ -71,8 +71,8 @@ private:
 
   CVarSet getInvalidCastPVCons(CastExpr *E);
 
-  CVarSet addAtomAll(CVarSet CVS, ConstAtom *PtrTyp,
-                     ReasonLoc &Rsn, Constraints &CS);
+  CVarSet addAtomAll(CVarSet CVS, ConstAtom *PtrTyp, ReasonLoc &Rsn,
+                     Constraints &CS);
   CVarSet pvConstraintFromType(QualType TypE);
 
   CSetBkeyPair getAllSubExprConstraintVars(std::vector<Expr *> &Exprs);
@@ -80,9 +80,7 @@ private:
 
   PVConstraint *getRewritablePVConstraint(Expr *E);
 
-
   bool isNonPtrType(QualType &TE);
-
 };
 
 #endif // LLVM_CLANG_3C_CONSTRAINTRESOLVER_H

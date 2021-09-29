@@ -50,10 +50,9 @@ typedef std::pair<CVarSet, BKeySet> CSetBkeyPair;
 struct TypeParamConstraint {
   ConstraintVariable *MainConstraint;
   ConstraintVariable *GenericAddition;
-  TypeParamConstraint() :
-      MainConstraint(nullptr), GenericAddition(nullptr) {}
-  TypeParamConstraint(ConstraintVariable *M, ConstraintVariable *G) :
-      MainConstraint(M), GenericAddition(G) {}
+  TypeParamConstraint() : MainConstraint(nullptr), GenericAddition(nullptr) {}
+  TypeParamConstraint(ConstraintVariable *M, ConstraintVariable *G)
+      : MainConstraint(M), GenericAddition(G) {}
   // Fast. Whether `getConstraint` will return something other than nullptr.
   bool isConsistent() const { return MainConstraint != nullptr; }
   // Provides generic information if available and safe. This is somewhat of
@@ -64,15 +63,13 @@ struct TypeParamConstraint {
     if (MainConstraint != nullptr && GenericAddition != nullptr &&
         GenericAddition->isSolutionChecked(E)) {
       return GenericAddition;
-    } else {
-      return MainConstraint;
     }
+    return MainConstraint;
   }
 };
 
 class ProgramInfo : public ProgramVariableAdder {
 public:
-
   // This map holds similar information as the type variable map in
   // ConstraintBuilder.cpp, but it is stored in a form that is usable during
   // rewriting.
@@ -151,8 +148,8 @@ public:
   }
 
   void setTypeParamBinding(CallExpr *CE, unsigned int TypeVarIdx,
-                           ConstraintVariable *CV,
-                           ConstraintVariable* Ident, ASTContext *C);
+                           ConstraintVariable *CV, ConstraintVariable *Ident,
+                           ASTContext *C);
   bool hasTypeParamBindings(CallExpr *CE, ASTContext *C) const;
   const CallTypeParamBindingsT &getTypeParamBindings(CallExpr *CE,
                                                      ASTContext *C) const;
@@ -163,8 +160,8 @@ public:
   void ensureNtCorrect(const QualType &QT, const PersistentSourceLoc &PSL,
                        PointerVariableConstraint *PV);
 
-  void unifyIfTypedef(const QualType &QT, clang::ASTContext &,
-                      PVConstraint *, ConsAction CA = Same_to_Same);
+  void unifyIfTypedef(const QualType &QT, clang::ASTContext &, PVConstraint *,
+                      ConsAction CA = Same_to_Same);
 
   CVarOption lookupTypedef(PersistentSourceLoc PSL);
 

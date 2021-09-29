@@ -68,7 +68,7 @@ CVarSet ConstraintResolver::addAtomAll(CVarSet CVS, ConstAtom *PtrTyp,
   CVarSet Result;
   for (auto *CV : CVS) {
     if (PVConstraint *PVC = dyn_cast<PVConstraint>(CV)) {
-      Result.insert(PVConstraint::addAtomPVConstraint(PVC, PtrTyp, Rsn,CS));
+      Result.insert(PVConstraint::addAtomPVConstraint(PVC, PtrTyp, Rsn, CS));
     } else {
       Result.insert(CV);
     }
@@ -154,23 +154,21 @@ inline CSetBkeyPair pairWithEmptyBkey(const CVarSet &Vars) {
 // Get the return type of the function from the TypeVars, that is, from
 // the local instantiation of a generic function. Or the regular return
 // constraint if it's not generic
-ConstraintVariable *localReturnConstraint(
-    FVConstraint *FV,
-    ProgramInfo::CallTypeParamBindingsT TypeVars,
-    Constraints &CS,
-    ProgramInfo &Info) {
+ConstraintVariable *
+localReturnConstraint(FVConstraint *FV,
+                      ProgramInfo::CallTypeParamBindingsT TypeVars,
+                      Constraints &CS, ProgramInfo &Info) {
   int TyVarIdx = FV->getExternalReturn()->getGenericIndex();
   // Check if local type vars are available
   if (TypeVars.find(TyVarIdx) != TypeVars.end() &&
       TypeVars[TyVarIdx].isConsistent()) {
-    ConstraintVariable *CV = TypeVars[TyVarIdx].getConstraint(
-            Info.getConstraints().getVariables());
+    ConstraintVariable *CV =
+        TypeVars[TyVarIdx].getConstraint(Info.getConstraints().getVariables());
     if (FV->getExternalReturn()->hasBoundsKey())
       CV->setBoundsKey(FV->getExternalReturn()->getBoundsKey());
     return CV;
-  } else {
-    return FV->getExternalReturn();
   }
+  return FV->getExternalReturn();
 }
 
 // Returns a pair of set of ConstraintVariables and set of BoundsKey
@@ -184,7 +182,7 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
     auto &CS = Info.getConstraints();
     QualType TypE = E->getType();
     E = E->IgnoreParens();
-    auto ExprPSL = PersistentSourceLoc::mkPSL(E,*Context);
+    auto ExprPSL = PersistentSourceLoc::mkPSL(E, *Context);
 
     // Non-pointer (int, char, etc.) types have a special base PVConstraint.
     if (isNonPtrType(TypE)) {
@@ -245,9 +243,9 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
             SubTypE->isVoidPointerType()) &&
           !isCastSafe(TypE, SubTypE)) {
         CVarSet WildCVar = getInvalidCastPVCons(IE);
-        auto Rsn = ReasonLoc("Unsafe cast",ExprPSL);
-        constrainConsVarGeq(CVs.first, WildCVar, CS, Rsn, Safe_to_Wild,
-                            false, &Info);
+        auto Rsn = ReasonLoc("Unsafe cast", ExprPSL);
+        constrainConsVarGeq(CVs.first, WildCVar, CS, Rsn, Safe_to_Wild, false,
+                            &Info);
         Ret = std::make_pair(WildCVar, CVs.second);
       } else {
         // Else, return sub-expression's result.
@@ -392,10 +390,10 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
             }
           }
           // Add a VarAtom to UOExpr's PVConstraint, for &.
-          auto Rsn = ReasonLoc(
-              "Result of address-of has PTR lower bound",ExprPSL);
-          Ret = std::make_pair(addAtomAll(T.first, CS.getPtr(),
-                                          Rsn, CS), T.second);
+          auto Rsn =
+              ReasonLoc("Result of address-of has PTR lower bound", ExprPSL);
+          Ret = std::make_pair(addAtomAll(T.first, CS.getPtr(), Rsn, CS),
+                               T.second);
         }
         break;
       }
@@ -455,10 +453,10 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
 
         for (ConstraintVariable *C : Tmp.first) {
           if (FVConstraint *FV = dyn_cast<FVConstraint>(C)) {
-            ReturnCVs.insert(localReturnConstraint(FV,TypeVars,CS,Info));
+            ReturnCVs.insert(localReturnConstraint(FV, TypeVars, CS, Info));
           } else if (PVConstraint *PV = dyn_cast<PVConstraint>(C)) {
             if (FVConstraint *FV = PV->getFV())
-              ReturnCVs.insert(localReturnConstraint(FV,TypeVars,CS,Info));
+              ReturnCVs.insert(localReturnConstraint(FV, TypeVars, CS, Info));
           }
         }
       } else if (DeclaratorDecl *FD = dyn_cast<DeclaratorDecl>(D)) {
@@ -468,8 +466,8 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
           IsAllocator = true;
           if (TypeVars.find(0) != TypeVars.end() &&
               TypeVars[0].isConsistent()) {
-            ConstraintVariable *CV = TypeVars[0].getConstraint(
-                       Info.getConstraints().getVariables());
+            ConstraintVariable *CV =
+                TypeVars[0].getConstraint(Info.getConstraints().getVariables());
             ReturnCVs.insert(CV);
             DidInsert = true;
           } else if (CE->getNumArgs() > 0) {
@@ -482,8 +480,8 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
               ExprType = Context->getPointerType(ArgTy);
               PVConstraint *PVC = new PVConstraint(ExprType, nullptr, N, Info,
                                                    *Context, nullptr, 0);
-              PVC->constrainOuterTo(CS, A,
-                       ReasonLoc(ALLOCATOR_REASON, ExprPSL), true);
+              PVC->constrainOuterTo(CS, A, ReasonLoc(ALLOCATOR_REASON, ExprPSL),
+                                    true);
               ReturnCVs.insert(PVC);
               DidInsert = true;
               if (FuncName.compare("realloc") == 0) {
@@ -508,13 +506,13 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
           assert(CV.hasValue() && "Function without constraint variable.");
           /* Direct function call */
           if (FVConstraint *FVC = dyn_cast<FVConstraint>(&CV.getValue()))
-            ReturnCVs.insert(localReturnConstraint(FVC,TypeVars,CS,Info));
+            ReturnCVs.insert(localReturnConstraint(FVC, TypeVars, CS, Info));
           /* Call via function pointer */
           else {
             PVConstraint *Tmp = dyn_cast<PVConstraint>(&CV.getValue());
             assert(Tmp != nullptr);
             if (FVConstraint *FVC = Tmp->getFV())
-              ReturnCVs.insert(localReturnConstraint(FVC,TypeVars,CS,Info));
+              ReturnCVs.insert(localReturnConstraint(FVC, TypeVars, CS, Info));
             else {
               // No FVConstraint -- make WILD.
               std::string Rsn = "Can't get return variable of function call.";
@@ -597,8 +595,7 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
         // Array initialization is similar AddrOf, so the same pattern is
         // used where a new indirection is added to constraint variables.
         auto Rsn = ReasonLoc("Array initialization", ExprPSL);
-        Ret = std::make_pair(addAtomAll(CVars.first, CS.getArr(),
-                                        Rsn, CS),
+        Ret = std::make_pair(addAtomAll(CVars.first, CS.getArr(), Rsn, CS),
                              CVars.second);
       } else {
         // This branch should only be taken on compound literal expressions
@@ -633,8 +630,9 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
       // We create a new constraint variable and constraint it to an Nt_array.
 
       PVConstraint *P = new PVConstraint(Str, Info, *Context);
-      P->constrainOuterTo(CS, CS.getNTArr(),
-                          ReasonLoc(STRING_LITERAL_REASON,ExprPSL)); // NB: ARR already there.
+      P->constrainOuterTo(
+          CS, CS.getNTArr(),
+          ReasonLoc(STRING_LITERAL_REASON, ExprPSL)); // NB: ARR already there.
 
       BoundsKey TmpKey = ABI.getRandomBKey();
       P->setBoundsKey(TmpKey);

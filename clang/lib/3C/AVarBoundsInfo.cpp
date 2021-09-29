@@ -101,8 +101,8 @@ public:
   ScopeVisitor(const ProgramVarScope *S,
                const std::map<BoundsKey, ProgramVar *> &VM,
                const std::set<BoundsKey> &P)
-    : Scope(S), InScopeKeys(), VisibleKeys(), PVarInfo(VM),
-      PointerBoundsKey(P) {}
+      : Scope(S), InScopeKeys(), VisibleKeys(), PVarInfo(VM),
+        PointerBoundsKey(P) {}
   void visitBoundsKey(BoundsKey V) {
     // If the variable is non-pointer?
     if (PVarInfo.find(V) != PVarInfo.end() &&
@@ -270,7 +270,7 @@ ABounds *AvarBoundsInference::getPreferredBound(const BndsKindMap &BKindMap) {
 
   if (HasBoundKind(ABounds::CountPlusOneBoundKind))
     return new CountPlusOneBound(
-      getOnly(BKindMap.at(ABounds::CountPlusOneBoundKind)));
+        getOnly(BKindMap.at(ABounds::CountPlusOneBoundKind)));
 
   return nullptr;
 }
@@ -536,9 +536,8 @@ bool AvarBoundsInference::inferFromPotentialBounds(BoundsKey BK,
   bool HasInferredBound = false;
   if (CurrIterInferBounds.find(BK) != CurrIterInferBounds.end()) {
     auto &BM = CurrIterInferBounds[BK];
-    HasInferredBound = llvm::any_of(BM, [](auto InfB) {
-      return !InfB.second.empty();
-    });
+    HasInferredBound =
+        llvm::any_of(BM, [](auto InfB) { return !InfB.second.empty(); });
   }
 
   if (!HasInferredBound) {
@@ -975,7 +974,7 @@ bool AVarBoundsInfo::addAssignment(BoundsKey L, BoundsKey R) {
 class CollectDeclsVisitor : public RecursiveASTVisitor<CollectDeclsVisitor> {
 public:
   explicit CollectDeclsVisitor(ASTContext *Ctx)
-    : ObservedDecls(), StructAccess(), C(Ctx) {}
+      : ObservedDecls(), StructAccess(), C(Ctx) {}
 
   virtual ~CollectDeclsVisitor() {}
 
@@ -1404,11 +1403,12 @@ void AVarBoundsInfo::printStats(llvm::raw_ostream &O, const CVarSet &SrcCVarSet,
 
   std::set<BoundsKey> NTArraysReqBnds;
   for (auto NTBK : NtArrPointerBoundsKey) {
-    ProgVarGraph.visitBreadthFirst(NTBK, [this, NTBK, &NTArraysReqBnds](BoundsKey BK) {
-      if (NtArrPointerBoundsKey.find(BK) == NtArrPointerBoundsKey.end() &&
-        ArrPointerBoundsKey.find(BK) != ArrPointerBoundsKey.end())
-        NTArraysReqBnds.insert(NTBK);
-    });
+    ProgVarGraph.visitBreadthFirst(
+        NTBK, [this, NTBK, &NTArraysReqBnds](BoundsKey BK) {
+          if (NtArrPointerBoundsKey.find(BK) == NtArrPointerBoundsKey.end() &&
+              ArrPointerBoundsKey.find(BK) != ArrPointerBoundsKey.end())
+            NTArraysReqBnds.insert(NTBK);
+        });
   }
 
   std::set<BoundsKey> NTArrayReqNoBounds;

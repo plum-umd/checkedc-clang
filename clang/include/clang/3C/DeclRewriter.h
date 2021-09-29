@@ -34,10 +34,9 @@ public:
   // Info parameter are rewritten.
   static void rewriteDecls(ASTContext &Context, ProgramInfo &Info, Rewriter &R);
 
-  static void
-  buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl, std::string &Type,
-                 std::string &IType, ProgramInfo &Info,
-                 ArrayBoundsRewriter &ABR);
+  static void buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
+                             std::string &Type, std::string &IType,
+                             ProgramInfo &Info, ArrayBoundsRewriter &ABR);
 
 private:
   static RecordDecl *LastRecordDecl;
@@ -102,11 +101,11 @@ protected:
   // Get existing itype string from constraint variables.
   std::string getExistingIType(ConstraintVariable *DeclC);
 
-  virtual void buildDeclVar(const FVComponentVariable *CV,
-                            DeclaratorDecl *Decl, std::string &Type,
-                            std::string &IType, std::string UseName,
-                            bool &RewriteGen, bool &RewriteParm,
-                            bool &RewriteRet, bool StaticFunc);
+  virtual void buildDeclVar(const FVComponentVariable *CV, DeclaratorDecl *Decl,
+                            std::string &Type, std::string &IType,
+                            std::string UseName, bool &RewriteGen,
+                            bool &RewriteParm, bool &RewriteRet,
+                            bool StaticFunc);
   void buildCheckedDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
                         std::string &Type, std::string &IType,
                         std::string UseName, bool &RewriteParm,

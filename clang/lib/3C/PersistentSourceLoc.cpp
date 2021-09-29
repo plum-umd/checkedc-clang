@@ -21,7 +21,8 @@ using namespace llvm;
 // will need to the spelling location instead.
 PersistentSourceLoc PersistentSourceLoc::mkPSL(const Decl *D,
                                                const ASTContext &C) {
-  if (D == nullptr) return PersistentSourceLoc();
+  if (D == nullptr)
+    return PersistentSourceLoc();
   SourceLocation SL = C.getSourceManager().getExpansionLoc(D->getLocation());
   return mkPSL(D->getSourceRange(), SL, C);
 }
@@ -29,14 +30,17 @@ PersistentSourceLoc PersistentSourceLoc::mkPSL(const Decl *D,
 // Create a PersistentSourceLoc for a Stmt.
 PersistentSourceLoc PersistentSourceLoc::mkPSL(const Stmt *S,
                                                const ASTContext &Context) {
-  if (S == nullptr) return PersistentSourceLoc();
+  if (S == nullptr)
+    return PersistentSourceLoc();
   return mkPSL(S->getSourceRange(), S->getBeginLoc(), Context);
 }
 
 // Create a PersistentSourceLoc for an Expression.
-PersistentSourceLoc PersistentSourceLoc::mkPSL(const clang::Expr *E,
-                                               const clang::ASTContext &Context) {
-  if (E == nullptr) return PersistentSourceLoc();
+PersistentSourceLoc
+PersistentSourceLoc::mkPSL(const clang::Expr *E,
+                           const clang::ASTContext &Context) {
+  if (E == nullptr)
+    return PersistentSourceLoc();
   return mkPSL(E->getSourceRange(), E->getBeginLoc(), Context);
 }
 

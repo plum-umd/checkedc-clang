@@ -128,8 +128,7 @@ private:
 class FunctionVisitor : public RecursiveASTVisitor<FunctionVisitor> {
 public:
   explicit FunctionVisitor(ASTContext *C, ProgramInfo &I, FunctionDecl *FD)
-      : Context(C), Info(I), Function(FD), CB(Info, Context),
-        ISD() {}
+      : Context(C), Info(I), Function(FD), CB(Info, Context), ISD() {}
 
   // T x = e
   bool VisitDeclStmt(DeclStmt *S) {
@@ -166,8 +165,8 @@ public:
     // Is cast compatible with LHS type?
     QualType SrcT = C->getSubExpr()->getType();
     QualType DstT = C->getType();
-    if (!CB.isCastofGeneric(C) && !isCastSafe(DstT, SrcT)
-      && !Info.hasPersistentConstraints(C, Context)) {
+    if (!CB.isCastofGeneric(C) && !isCastSafe(DstT, SrcT) &&
+        !Info.hasPersistentConstraints(C, Context)) {
       auto CVs = CB.getExprConstraintVarsSet(C->getSubExpr());
       std::string Rsn =
           "Cast from " + SrcT.getAsString() + " to " + DstT.getAsString();
@@ -214,10 +213,9 @@ public:
 
     // Collect type parameters for this function call that are
     // consistently instantiated as single type in this function call.
-    auto ConsistentTypeParams =
-        Info.hasTypeParamBindings(E,Context) ?
-          Info.getTypeParamBindings(E,Context) :
-          ProgramInfo::CallTypeParamBindingsT();
+    auto ConsistentTypeParams = Info.hasTypeParamBindings(E, Context)
+                                    ? Info.getTypeParamBindings(E, Context)
+                                    : ProgramInfo::CallTypeParamBindingsT();
 
     // Now do the call: Constrain arguments to parameters (but ignore returns)
     if (FVCons.empty()) {
@@ -240,7 +238,7 @@ public:
           unsigned I = 0;
           for (const auto &A : E->arguments()) {
             CSetBkeyPair ArgumentConstraints;
-            auto ArgPSL = PersistentSourceLoc::mkPSL(A,*Context);
+            auto ArgPSL = PersistentSourceLoc::mkPSL(A, *Context);
             auto Rsn = ReasonLoc("Constrain arguments to parameters", ArgPSL);
             if (I < TargetFV->numParams()) {
               // When the function has a void* parameter, Clang will
@@ -295,7 +293,7 @@ public:
                   // to the `%s` should be an _Nt_array_ptr
                   // (https://github.com/correctcomputation/checkedc-clang/issues/549).
                   constrainVarsTo(ArgumentConstraints.first, CS.getNTArr(),
-                                  ReasonLoc(NT_ARRAY_REASON,ArgPSL));
+                                  ReasonLoc(NT_ARRAY_REASON, ArgPSL));
                 }
                 if (_3COpts.Verbose) {
                   std::string FuncName = TargetFV->getName();
@@ -315,9 +313,9 @@ public:
   // e1[e2]
   bool VisitArraySubscriptExpr(ArraySubscriptExpr *E) {
     Constraints &CS = Info.getConstraints();
-    auto PSL = PersistentSourceLoc::mkPSL(E,*Context);
+    auto PSL = PersistentSourceLoc::mkPSL(E, *Context);
     constraintInBodyVariable(E->getBase(), CS.getArr(),
-                             ReasonLoc(ARRAY_REASON,PSL));
+                             ReasonLoc(ARRAY_REASON, PSL));
     return true;
   }
 
@@ -391,7 +389,8 @@ private:
   }
 
   // Constraint helpers.
-  void constraintInBodyVariable(Expr *E, ConstAtom *CAtom, const ReasonLoc &Rsn) {
+  void constraintInBodyVariable(Expr *E, ConstAtom *CAtom,
+                                const ReasonLoc &Rsn) {
     CVarSet Var = CB.getExprConstraintVarsSet(E);
     constrainVarsTo(Var, CAtom, Rsn);
   }
@@ -430,11 +429,11 @@ private:
       std::string Rsn = "Pointer arithmetic performed on a function pointer.";
       CB.constraintAllCVarsToWild(Var, Rsn, E);
     } else {
-      auto PSL = PersistentSourceLoc::mkPSL(E,*Context);
+      auto PSL = PersistentSourceLoc::mkPSL(E, *Context);
       if (ModifyingExpr)
         Info.getABoundsInfo().recordArithmeticOperation(E, &CB);
       constraintInBodyVariable(E, Info.getConstraints().getArr(),
-                               ReasonLoc(ARRAY_REASON,PSL));
+                               ReasonLoc(ARRAY_REASON, PSL));
     }
   }
 

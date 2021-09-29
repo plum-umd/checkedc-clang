@@ -131,10 +131,12 @@ void ConstraintsInfo::printConstraintStats(llvm::raw_ostream &O,
   O << "\"PtrsAffected\":" << PtrsAffected.size() << ",";
   O << "\"PtrsScore\":" << getPtrAffectedScore(PtrsAffected) << ",";
 
-  O << "\"SubReasons\":" << "[";
+  O << "\"SubReasons\":"
+    << "[";
   bool AddComma = false;
-  for(const ReasonLoc &Rsn : PtrInfo.additionalNotes()) {
-    if (AddComma) O << ",";
+  for (const ReasonLoc &Rsn : PtrInfo.additionalNotes()) {
+    if (AddComma)
+      O << ",";
     O << "{";
     O << "\"Rsn\":\"" << Rsn.Reason << "\", ";
     O << "\"Location\":";

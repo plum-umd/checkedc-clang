@@ -413,7 +413,7 @@ public:
   std::string verboseStr() const;
   ProgramVar *makeCopy(BoundsKey NK) const;
 
-  bool isNumConstant() const {return IsConstant; }
+  bool isNumConstant() const { return IsConstant; }
   uint64_t getConstantVal() const {
     assert("Can't get constant value for non-constant var." && IsConstant);
     return ConstantVal;
@@ -440,8 +440,8 @@ private:
   ProgramVar(BoundsKey K, const std::string &VarName,
              const ProgramVarScope *VScope, bool IsConstant,
              uint32_t ConstantVal)
-    : K(K), VarName(VarName), VScope(VScope), IsConstant(IsConstant),
-      ConstantVal(ConstantVal) {
+      : K(K), VarName(VarName), VScope(VScope), IsConstant(IsConstant),
+        ConstantVal(ConstantVal) {
     // Constant variables should be a subclass of ProgramVariable. Until that
     // change happens this should sanity check how ProgramVars are constructed.
     assert("Constant value should not be set for non-constant variables." &&
@@ -450,11 +450,11 @@ private:
   }
 
   ProgramVar(BoundsKey VK, std::string VName, const ProgramVarScope *PVS)
-    : ProgramVar(VK, VName, PVS, false, 0) {}
+      : ProgramVar(VK, VName, PVS, false, 0) {}
 
   ProgramVar(BoundsKey VK, uint32_t CVal)
-    : ProgramVar(VK, std::to_string(CVal), GlobalScope::getGlobalScope(), true,
-                 CVal) {}
+      : ProgramVar(VK, std::to_string(CVal), GlobalScope::getGlobalScope(),
+                   true, CVal) {}
 };
 
 #endif // LLVM_CLANG_3C_PROGRAMVAR_H

@@ -31,12 +31,7 @@ public:
   virtual SourceRange getSourceRange(SourceManager &SM) const;
 
   // Discriminator for LLVM-style RTTI (dyn_cast<> et al.).
-  enum DRKind {
-    DRK_VarDecl,
-    DRK_FunctionDecl,
-    DRK_FieldDecl,
-    DRK_TypedefDecl
-  };
+  enum DRKind { DRK_VarDecl, DRK_FunctionDecl, DRK_FieldDecl, DRK_TypedefDecl };
 
   DRKind getKind() const { return Kind; }
 

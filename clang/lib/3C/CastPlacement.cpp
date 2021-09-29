@@ -60,7 +60,7 @@ bool CastPlacementVisitor::VisitCallExpr(CallExpr *CE) {
         // Check if local type vars are available
         if (TypeVars.find(TyVarIdx) != TypeVars.end()) {
           TypeVar = TypeVars[TyVarIdx].getConstraint(
-                  Info.getConstraints().getVariables());
+              Info.getConstraints().getVariables());
         }
       }
       if (TypeVar != nullptr)
@@ -158,10 +158,8 @@ CastPlacementVisitor::CastNeeded CastPlacementVisitor::needCasting(
 // Get the string representation of the cast required for the call. The return
 // is a pair of strings: a prefix and suffix string that form the complete cast
 // when placed around the expression being cast.
-std::pair<std::string, std::string>
-CastPlacementVisitor::getCastString(ConstraintVariable *Dst,
-                                    ConstraintVariable *TypeVar,
-                                    CastNeeded CastKind) {
+std::pair<std::string, std::string> CastPlacementVisitor::getCastString(
+    ConstraintVariable *Dst, ConstraintVariable *TypeVar, CastNeeded CastKind) {
   switch (CastKind) {
   case CAST_NT_ARRAY:
     return std::make_pair("((" +
@@ -199,11 +197,13 @@ CastPlacementVisitor::getCastString(ConstraintVariable *Dst,
     std::string Type;
     if (TypeVar != nullptr) {
       Type = "_Ptr<" +
-          TypeVar->mkString(Info.getConstraints(),
-                            MKSTRING_OPTS(EmitName = false, EmitPointee = true)) +
-          ">";
+             TypeVar->mkString(
+                 Info.getConstraints(),
+                 MKSTRING_OPTS(EmitName = false, EmitPointee = true)) +
+             ">";
     } else {
-      Type = Dst->mkString(Info.getConstraints(), MKSTRING_OPTS(EmitName = false));
+      Type =
+          Dst->mkString(Info.getConstraints(), MKSTRING_OPTS(EmitName = false));
     }
     return std::make_pair("_Assume_bounds_cast<" + Type + ">(", Suffix);
   }
@@ -222,8 +222,7 @@ void CastPlacementVisitor::surroundByCast(ConstraintVariable *Dst,
     // warning rather than letting the main "unwritable change" error trigger
     // later.
     reportCustomDiagnostic(
-        Writer.getSourceMgr().getDiagnostics(),
-        DiagnosticsEngine::Warning,
+        Writer.getSourceMgr().getDiagnostics(), DiagnosticsEngine::Warning,
         "3C internal error: tried to insert a cast into an unwritable file "
         "(https://github.com/correctcomputation/checkedc-clang/issues/454)",
         E->getBeginLoc());
@@ -283,8 +282,7 @@ void CastPlacementVisitor::reportCastInsertionFailure(
   // FIXME: This is a warning rather than an error so that a new benchmark
   //        failure is not introduced in Lua.
   //        github.com/correctcomputation/checkedc-clang/issues/439
-  reportCustomDiagnostic(Context->getDiagnostics(),
-                         DiagnosticsEngine::Warning,
+  reportCustomDiagnostic(Context->getDiagnostics(), DiagnosticsEngine::Warning,
                          "Unable to surround expression with cast.\n"
                          "Intended cast: \"%0\"",
                          E->getExprLoc())

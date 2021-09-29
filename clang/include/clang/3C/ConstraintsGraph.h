@@ -158,8 +158,9 @@ public:
 
   // This version provides more info by returning graph edges
   // rather than data items
-  bool getIncidentEdges(Data D, std::set<EdgeType*> &EdgeSet, bool Succ,
-                      bool Append = false, bool IgnoreSoftEdges = false) const {
+  bool getIncidentEdges(Data D, std::set<EdgeType *> &EdgeSet, bool Succ,
+                        bool Append = false,
+                        bool IgnoreSoftEdges = false) const {
     NodeType *N = this->findNode(D);
     if (N == nullptr)
       return false;
@@ -188,23 +189,23 @@ public:
     return !DataSet.empty();
   }
 
-  bool getSuccessorsEdges(Atom *A, std::set<EdgeType*> &EdgeSet,
-                     bool Append = false) {
+  bool getSuccessorsEdges(Atom *A, std::set<EdgeType *> &EdgeSet,
+                          bool Append = false) {
     return getIncidentEdges(A, EdgeSet, true, Append);
   }
 
-  bool getPredecessorsEdges(Atom *A, std::set<EdgeType*> &EdgeSet,
+  bool getPredecessorsEdges(Atom *A, std::set<EdgeType *> &EdgeSet,
                             bool Append = false) {
     return getIncidentEdges(A, EdgeSet, false, Append);
   }
 
-  bool
-  getSuccessors(Data D, std::set<Data> &DataSet, bool Append = false) const {
+  bool getSuccessors(Data D, std::set<Data> &DataSet,
+                     bool Append = false) const {
     return getNeighbors(D, DataSet, true, Append);
   }
 
-  bool
-  getPredecessors(Data D, std::set<Data> &DataSet, bool Append = false) const {
+  bool getPredecessors(Data D, std::set<Data> &DataSet,
+                       bool Append = false) const {
     return getNeighbors(D, DataSet, false, Append);
   }
 
@@ -267,7 +268,8 @@ public:
   // be able to retrieve them from the graph.
   std::set<ConstAtom *> &getAllConstAtoms();
 
-  typedef DataEdge<Atom*> EdgeType;
+  typedef DataEdge<Atom *> EdgeType;
+
 protected:
   // Add vertex is overridden to save const atoms as they are added to the graph
   // so that getAllConstAtoms can efficiently retrieve them.

@@ -135,10 +135,31 @@ in your code. Specifically:
 
 * Space before and after `:` in iterators, i.e., `for (auto &k : List)`
 
-Our goal is that all files should be formatted with `clang-format` and
-pass `clang-tidy` ([more information](clang-tidy.md)), and nonempty
-files should have a final newline (surprisingly, `clang-format` cannot
-enforce this). However, until we have better automation, we decided it
-isn't reasonable to require contributors to manually run these tools
-and fix style nits in each change; instead, we periodically run the
-tools on the entire 3C codebase.
+* Nonempty files should have a final newline.
+
+All 3C C++ source files should be formatted with `clang-format` and
+pass `clang-tidy` ([more information](clang-tidy.md)) based on the
+`.clang-format` and `.clang-tidy` files in the repository (which the
+tools will automatically use by default). (We are not using either of
+these tools on the 3C regression tests at this time.) Likewise, 3C
+Python files should pass `yapf` based on the `.style.yapf` files
+(except for `clang/tools/3c/utils/*.py`, which are pretty much
+unmaintained at this point). Where appropriate, code may be excluded
+from these checks via `// clang-format off`, `NOLINTNEXTLINE(...)`,
+and `yapf: disable`. These tools (as currently configured) enforce
+some but not all of the specific guidelines above, and they also
+enforce many other standards not listed above.
+
+### Code style automation
+
+`ninja lint-3c` runs the `clang-format`, `clang-tidy`, and `yapf`
+checks described above. We generally want it to pass on the `main`
+branch at all times. It requires the relevant tools to be available on
+your system; see `clang/tools/3c/utils/code_style/CMakeLists.txt` for
+details. `clang/tools/3c/utils/code_style/fix-all.sh` will try to fix
+all style violations that can be fixed automatically, but see the
+caveats in that script before running it.
+
+As a convenience for fully validating a change to 3C, `ninja
+validate-3c` runs both the regression tests (`check-3c`) and the
+automated style checks (`lint-3c`).

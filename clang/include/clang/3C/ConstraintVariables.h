@@ -104,13 +104,13 @@ protected:
   // Only subclasses should call this
   ConstraintVariable(ConstraintVariableKind K, std::string T, std::string N,
                      std::string TN)
-    : Kind(K), OriginalType(T), Name(N), OriginalTypeWithName(TN),
-      HasEqArgumentConstraints(false), ValidBoundsKey(false),
-      IsForDecl(false) {}
+      : Kind(K), OriginalType(T), Name(N), OriginalTypeWithName(TN),
+        HasEqArgumentConstraints(false), ValidBoundsKey(false),
+        IsForDecl(false) {}
 
   ConstraintVariable(ConstraintVariableKind K, QualType QT, std::string N)
-    : ConstraintVariable(K, qtyToStr(QT), N,
-                         qtyToStr(QT, N == RETVAR ? "" : N)) {}
+      : ConstraintVariable(K, qtyToStr(QT), N,
+                           qtyToStr(QT, N == RETVAR ? "" : N)) {}
 
 public:
   // Create a "for-rewriting" representation of this ConstraintVariable.
@@ -235,16 +235,16 @@ enum ConsAction { Safe_to_Wild, Wild_to_Safe, Same_to_Same };
 
 void constrainConsVarGeq(const std::set<ConstraintVariable *> &LHS,
                          const std::set<ConstraintVariable *> &RHS,
-                         Constraints &CS, const ReasonLoc &Rsn,
-                         ConsAction CA, bool DoEqType, ProgramInfo *Info,
+                         Constraints &CS, const ReasonLoc &Rsn, ConsAction CA,
+                         bool DoEqType, ProgramInfo *Info,
                          bool HandleBoundsKey = true);
 void constrainConsVarGeq(ConstraintVariable *LHS, const CVarSet &RHS,
-                         Constraints &CS, const ReasonLoc &Rsn,
-                         ConsAction CA, bool DoEqType, ProgramInfo *Info,
+                         Constraints &CS, const ReasonLoc &Rsn, ConsAction CA,
+                         bool DoEqType, ProgramInfo *Info,
                          bool HandleBoundsKey = true);
 void constrainConsVarGeq(ConstraintVariable *LHS, ConstraintVariable *RHS,
-                         Constraints &CS, const ReasonLoc &Rsn,
-                         ConsAction CA, bool DoEqType, ProgramInfo *Info,
+                         Constraints &CS, const ReasonLoc &Rsn, ConsAction CA,
+                         bool DoEqType, ProgramInfo *Info,
                          bool HandleBoundsKey = true);
 
 // True if [C] is a PVConstraint that contains at least one Atom (i.e.,
@@ -280,8 +280,8 @@ public:
   // TODO: This method always returns a constraint variable containing one atom.
   //       This causes problems if the variable is later used as a deeper
   //       pointer type. See correctcomputation/checkedc-clang#673.
-  static PointerVariableConstraint *
-  getWildPVConstraint(Constraints &CS, const ReasonLoc &Rsn);
+  static PointerVariableConstraint *getWildPVConstraint(Constraints &CS,
+                                                        const ReasonLoc &Rsn);
 
   // Get constraint variables representing values that are not pointers. If a
   // meaningful name can be assigned to the value, the second method should be
@@ -405,12 +405,12 @@ private:
   // Construct and empty PointerVariableConstraint with only the name set. All
   // other fields are initialized to default values. This is used to construct
   // variables for non-pointer expressions.
-  PointerVariableConstraint(std::string Name) :
-    ConstraintVariable(PointerVariable, "", Name, ""), FV(nullptr),
-    SrcHasItype(false), PartOfFuncPrototype(false), Parent(nullptr),
-    SourceGenericIndex(-1), InferredGenericIndex(-1),
-    IsZeroWidthArray(false), IsTypedef(false),
-    TypedefLevelInfo({}), IsVoidPtr(false) {}
+  PointerVariableConstraint(std::string Name)
+      : ConstraintVariable(PointerVariable, "", Name, ""), FV(nullptr),
+        SrcHasItype(false), PartOfFuncPrototype(false), Parent(nullptr),
+        SourceGenericIndex(-1), InferredGenericIndex(-1),
+        IsZeroWidthArray(false), IsTypedef(false), TypedefLevelInfo({}),
+        IsVoidPtr(false) {}
 
 public:
   std::string getTy() const { return BaseType; }
@@ -437,7 +437,7 @@ public:
 
   bool isGeneric() const { return InferredGenericIndex >= 0; }
   int getGenericIndex() const { return InferredGenericIndex; }
-  void setGenericIndex(int idx) { InferredGenericIndex = idx; }
+  void setGenericIndex(int Idx) { InferredGenericIndex = Idx; }
   bool isGenericChanged() const {
     return SourceGenericIndex != InferredGenericIndex;
   }
@@ -491,15 +491,12 @@ public:
   //      code representation of the type. Allows for more precise rewriting by
   //      preserving the exact syntax used to write types that aren't rewritten
   //      by 3C. If this is null, then the type will be reconstructed from QT.
-  PointerVariableConstraint(const clang::QualType &QT, clang::DeclaratorDecl *D,
-                            std::string N, ProgramInfo &I,
-                            const clang::ASTContext &C,
-                            std::string *InFunc = nullptr,
-                            int ForceGenericIndex = -1,
-                            bool PotentialGeneric = false,
-                            bool VarAtomForChecked = false,
-                            TypeSourceInfo *TSI = nullptr,
-                            const clang::QualType &ItypeT = QualType());
+  PointerVariableConstraint(
+      const clang::QualType &QT, clang::DeclaratorDecl *D, std::string N,
+      ProgramInfo &I, const clang::ASTContext &C, std::string *InFunc = nullptr,
+      int ForceGenericIndex = -1, bool PotentialGeneric = false,
+      bool VarAtomForChecked = false, TypeSourceInfo *TSI = nullptr,
+      const clang::QualType &ItypeT = QualType());
 
   const CAtoms &getCvars() const { return Vars; }
 
@@ -526,8 +523,8 @@ public:
   void constrainOuterTo(Constraints &CS, ConstAtom *C, const ReasonLoc &Rsn,
                         bool DoLB = false, bool Soft = false);
   void constrainIdxTo(Constraints &CS, ConstAtom *C, unsigned int Idx,
-                      const ReasonLoc &Rsn,
-                      bool DoLB = false, bool Soft = false);
+                      const ReasonLoc &Rsn, bool DoLB = false,
+                      bool Soft = false);
   bool anyChanges(const EnvironmentMap &E) const override;
   bool anyArgumentIsWild(const EnvironmentMap &E);
   bool hasWild(const EnvironmentMap &E, int AIdx = -1) const override;
@@ -542,8 +539,8 @@ public:
 
   bool isPartOfFunctionPrototype() const { return PartOfFuncPrototype; }
   // Add the provided constraint variable as an argument constraint.
-  bool addArgumentConstraint(ConstraintVariable *DstCons,
-                             ReasonLoc &Rsn, ProgramInfo &Info);
+  bool addArgumentConstraint(ConstraintVariable *DstCons, ReasonLoc &Rsn,
+                             ProgramInfo &Info);
   // Get the set of constraint variables corresponding to the arguments.
   const std::set<ConstraintVariable *> &getArgumentConstraints() const;
 
@@ -608,9 +605,9 @@ public:
   PVConstraint *getInternal() const { return InternalConstraint; }
   PVConstraint *getExternal() const { return ExternalConstraint; }
 
-  void setGenericIndex(int idx) {
-    ExternalConstraint->setGenericIndex(idx);
-    InternalConstraint->setGenericIndex(idx);
+  void setGenericIndex(int Idx) {
+    ExternalConstraint->setGenericIndex(Idx);
+    InternalConstraint->setGenericIndex(Idx);
   }
 
   void equateWithItype(ProgramInfo &CS,
@@ -637,7 +634,6 @@ private:
   bool Hasproto;
   bool Hasbody;
   bool IsStatic;
-  FunctionVariableConstraint *Parent;
   // Flag to indicate whether this is a function pointer or not.
   bool IsFunctionPtr;
 
@@ -653,9 +649,9 @@ public:
   FunctionVariableConstraint(clang::TypedefDecl *D, ProgramInfo &I,
                              const clang::ASTContext &C);
 
-  FunctionVariableConstraint(const clang::QualType Ty,
-                             clang::DeclaratorDecl *D, std::string N,
-                             ProgramInfo &I, const clang::ASTContext &C,
+  FunctionVariableConstraint(const clang::QualType Ty, clang::DeclaratorDecl *D,
+                             std::string N, ProgramInfo &I,
+                             const clang::ASTContext &C,
                              TypeSourceInfo *TSI = nullptr);
 
   PVConstraint *getExternalReturn() const {
@@ -701,22 +697,18 @@ public:
   bool srcHasBounds() const override;
 
   // The number of type variables
-  int getGenericParams() const {
-    return TypeParams;
-  }
+  int getGenericParams() const { return TypeParams; }
   // remove added generics
   // use when we constrain a potential generic param to wild
-  void resetGenericParams() {
-    TypeParams = 0;
-  }
+  void resetGenericParams() { TypeParams = 0; }
 
   // The type parameter index of the return
   int getGenericIndex() const {
     return ReturnVar.ExternalConstraint->getGenericIndex();
   }
   // Change the type parameter index of the return
-  void setGenericIndex(int idx) {
-    ReturnVar.ExternalConstraint->setGenericIndex(idx);
+  void setGenericIndex(int Idx) {
+    ReturnVar.ExternalConstraint->setGenericIndex(Idx);
   }
 
   bool solutionEqualTo(Constraints &CS, const ConstraintVariable *CV,

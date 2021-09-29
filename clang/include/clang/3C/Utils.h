@@ -240,18 +240,16 @@ clang::SourceLocation getCheckedCAnnotationsEnd(const clang::Decl *D);
 
 template <unsigned N>
 inline clang::DiagnosticBuilder reportCustomDiagnostic(
-    clang::DiagnosticsEngine &DE,
-    clang::DiagnosticsEngine::Level Level,
-    const char (&FormatString)[N],
-    clang::SourceLocation Loc) {
+    clang::DiagnosticsEngine &DE, clang::DiagnosticsEngine::Level Level,
+    const char (&FormatString)[N], clang::SourceLocation Loc) {
   return DE.Report(Loc, DE.getCustomDiagID(Level, FormatString));
 }
 
 // For whatever reason, Clang provides << equivalents for many other
 // DiagnosticBuilder::Add* methods but not this one, and we want it in a few
 // places.
-inline const clang::DiagnosticBuilder &operator<<(
-    const clang::DiagnosticBuilder &DB, clang::NamedDecl *ND) {
+inline const clang::DiagnosticBuilder &
+operator<<(const clang::DiagnosticBuilder &DB, clang::NamedDecl *ND) {
   DB.AddTaggedVal(reinterpret_cast<intptr_t>(ND),
                   clang::DiagnosticsEngine::ArgumentKind::ak_nameddecl);
   return DB;

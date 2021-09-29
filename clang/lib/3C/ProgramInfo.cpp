@@ -381,8 +381,7 @@ bool ProgramInfo::link() {
   if (_3COpts.Verbose)
     llvm::errs() << "Linking!\n";
 
-  auto Rsn = ReasonLoc("Linking global variables",
-                       PersistentSourceLoc());
+  auto Rsn = ReasonLoc("Linking global variables", PersistentSourceLoc());
 
   // Equate the constraints for all global variables.
   // This is needed for variables that are defined as extern.
@@ -408,9 +407,9 @@ bool ProgramInfo::link() {
     // constrain everything about it
     if (!V.second) {
       std::string VarName = V.first;
-      auto WildReason = ReasonLoc(
-          "External global variable " + VarName + " has no definition",
-          Rsn.Location);
+      auto WildReason = ReasonLoc("External global variable " + VarName +
+                                      " has no definition",
+                                  Rsn.Location);
       const std::set<PVConstraint *> &C = GlobalVariableSymbols[VarName];
       for (const auto &Var : C) {
         // TODO: Is there an easy way to get a PSL to attach to the constraint?
@@ -442,9 +441,10 @@ void ProgramInfo::linkFunction(FunctionVariableConstraint *FV) {
   // should stay that way. Otherwise, we shouldn't be adding a checked type
   // to an undefined function. DEFAULT_REASON is a sentinel for
   // ConstraintVariable::equateWithItype; see the comment there.
-  std::string Rsn = (FV->hasBody() ? DEFAULT_REASON : "Unchecked pointer in parameter or "
-                                          "return of undefined function " +
-                                          FV->getName());
+  std::string Rsn = (FV->hasBody() ? DEFAULT_REASON
+                                   : "Unchecked pointer in parameter or "
+                                     "return of undefined function " +
+                                         FV->getName());
 
   // Handle the cases where itype parameters should not be treated as their
   // unchecked type.
@@ -461,8 +461,8 @@ void ProgramInfo::linkFunction(FunctionVariableConstraint *FV) {
   // rewritten to an itype.
   auto LinkComponent = [this, Reason](const FVComponentVariable *FVC) {
     FVC->getInternal()->constrainToWild(CS, Reason);
-    if (!_3COpts.InferTypesForUndefs &&
-        !FVC->getExternal()->srcHasItype() && !FVC->getExternal()->isGeneric())
+    if (!_3COpts.InferTypesForUndefs && !FVC->getExternal()->srcHasItype() &&
+        !FVC->getExternal()->isGeneric())
       FVC->getExternal()->constrainToWild(CS, Reason);
   };
 
@@ -552,10 +552,8 @@ ProgramInfo::insertNewFVConstraint(FunctionDecl *FD, FVConstraint *NewC,
     return (*Map)[FuncName];
 
   // Error reporting
-  reportCustomDiagnostic(C->getDiagnostics(),
-                         DiagnosticsEngine::Fatal,
-                         "merging failed for %q0 due to %1",
-                         FD->getLocation())
+  reportCustomDiagnostic(C->getDiagnostics(), DiagnosticsEngine::Fatal,
+                         "merging failed for %q0 due to %1", FD->getLocation())
       << FD << ReasonFailed;
   // A failed merge will provide poor data, but the diagnostic error report
   // will cause the program to terminate after the variable adder step.
@@ -607,7 +605,8 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
         // function to the function map anyways. The function map indexes by
         // function name, so there's no collision.
         insertNewFVConstraint(FD, F, AstContext);
-        constrainWildIfMacro(F, FD->getLocation(), ReasonLoc(MACRO_REASON, PLoc));
+        constrainWildIfMacro(F, FD->getLocation(),
+                             ReasonLoc(MACRO_REASON, PLoc));
       } else {
         // A function with the same name exists in the same source location.
         // This happens when a function is defined in a header file which is
@@ -627,7 +626,7 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
     auto RetTy = FD->getReturnType();
     unifyIfTypedef(RetTy, *AstContext, F->getExternalReturn(), Wild_to_Safe);
     unifyIfTypedef(RetTy, *AstContext, F->getInternalReturn(), Safe_to_Wild);
-    auto PSL = PersistentSourceLoc::mkPSL(FD,*AstContext);
+    auto PSL = PersistentSourceLoc::mkPSL(FD, *AstContext);
     ensureNtCorrect(RetTy, PSL, F->getExternalReturn());
     ensureNtCorrect(RetTy, PSL, F->getInternalReturn());
 
@@ -635,7 +634,7 @@ void ProgramInfo::addVariable(clang::DeclaratorDecl *D,
     // the parameters.
     for (unsigned I = 0; I < FD->getNumParams(); I++) {
       ParmVarDecl *PVD = FD->getParamDecl(I);
-      auto ParamPSL = PersistentSourceLoc::mkPSL(PVD,*AstContext);
+      auto ParamPSL = PersistentSourceLoc::mkPSL(PVD, *AstContext);
       QualType ParamTy = PVD->getType();
       PVConstraint *PVInternal = F->getInternalParam(I);
       PVConstraint *PVExternal = F->getExternalParam(I);
@@ -714,8 +713,8 @@ void ProgramInfo::ensureNtCorrect(const QualType &QT,
                                   const PersistentSourceLoc &PSL,
                                   PointerVariableConstraint *PV) {
   if (_3COpts.AllTypes && !canBeNtArray(QT)) {
-    PV->constrainOuterTo(CS, CS.getArr(),
-                         ReasonLoc(ARRAY_REASON, PSL), true, true);
+    PV->constrainOuterTo(CS, CS.getArr(), ReasonLoc(ARRAY_REASON, PSL), true,
+                         true);
   }
 }
 
@@ -794,7 +793,7 @@ void ProgramInfo::removePersistentConstraints(Expr *E, ASTContext *C) {
   // Save VarAtom locations so they can be used to assign source locations to
   // root causes.
   for (auto *CV : ExprConstraintVars[Key].first)
-    if (auto *PVC  = dyn_cast<PointerVariableConstraint>(CV))
+    if (auto *PVC = dyn_cast<PointerVariableConstraint>(CV))
       for (Atom *A : PVC->getCvars())
         if (auto *VA = dyn_cast<VarAtom>(A))
           DeletedAtomLocations[VA->getLoc()] = ExprLocations[Key];
@@ -1128,11 +1127,11 @@ void ProgramInfo::setTypeParamBinding(CallExpr *CE, unsigned int TypeVarIdx,
   auto Key = getExprKey(CE, C);
   auto CallMap = TypeParamBindings[Key];
   if (CallMap.find(TypeVarIdx) == CallMap.end()) {
-    TypeParamBindings[Key][TypeVarIdx] = TypeParamConstraint(CV,Ident);
+    TypeParamBindings[Key][TypeVarIdx] = TypeParamConstraint(CV, Ident);
   } else {
     // If this CE/idx is at the same location, it's in a macro,
     // so mark it as inconsistent.
-    TypeParamBindings[Key][TypeVarIdx] = TypeParamConstraint(nullptr,nullptr);
+    TypeParamBindings[Key][TypeVarIdx] = TypeParamConstraint(nullptr, nullptr);
   }
 }
 
@@ -1166,8 +1165,9 @@ void ProgramInfo::addTypedef(PersistentSourceLoc PSL, bool CanRewriteDef,
     V = new PointerVariableConstraint(TD, *this, C);
 
   if (!CanRewriteDef)
-    V->constrainToWild(this->getConstraints(),
-                       ReasonLoc("Unable to rewrite a typedef with multiple names", PSL));
+    V->constrainToWild(
+        this->getConstraints(),
+        ReasonLoc("Unable to rewrite a typedef with multiple names", PSL));
 
   if (!canWrite(PSL.getFileName()))
     V->constrainToWild(this->getConstraints(),

@@ -314,13 +314,9 @@ public:
   }
   virtual std::vector<ReasonLoc> &additionalReasons() { return ExtraReasons; }
   // include additional reasons that will appear in output as notes
-  virtual void addReason(const ReasonLoc &Rsn) {
-    ExtraReasons.push_back(Rsn);
-  }
+  virtual void addReason(const ReasonLoc &Rsn) { ExtraReasons.push_back(Rsn); }
 
-  bool isUnwritable(void) const {
-    return getReasonText() == UNWRITABLE_REASON;
-  }
+  bool isUnwritable(void) const { return getReasonText() == UNWRITABLE_REASON; }
 
   const PersistentSourceLoc &getLocation() const { return Reason.Location; }
 };

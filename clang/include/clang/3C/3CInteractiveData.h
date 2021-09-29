@@ -27,9 +27,7 @@ public:
 
   const PersistentSourceLoc &getLocation() const { return Main.Location; }
 
-  void addReason(const ReasonLoc &Rsn) {
-    Supplemental.push_back(Rsn);
-  }
+  void addReason(const ReasonLoc &Rsn) { Supplemental.push_back(Rsn); }
 
   std::vector<ReasonLoc> &additionalNotes() { return Supplemental; }
 

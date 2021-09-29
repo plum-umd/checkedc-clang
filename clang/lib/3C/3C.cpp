@@ -260,8 +260,7 @@ public:
   }
 
 private:
-  void handleExtraProgramAction(FrontendOptions &Opts,
-                                ASTContext &C) {
+  void handleExtraProgramAction(FrontendOptions &Opts, ASTContext &C) {
     // The Opts.ProgramAction field is normally used only by `clang -cc1` to
     // select a FrontendAction (see CreateFrontendBaseAction in
     // ExecuteCompilerInvocation.cpp) and is ignored by LibTooling tools, which
@@ -283,11 +282,10 @@ private:
       // look trivial because ASTPrinter requires ownership of the output
       // stream, and it probably isn't important for the intended debugging use
       // case.
-      std::unique_ptr<ASTConsumer> Dumper =
-          CreateASTDumper(nullptr /*Dump to stdout.*/, Opts.ASTDumpFilter,
-                          Opts.ASTDumpDecls, Opts.ASTDumpAll,
-                          Opts.ASTDumpLookups, Opts.ASTDumpDeclTypes,
-                          Opts.ASTDumpFormat);
+      std::unique_ptr<ASTConsumer> Dumper = CreateASTDumper(
+          nullptr /*Dump to stdout.*/, Opts.ASTDumpFilter, Opts.ASTDumpDecls,
+          Opts.ASTDumpAll, Opts.ASTDumpLookups, Opts.ASTDumpDeclTypes,
+          Opts.ASTDumpFormat);
       // In principle, we should call all the ASTConsumer methods the same way
       // the normal AST parsing process would, but there isn't an obvious way to
       // do that when using ASTUnit. Instead, we rely on the assumption
@@ -584,7 +582,7 @@ bool _3CInterface::solveConstraints() {
     // after constraint solving because the bound added depends on whether the
     // array is NTARR or ARR.
     GlobalProgramInfo.getABoundsInfo().addConstantArrayBounds(
-      GlobalProgramInfo);
+        GlobalProgramInfo);
 
     if (DebugArrSolver)
       GlobalProgramInfo.getABoundsInfo().dumpAVarGraph(

@@ -50,10 +50,10 @@ void TypeVariableEntry::updateEntry(QualType Ty, CVarSet &CVs,
   // passed to the same type param, we have no way of knowing if they were
   // the same and in general they will not always be, so this must be marked
   // inconsistent.
-  if (auto PVC1 = dyn_cast_or_null<PVConstraint>(GenArgumentCV))
-      if (auto PVC2 = dyn_cast_or_null<PVConstraint>(IdentCV))
-        if (PVC1->getGenericIndex() != PVC2->getGenericIndex())
-          IsConsistent = false;
+  if (auto *PVC1 = dyn_cast_or_null<PVConstraint>(GenArgumentCV))
+    if (auto *PVC2 = dyn_cast_or_null<PVConstraint>(IdentCV))
+      if (PVC1->getGenericIndex() != PVC2->getGenericIndex())
+        IsConsistent = false;
 
   // Record new constraints for the entry. These are used even when the variable
   // is not consistent.
@@ -125,15 +125,15 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
         const int TyIdx = FVCon->getExternalParam(I)->getGenericIndex();
         if (TyIdx >= 0) {
           Expr *Uncast = A->IgnoreImpCasts();
-          std::set<ConstraintVariable *> CVs = CR.getExprConstraintVarsSet(Uncast);
-          if (auto *DRE = dyn_cast<DeclRefExpr>(Uncast)){
-            CVarOption Var = Info.getVariable(DRE->getFoundDecl(),Context);
+          std::set<ConstraintVariable *> CVs =
+              CR.getExprConstraintVarsSet(Uncast);
+          if (auto *DRE = dyn_cast<DeclRefExpr>(Uncast)) {
+            CVarOption Var = Info.getVariable(DRE->getFoundDecl(), Context);
             if (Var.hasValue())
               if (PVConstraint *GenVar =
                       dyn_cast<PVConstraint>(&Var.getValue()))
                 if (GenVar->isGeneric()) {
-                  insertBinding(CE,TyIdx,Uncast->getType(),
-                                CVs,GenVar);
+                  insertBinding(CE, TyIdx, Uncast->getType(), CVs, GenVar);
                   ++I;
                   continue;
                 }
@@ -150,9 +150,8 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
       if (TVEntry.second.getIsConsistent()) {
         std::string Name =
             FD->getNameAsString() + "_tyarg_" + std::to_string(TVEntry.first);
-        PVConstraint *P =
-            new PVConstraint(TVEntry.second.getType(), nullptr, Name, Info,
-                             *Context, nullptr);
+        PVConstraint *P = new PVConstraint(TVEntry.second.getType(), nullptr,
+                                           Name, Info, *Context, nullptr);
 
         // Constrain this variable GEQ the function arguments using the type
         // variable so if any of them are wild, the type argument will also be
@@ -160,7 +159,7 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
         // elsewhere, especially `ConstraintResolver::getExprConstraintVars`
         // using variable `ReallocFlow`. Because `realloc` can take a wild
         // pointer and return a safe one.
-        auto PSL = PersistentSourceLoc::mkPSL(CE,*Context);
+        auto PSL = PersistentSourceLoc::mkPSL(CE, *Context);
         auto Rsn = ReasonLoc("Type variable", PSL);
         if (FD->getNameAsString() == "realloc") {
           constrainConsVarGeq(P, TVEntry.second.getConstraintVariables(),
@@ -169,16 +168,16 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
 
         } else {
           constrainConsVarGeq(P, TVEntry.second.getConstraintVariables(),
-                            Info.getConstraints(), Rsn, Safe_to_Wild, false,
-                            &Info);
-      }
+                              Info.getConstraints(), Rsn, Safe_to_Wild, false,
+                              &Info);
+        }
 
         TVEntry.second.setTypeParamConsVar(P);
         // Since we've changed the constraint variable for this context, we
         // need to remove the cache from the old one. Our new info will be
         // used next request.
-        if (Info.hasPersistentConstraints(CE,Context))
-          Info.removePersistentConstraints(CE,Context);
+        if (Info.hasPersistentConstraints(CE, Context))
+          Info.removePersistentConstraints(CE, Context);
       } else {
         // TODO: This might be too cautious.
         CR.constraintAllCVarsToWild(TVEntry.second.getConstraintVariables(),
@@ -205,8 +204,8 @@ void TypeVarVisitor::insertBinding(CallExpr *CE, const int TyIdx,
   auto &CallTypeVarMap = TVMap[CE];
   if (CallTypeVarMap.find(TyIdx) == CallTypeVarMap.end()) {
     // If the type variable hasn't been seen before, add it to the map.
-    TypeVariableEntry TVEntry = TypeVariableEntry(Ty, CVs, ForceInconsistent,
-                                                  IdentCV);
+    TypeVariableEntry TVEntry =
+        TypeVariableEntry(Ty, CVs, ForceInconsistent, IdentCV);
     CallTypeVarMap[TyIdx] = TVEntry;
   } else {
     // Otherwise, update entry with new type and constraints.
@@ -236,12 +235,10 @@ void TypeVarVisitor::setProgramInfoTypeVars() {
       if (TVCallEntry.second.getIsConsistent())
         Info.setTypeParamBinding(TVEntry.first, TVCallEntry.first,
                                  TVCallEntry.second.getTypeParamConsVar(),
-                                 TVCallEntry.second.getGenArgCV(),
-                                 Context);
+                                 TVCallEntry.second.getGenArgCV(), Context);
       else
-        Info.setTypeParamBinding(TVEntry.first, TVCallEntry.first,
-                                 nullptr, nullptr,
-                                 Context);
+        Info.setTypeParamBinding(TVEntry.first, TVCallEntry.first, nullptr,
+                                 nullptr, Context);
   }
 }
 
