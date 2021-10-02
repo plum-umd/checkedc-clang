@@ -852,9 +852,6 @@ PointerVariableConstraint::mkString(Constraints &CS,
     case Atom::A_Ptr:
       getQualString(TypeIdx, Ss);
 
-      // We need to check and see if this level of variable
-      // is constrained by a bounds safe interface. If it is,
-      // then we shouldn't re-write it.
       EmittedBase = false;
       Ss << "_Ptr<";
       EndStrs.push_front(">");
@@ -868,22 +865,16 @@ PointerVariableConstraint::mkString(Constraints &CS,
       // we should substitute [K].
       if (emitArraySize(ConstArrs, TypeIdx, K))
         break;
-      // We need to check and see if this level of variable
-      // is constrained by a bounds safe interface. If it is,
-      // then we shouldn't re-write it.
       EmittedBase = false;
       Ss << "_Array_ptr<";
       EndStrs.push_front(">");
       break;
     case Atom::A_NTArr:
-      if (emitArraySize(ConstArrs, TypeIdx, K))
-        break;
       // If this is an NTArray.
       getQualString(TypeIdx, Ss);
+      if (emitArraySize(ConstArrs, TypeIdx, K))
+        break;
 
-      // We need to check and see if this level of variable
-      // is constrained by a bounds safe interface. If it is,
-      // then we shouldn't re-write it.
       EmittedBase = false;
       Ss << "_Nt_array_ptr<";
       EndStrs.push_front(">");
@@ -894,8 +885,8 @@ PointerVariableConstraint::mkString(Constraints &CS,
       if (emitArraySize(ConstArrs, TypeIdx, K))
         break;
       // FIXME: This code emits wild pointer levels with the outermost on the
-      // left. The outermost should be on the right (item 6 of
-      // https://github.com/correctcomputation/checkedc-clang/issues/703).
+      // left. The outermost should be on the right
+      // (https://github.com/correctcomputation/checkedc-clang/issues/161).
       if (FV != nullptr) {
         FptrInner << "*";
         getQualString(TypeIdx, FptrInner);
