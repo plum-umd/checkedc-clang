@@ -917,23 +917,17 @@ PointerVariableConstraint::mkString(Constraints &CS,
     }
   }
 
-  // If we have a function pointer, we need to transfer any pending array
-  // levels to EndStrs before the FV code below reads EndStrs. It doesn't hurt
-  // to transfer pending array levels here unconditionally.
-  addArrayAnnotations(ConstArrs, EndStrs);
-
   if (!EmittedBase) {
     // If we have a FV pointer, then our "base" type is a function pointer type.
     if (FV) {
-      if (Ss.str().empty()) {
-        if (!EmittedName) {
-          FptrInner << UseName;
-          EmittedName = true;
-        }
-        for (std::string Str : EndStrs)
-          FptrInner << Str;
-        EndStrs.clear();
+      if (!EmittedName) {
+        FptrInner << UseName;
+        EmittedName = true;
       }
+      std::deque<std::string> FptrEndStrs;
+      addArrayAnnotations(ConstArrs, FptrEndStrs);
+      for (std::string Str : FptrEndStrs)
+        FptrInner << Str;
       bool EmitFVName = !FptrInner.str().empty();
       if (EmitFVName)
         Ss << FV->mkString(CS, MKSTRING_OPTS(UseName = FptrInner.str(),
@@ -959,6 +953,7 @@ PointerVariableConstraint::mkString(Constraints &CS,
   }
 
   // Add closing elements to type
+  addArrayAnnotations(ConstArrs, EndStrs);
   for (std::string Str : EndStrs) {
     Ss << Str;
   }

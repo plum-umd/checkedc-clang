@@ -53,6 +53,9 @@ void (* const l)(int *);
 //CHECK_NOALL: void (*const l)(_Ptr<int>) = ((void *)0);
 //CHECK_ALL: const _Ptr<void (_Ptr<int>)> l = ((void *)0);
 
+#define UNWRITABLE_MS_DECL void (*ms[2])(int *)
+UNWRITABLE_MS_DECL;
+
 void test(void){
   fs[1] = f;
   gs[1] = g;
@@ -63,4 +66,11 @@ void test(void){
   void (* const ls[1])(int *) = {l};
   //CHECK_NOALL: void (*const ls[1])(_Ptr<int>) = {l};
   //CHECK_ALL: const _Ptr<void (_Ptr<int>)> ls _Checked[1] = {l};
+
+  void (*(*pms)[2])(int *) = &ms;
+  //CHECK: _Ptr<void (*[2])(int *)> pms = &ms;
+
+  void (*(*apms[1])[2])(int *) = {&ms};
+  //CHECK_NOALL: void (*(*apms[1])[2])(int *) = {&ms};
+  //CHECK_ALL: _Ptr<void (*[2])(int *)> apms _Checked[1] = {&ms};
 }
