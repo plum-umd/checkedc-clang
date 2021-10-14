@@ -622,6 +622,7 @@ SourceRange getDeclSourceRangeWithAnnotations(
     return SR;
   SourceLocation DeclEnd = SR.getEnd();
 
+#if 0
   // Partial workaround for a compiler bug where if D has certain checked
   // pointer types such as `_Ptr<int *(void)>` (seen in the partial_checked.c
   // regression test), D->getSourceRange() returns only the _Ptr token (TODO:
@@ -631,6 +632,7 @@ SourceRange getDeclSourceRangeWithAnnotations(
   SourceLocation DeclLoc = D->getLocation();
   if (SM.isBeforeInTranslationUnit(DeclEnd, DeclLoc))
     DeclEnd = DeclLoc;
+#endif
 
   SourceLocation AnnotationsEnd = getCheckedCAnnotationsEnd(D);
   if (AnnotationsEnd.isValid() &&

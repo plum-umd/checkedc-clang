@@ -2267,7 +2267,7 @@ FVComponentVariable::FVComponentVariable(const QualType &QT,
       const SourceManager &SM = C.getSourceManager();
       SourceLocation DLoc = D->getLocation();
       CharSourceRange CSR;
-      if (SM.isBeforeInTranslationUnit(DRange.getEnd(), DLoc)) {
+      if (false /*SM.isBeforeInTranslationUnit(DRange.getEnd(), DLoc)*/) {
         // It's not clear to me why, but the end of the SourceRange for the
         // declaration can come before the SourceLocation for the declaration.
         // This can result in SourceDeclaration failing to capture the whole

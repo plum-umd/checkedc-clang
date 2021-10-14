@@ -1184,6 +1184,14 @@ bool DeclSpec::SetConstexprSpec(ConstexprSpecKind ConstexprKind,
   return false;
 }
 
+void DeclSpec::setSpecCheckedPtr(SourceLocation KWLoc,
+                                 SourceLocation LeftSymLoc,
+                                 SourceLocation RightSymLoc) {
+  this->CheckedPtrKWLoc = KWLoc;
+  this->CheckedPtrLeftSymLoc = LeftSymLoc;
+  this->CheckedPtrRightSymLoc = RightSymLoc;
+}
+
 void DeclSpec::SaveWrittenBuiltinSpecs() {
   writtenBS.Sign = static_cast<int>(getTypeSpecSign());
   writtenBS.Width = static_cast<int>(getTypeSpecWidth());

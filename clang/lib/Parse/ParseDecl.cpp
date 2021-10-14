@@ -7837,6 +7837,7 @@ void Parser::ParseCheckedPointerSpecifiers(DeclSpec &DS) {
            "Not a checked pointer specifier");
     tok::TokenKind Kind = Tok.getKind();
     SourceLocation StartLoc = ConsumeToken();
+    SourceLocation LeftLoc = Tok.getLocation();
     if (ExpectAndConsume(tok::less)) {
         return;
     }
@@ -7884,6 +7885,7 @@ void Parser::ParseCheckedPointerSpecifiers(DeclSpec &DS) {
         DiagID, Result.get(),
         Actions.getASTContext().getPrintingPolicy()))
         Diag(StartLoc, DiagID) << PrevSpec;
+    DS.setSpecCheckedPtr(StartLoc, LeftLoc, EndLoc);
 }
 
 /// [Checked C] Parse a specifier for an existential type.

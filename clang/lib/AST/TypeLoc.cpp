@@ -212,6 +212,19 @@ SourceLocation TypeLoc::getBeginLoc() const {
     case Qualified:
       Cur = Cur.getNextTypeLoc();
       continue;
+    case Pointer:
+      if (Cur.castAs<PointerTypeLoc>().getTypePtr()->isChecked()) {
+        // Unlike the usual "inside-out" C declarator syntax, checked pointer
+        // types (_Ptr<T>, etc.) are "right-side-out". Since T is syntactically
+        // contained in _Ptr<T>, it can't affect the source range of the whole
+        // type. Thus, the source range code can ignore T and treat _Ptr<T> the
+        // same way as a single-token type such as a primitive or typedef. Here,
+        // a single-token type would hit the `default` case with
+        // Cur.getNextTypeLoc().isNull() returning true.
+        LeftMost = Cur;
+        break;
+      }
+      LLVM_FALLTHROUGH;
     default:
       if (Cur.getLocalSourceRange().getBegin().isValid())
         LeftMost = Cur;
@@ -249,6 +262,13 @@ SourceLocation TypeLoc::getEndLoc() const {
         Last = Cur;
       break;
     case Pointer:
+      if (Cur.castAs<PointerTypeLoc>().getTypePtr()->isChecked()) {
+        // See the comment about checked pointers in TypeLoc::getBeginLoc.
+        if (!Last)
+          Last = Cur;
+        return Last.getLocalSourceRange().getEnd();
+      }
+      LLVM_FALLTHROUGH;
     case BlockPointer:
     case MemberPointer:
     case LValueReference:

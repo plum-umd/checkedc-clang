@@ -6289,6 +6289,16 @@ namespace {
       TL.setNameLoc(DS.getTypeSpecTypeLoc());
     }
 
+    void VisitPointerTypeLoc(PointerTypeLoc TL) {
+      // REVIEW: Should we have any error checks here?
+      TL.setKWLoc(DS.getCheckedPtrKWLoc());
+      TL.setLeftSymLoc(DS.getCheckedPtrLeftSymLoc());
+      TL.setRightSymLoc(DS.getCheckedPtrRightSymLoc());
+      TypeSourceInfo *TInfo = nullptr;
+      Sema::GetTypeFromParser(DS.getRepAsType(), &TInfo);
+      TL.getNextTypeLoc().initializeFullCopy(TInfo->getTypeLoc());
+    }
+
     void VisitTypeLoc(TypeLoc TL) {
       // FIXME: add other typespec types and change this to an assert.
       TL.initialize(Context, DS.getTypeSpecTypeLoc());

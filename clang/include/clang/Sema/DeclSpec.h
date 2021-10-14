@@ -410,6 +410,8 @@ private:
   /// otherwise, it is the same as TSTLoc. Hence, the pair TSTLoc and
   /// TSTNameLoc provides source range info for tag types.
   SourceLocation TSTNameLoc;
+  // Corresponds to PointerTypeLoc.
+  SourceLocation CheckedPtrKWLoc, CheckedPtrLeftSymLoc, CheckedPtrRightSymLoc;
   SourceRange TypeofParensRange;
   SourceLocation TQ_constLoc, TQ_restrictLoc, TQ_volatileLoc, TQ_atomicLoc,
       TQ_unalignedLoc;
@@ -561,6 +563,13 @@ public:
   SourceLocation getTypeSpecTypeNameLoc() const {
     assert(isDeclRep((TST) TypeSpecType) || TypeSpecType == TST_typename);
     return TSTNameLoc;
+  }
+  SourceLocation getCheckedPtrKWLoc() const { return CheckedPtrKWLoc; }
+  SourceLocation getCheckedPtrLeftSymLoc() const {
+    return CheckedPtrLeftSymLoc;
+  }
+  SourceLocation getCheckedPtrRightSymLoc() const {
+    return CheckedPtrRightSymLoc;
   }
 
   SourceRange getTypeofParensRange() const { return TypeofParensRange; }
@@ -842,6 +851,9 @@ public:
                             unsigned &DiagID);
   bool SetConstexprSpec(ConstexprSpecKind ConstexprKind, SourceLocation Loc,
                         const char *&PrevSpec, unsigned &DiagID);
+
+  void setSpecCheckedPtr(SourceLocation KWLoc, SourceLocation LeftSymLoc,
+                         SourceLocation RightSymLoc);
 
   bool isFriendSpecified() const { return Friend_specified; }
   SourceLocation getFriendSpecLoc() const { return FriendLoc; }

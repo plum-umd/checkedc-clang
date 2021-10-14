@@ -76,6 +76,13 @@ void test4() {
 // getDeclSourceRangeWithAnnotations for more information.
 _Ptr<int *(void)> gm;
 // CHECK: _Ptr<_Ptr<int> (void)> gm = ((void *)0);
+_Ptr<int *(void)> gma[10];
+// CHECK_NOALL: _Ptr<_Ptr<int> (void)> gma[10] = {((void *)0)};
+// CHECK_ALL:   _Ptr<_Ptr<int> (void)> gma _Checked[10] = {((void *)0)};
+
+// TODO: Better names and CHECK comments
+void gmf(_Ptr<int (void)> a, int *b) {}
+void gmaf(_Ptr<int (void)> a[10], int *b) {}
 
 void test5(_Ptr<int *> a, _Ptr<int *> b, _Ptr<_Ptr<int>> c, int **d) {
   // CHECK: void test5(_Ptr<_Ptr<int>> a, _Ptr<int *> b : itype(_Ptr<_Ptr<int>>), _Ptr<_Ptr<int>> c, _Ptr<_Ptr<int>> d) {

@@ -293,6 +293,80 @@ TEST(TypeLoc, LongLongConstRange) {
   EXPECT_TRUE(Verifier.match("long long const a = 0;", typeLoc()));
 }
 
+// For multi-level types such as pointers, if we just used typeLoc() as above,
+// it would match the TypeLocs of all the levels and the RangeVerifier would
+// verify an arbitrary one of them. Instead, we want to verify a specific level.
+internal::BindableMatcher<TypeLoc> typeLocAtDepth(unsigned int Depth) {
+  internal::BindableMatcher<TypeLoc> Matcher = typeLoc(hasParent(varDecl()));
+  for (unsigned int I = 0; I < Depth; I++)
+    Matcher = typeLoc(hasParent(Matcher));
+  return Matcher;
+}
+
+// Test the source range of a checked pointer type and all levels of its
+// pointee.
+TEST(CheckedPtr, TypeLoc) {
+  RangeVerifier<TypeLoc> Verifier;
+  Verifier.expectRange(1, 1, 1, 11);
+  EXPECT_TRUE(Verifier.match("_Ptr<int *> p;", typeLocAtDepth(0), Lang_C99));
+}
+TEST(CheckedPtr, TypeLocPointee) {
+  RangeVerifier<TypeLoc> Verifier;
+  Verifier.expectRange(1, 6, 1, 10);
+  EXPECT_TRUE(Verifier.match("_Ptr<int *> p;", typeLocAtDepth(1), Lang_C99));
+}
+TEST(CheckedPtr, TypeLocPointee2) {
+  RangeVerifier<TypeLoc> Verifier;
+  Verifier.expectRange(1, 6, 1, 6);
+  EXPECT_TRUE(Verifier.match("_Ptr<int *> p;", typeLocAtDepth(2), Lang_C99));
+}
+
+// Tests of checked pointers in combination with arrays (as an example of a type
+// layer that uses the usual inside-out C declarator syntax). Also, some
+// corresponding tests of unchecked pointers to verify that the special handling
+// of checked pointers doesn't unintentionally affect unchecked pointers.
+//
+// For each example declaration, we test the source ranges of both the TypeLoc
+// and the VarDecl. The VarDecl uses DeclaratorDecl::getSourceRange, which uses
+// typeIsPostfix to decide whether the type extends past the name in order to
+// choose either the name or the end of the type as the end of the source range.
+// typeIsPostfix has logic roughly parallel to TypeLoc::getEndLoc. (Could the
+// code be refactored to remove this duplication?)
+
+TEST(CheckedPtr, ArrayTypeLoc) {
+  RangeVerifier<TypeLoc> Verifier;
+  Verifier.expectRange(1, 1, 1, 13);
+  EXPECT_TRUE(Verifier.match("_Ptr<int[10]> p;", typeLocAtDepth(0), Lang_C99));
+}
+TEST(CheckedPtr, ArrayDecl) {
+  RangeVerifier<VarDecl> Verifier;
+  Verifier.expectRange(1, 1, 1, 15);
+  EXPECT_TRUE(Verifier.match("_Ptr<int[10]> p;", varDecl(), Lang_C99));
+}
+TEST(CheckedPtr, UncheckedArrayTypeLoc) {
+  RangeVerifier<TypeLoc> Verifier;
+  Verifier.expectRange(1, 1, 1, 12);
+  EXPECT_TRUE(Verifier.match("int (*p)[10];", typeLocAtDepth(0), Lang_C99));
+}
+TEST(CheckedPtr, UncheckedArrayDecl) {
+  RangeVerifier<VarDecl> Verifier;
+  Verifier.expectRange(1, 1, 1, 12);
+  EXPECT_TRUE(Verifier.match("int (*p)[10];", varDecl(), Lang_C99));
+}
+
+// Test with array levels both inside and outside a checked pointer level.
+TEST(CheckedPtr, SandwichArrayTypeLoc) {
+  RangeVerifier<TypeLoc> Verifier;
+  Verifier.expectRange(1, 1, 1, 18);
+  EXPECT_TRUE(
+      Verifier.match("_Ptr<int[10]> p[1];", typeLocAtDepth(0), Lang_C99));
+}
+TEST(CheckedPtr, SandwichArrayDecl) {
+  RangeVerifier<VarDecl> Verifier;
+  Verifier.expectRange(1, 1, 1, 18);
+  EXPECT_TRUE(Verifier.match("_Ptr<int[10]> p[1];", varDecl(), Lang_C99));
+}
+
 TEST(CXXConstructorDecl, NoRetFunTypeLocRange) {
   RangeVerifier<CXXConstructorDecl> Verifier;
   Verifier.expectRange(1, 11, 1, 13);
