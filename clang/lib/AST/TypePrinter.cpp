@@ -180,22 +180,6 @@ void TypePrinter::print(QualType t, raw_ostream &OS, StringRef PlaceHolder) {
   print(split.Ty, split.Quals, OS, PlaceHolder);
 }
 
-void TypePrinter::print(const BoundsAnnotations BA, raw_ostream &OS) {
-  bool printedColon = false;
-  if (const BoundsExpr *const Bounds = BA.getBoundsExpr()) {
-    OS << " : ";
-    printedColon = true;
-    Bounds->printPretty(OS, nullptr, Policy);
-  }
-  if (const InteropTypeExpr *const IType = BA.getInteropTypeExpr()) {
-    if (printedColon)
-      OS << " ";
-    else
-      OS << " : ";
-    IType->printPretty(OS, nullptr, Policy);
-  }
-}
-
 void TypePrinter::print(const Type *T, Qualifiers Quals, raw_ostream &OS,
                         StringRef PlaceHolder) {
   if (!T) {
@@ -969,7 +953,7 @@ void TypePrinter::printFunctionProtoAfter(const FunctionProtoType *T,
 
       print(T->getParamType(i), OS, StringRef());
       if (HasAnnots)
-        print(T->getParamAnnots(i), OS);
+        T->getParamAnnots(i).print(OS, Policy, Indentation);
     }
   }
 
@@ -989,7 +973,7 @@ void TypePrinter::printFunctionProtoAfter(const FunctionProtoType *T,
   printFunctionAfter(Info, OS);
 
   const BoundsAnnotations ReturnAnnots = T->getReturnAnnots();
-  print(ReturnAnnots, OS);
+  ReturnAnnots.print(OS, Policy, Indentation);
 
   if (!T->getMethodQuals().empty())
     OS << " " << T->getMethodQuals().getAsString();
@@ -2377,4 +2361,21 @@ void QualType::getAsStringInternal(const Type *ty, Qualifiers qs,
   TypePrinter(policy).print(ty, qs, StrOS, buffer);
   std::string str = std::string(StrOS.str());
   buffer.swap(str);
+}
+
+void BoundsAnnotations::print(raw_ostream &OS, const PrintingPolicy &Policy,
+                              unsigned Indentation) const {
+  bool printedColon = false;
+  if (Bounds) {
+    OS << " : ";
+    printedColon = true;
+    Bounds->printPretty(OS, nullptr, Policy, Indentation);
+  }
+  if (InteropType) {
+    if (printedColon)
+      OS << " ";
+    else
+      OS << " : ";
+    InteropType->printPretty(OS, nullptr, Policy, Indentation);
+  }
 }

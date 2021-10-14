@@ -880,11 +880,7 @@ void DeclPrinter::VisitVarDecl(VarDecl *D) {
   }
 
   printDeclType(T, D->getName());
-  if (D->hasBoundsExpr()) {
-    Out << " : ";
-    Expr *BoundsExpr = D->getBoundsExpr();
-    BoundsExpr->printPretty(Out, nullptr, Policy, Indentation);
-  }
+  D->getBoundsAnnotations().print(Out, Policy, Indentation);
 
   Expr *Init = D->getInit();
   if (!Policy.SuppressInitializers && Init) {

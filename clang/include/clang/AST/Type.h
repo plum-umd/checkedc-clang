@@ -1515,6 +1515,9 @@ public:
     return Bounds == nullptr && InteropType == nullptr;
   }
 
+  void print(raw_ostream &OS, const PrintingPolicy &Policy,
+             unsigned Indentation = 0) const;
+
   /// \brief Always write data for individual elements.
   void Profile(llvm::FoldingSetNodeID &ID, const ASTContext &Ctx) const;
 };
