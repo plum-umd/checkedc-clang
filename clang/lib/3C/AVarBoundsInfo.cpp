@@ -969,7 +969,7 @@ bool AVarBoundsInfo::addAssignment(BoundsKey L, BoundsKey R) {
     // The destination BoundsKey may be computed by pointer arithmetic as long
     // 3C can emit range bounds on the pointer. If 3C cannot emit range bounds,
     // then the incoming edge is not added so that no bounds will be inferred.
-    bool ToValid = !hasPointerArithmetic(To) || canInferRangeBounds(To);
+    bool ToValid = !hasPointerArithmetic(To) || isEligibleForRangeBounds(To);
     if (FromValid && ToValid)
       ProgVarGraph.addUniqueEdge(From, To);
   };
@@ -1022,7 +1022,7 @@ bool AVarBoundsInfo::hasPointerArithmetic(BoundsKey BK) {
   return ArrPointersWithArithmetic.find(BK) != ArrPointersWithArithmetic.end();
 }
 
-bool AVarBoundsInfo::canInferRangeBounds(BoundsKey BK) {
+bool AVarBoundsInfo::isEligibleForRangeBounds(BoundsKey BK) {
   return IneligibleForRangeBounds.find(BK) == IneligibleForRangeBounds.end();
 }
 
@@ -1038,7 +1038,7 @@ bool AVarBoundsInfo::needsRangeBound(ConstraintVariable *CV) {
   // and would otherwise need bounds. Some pointers (global variables and struct
   // fields) can't be rewritten to use range bounds (by 3C; Checked C does
   // permit it), so we return false on these.
-  return hasPointerArithmetic(BK) && canInferRangeBounds(BK) &&
+  return hasPointerArithmetic(BK) && isEligibleForRangeBounds(BK) &&
          getBounds(BK) != nullptr;
 }
 

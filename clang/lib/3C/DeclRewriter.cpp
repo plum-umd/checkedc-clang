@@ -403,8 +403,6 @@ void DeclRewriter::rewriteMultiDecl(DeclReplacement *N, RSet &ToRewrite,
   // initializers are preserved, any declarations that an initializer to
   // be valid checked-c are given one.
 
-  //std::vector<std::string> AllSupplementaryDecls;
-
   bool IsFirst = true;
   SourceLocation PrevEnd;
   for (const auto &DL : SameLineDecls) {
@@ -417,14 +415,6 @@ void DeclRewriter::rewriteMultiDecl(DeclReplacement *N, RSet &ToRewrite,
       SameLineReplacement = It->second;
       Found = true;
       VisitedMultiDeclMembers.insert(DL);
-      // TODO: This isn't a great solution. I would rather be able to interleave
-      //       the new declarations with the old, but I haven't figured this out
-      //       yet. The current implementation has known bugs when later
-      //       declarations in the multidecl reference later declarations.
-      //AllSupplementaryDecls.insert(AllSupplementaryDecls.begin(),
-      //   SameLineReplacement->getSupplementaryDecls().begin(),
-      //   SameLineReplacement->getSupplementaryDecls().end());
-      //SameLineReplacement->getSupplementaryDecls().clear();
     }
 
     if (IsFirst && ContainsInlineStruct) {
@@ -439,6 +429,9 @@ void DeclRewriter::rewriteMultiDecl(DeclReplacement *N, RSet &ToRewrite,
       if (Found) {
         SourceRange SR(DL->getBeginLoc(), DL->getEndLoc());
         doDeclRewrite(SR, SameLineReplacement);
+        // If the call to `doDeclRewrite` emitted a supplementary declaration,
+        // it also emitted a trailing new line after the declaration. We do not
+        // need to include it in the replacement text for the comma.
         if (!SameLineReplacement->getSupplementaryDecls().empty())
           ReplaceText = ";";
       }
@@ -511,8 +504,6 @@ void DeclRewriter::rewriteMultiDecl(DeclReplacement *N, RSet &ToRewrite,
       Offset = 2;
     PrevEnd = End.getEnd().getLocWithOffset(Offset);
   }
-
-  //emitSupplementaryDeclarations(AllSupplementaryDecls, PrevEnd);
 }
 
 // Common rewriting logic used to replace a single decl either on its own or as
@@ -562,7 +553,8 @@ void DeclRewriter::rewriteFunctionDecl(FunctionDeclReplacement *N) {
                      N->getReplacement());
   if (N->getDecl()->isThisDeclarationADefinition()) {
     Stmt *S = N->getDecl()->getBody();
-    /*FIXME :*/ assert("N->getDecl()->getBody() can be null." && S != nullptr);
+    assert("Supplementary declarations should only exist on rewritings for "
+           "function definitions." && S != nullptr);
     emitSupplementaryDeclarations(N->getSupplementaryDecls(),
                                   N->getDecl()->getBody()->getBeginLoc());
   }
@@ -580,6 +572,9 @@ void DeclRewriter::emitSupplementaryDeclarations(
   std::string AllDecls;
   for (std::string D : SDecls)
     AllDecls += "\n" + D;
+  // FIXME: This adds an extra new line after the declaration(s), but is needed
+  //        for proper rewriting in multi-declarations. Maybe this will be
+  //        easier fix after merging with matt's changes.
   AllDecls += "\n";
 
   insertText(R, Loc, AllDecls);

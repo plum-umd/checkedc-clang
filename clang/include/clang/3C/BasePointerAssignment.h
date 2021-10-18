@@ -26,7 +26,6 @@
 // doesn't alias `p`), while `p = p + 1` will return false.
 bool isBasePointerAssignment(clang::Expr *LHS, clang::Expr *RHS);
 
-
 // A class to visit all base pointer assignment expression as detected by
 // isBasePointerAssignment. This class should be extended with
 // visitBasePointerAssignment overridden.
@@ -37,6 +36,9 @@ public:
 
   bool VisitBinaryOperator(BinaryOperator *O);
 
+  // Override this method to define the operation that should be performed on
+  // each assignment. The LHS and RHS of the assignment expression are passed
+  // through.
   virtual void visitBasePointerAssignment(Expr *LHS, Expr *RHS) = 0;
 };
 

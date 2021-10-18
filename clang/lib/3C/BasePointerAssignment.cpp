@@ -63,6 +63,7 @@ public:
 
   const std::set<VarDecl *> &getObservedDecls() { return ObservedDecls; }
 
+  // A structure field access is represented
   typedef std::pair<VarDecl *, std::vector<FieldDecl *>> StructAccess;
   const std::set<StructAccess> &getObservedStructAccesses() {
     return ObservedStructAccesses;

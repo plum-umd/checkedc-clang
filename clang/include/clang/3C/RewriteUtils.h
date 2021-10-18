@@ -91,7 +91,7 @@ public:
   explicit FunctionDeclReplacement(FunctionDecl *D, std::string R,
                                    std::vector<std::string> SDecls, bool Return,
                                    bool Params, bool Generic = false)
-    : DeclReplacementTempl(D, nullptr, R, SDecls), RewriteGeneric(Generic),
+      : DeclReplacementTempl(D, nullptr, R, SDecls), RewriteGeneric(Generic),
         RewriteReturn(Return), RewriteParams(Params) {
     assert("Doesn't make sense to rewrite nothing!" &&
            (RewriteGeneric || RewriteReturn || RewriteParams));

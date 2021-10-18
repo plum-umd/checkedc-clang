@@ -257,13 +257,17 @@ public:
 
   // Check if range bounds can be inferred by 3C for the pointer corresponding
   // to the bounds key.
-  bool canInferRangeBounds(BoundsKey BK);
+  bool isEligibleForRangeBounds(BoundsKey BK);
 
+  // Record that a pointer cannot be rewritten to use range bounds. This might
+  // be due to 3C rewriting limitations (assignments appearing inside macros),
+  // or it might be a Checked C limitation (the current style of range bounds
+  // can't properly initialized on global variables without error).
   void markIneligibleForRangeBounds(BoundsKey BK);
 
   // Check if the bounds keys will need to be rewritten with range bounds. This
-  // is true for bounds keys that are subject to pointer arithmetic but
-  // otherwise have inferred bounds.
+  // is true for bounds keys that are subject to pointer arithmetic, otherwise
+  // have inferred bounds, and are eligible for range bounds.
   bool needsRangeBound(ConstraintVariable *CV);
 
   // Get the ProgramVar for the provided VarKey.
@@ -325,7 +329,6 @@ private:
   std::map<BoundsKey, std::map<BoundsPriority, ABounds *>> BInfo;
   // Set that contains BoundsKeys of variables which have invalid bounds.
   std::set<BoundsKey> InvalidBounds;
-
   // These are the bounds key of the pointers that has arithmetic operations
   // performed on them. These pointers cannot have the standard `count(n)`
   // bounds and instead must use range bounds e.g., `bounds(p, p + n)`.
