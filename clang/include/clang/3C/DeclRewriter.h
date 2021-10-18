@@ -58,7 +58,6 @@ public:
   // Info parameter are rewritten.
   static void rewriteDecls(ASTContext &Context, ProgramInfo &Info, Rewriter &R);
 
-
   static RewrittenDecl
   buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl, ProgramInfo &Info,
                  ArrayBoundsRewriter &ABR, bool GenerateSDecls);

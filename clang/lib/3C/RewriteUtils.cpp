@@ -22,7 +22,6 @@
 using namespace llvm;
 using namespace clang;
 
-
 void GlobalVariableGroups::addGlobalDecl(Decl *VD, std::vector<Decl *> *VDVec) {
   if (VD && GlobVarGroups.find(VD) == GlobVarGroups.end()) {
     if (VDVec == nullptr)

@@ -76,7 +76,6 @@ public:
   ~CountBound() override {}
 
   std::string mkString(AVarBoundsInfo *ABI, clang::Decl *D = nullptr) override;
-
   std::string mkRangeString(AVarBoundsInfo *, clang::Decl *D,
                             std::string BasePtr) override;
 

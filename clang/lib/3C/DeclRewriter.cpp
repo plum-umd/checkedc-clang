@@ -537,14 +537,9 @@ void DeclRewriter::doDeclRewrite(SourceRange &SR, DeclReplacement *N) {
 
   rewriteSourceRange(R, SR, Replacement);
 
-  // Lexer::findNextToken can fail (why?). Rather than adding extra error
-  // handling here, pass an invalid location to emitSupplementryDeclaration so
-  // that it can emit an error.
-  Optional<Token> NextToken = Lexer::findNextToken(
+  SourceLocation L = getLocationAfter(
     N->getSourceRange(A.getSourceManager()).getEnd(), A.getSourceManager(),
     A.getLangOpts());
-  SourceLocation L = NextToken.hasValue() ? NextToken.getValue().getLocation()
-                                          : SourceLocation();
   emitSupplementaryDeclarations(N->getSupplementaryDecls(), L);
 }
 

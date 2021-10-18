@@ -817,9 +817,12 @@ BoundsKey AVarBoundsInfo::getVariable(clang::VarDecl *VD) {
       // Global variables cannot be given range bounds because it is not
       // possible to initialize a duplicated pointer variable with the same
       // value as the original.
-      // TODO: Followup issue.
+      // TODO: Followup issue: Implementing the rewriting here would be easy,
+      //       but it would also require change the compiler to recognize
+      //       dynamic bounds casts are constant expressions, which doesn't
+      //       sound too hard.
       if (!VD->isLocalVarDeclOrParm())
-        IneligibleForRangeBounds.insert(NK);
+        markIneligibleForRangeBounds(NK);
     }
   }
   return getVarKey(PSL);
@@ -896,8 +899,10 @@ BoundsKey AVarBoundsInfo::getVariable(clang::FieldDecl *FD) {
       // Fields are not rewritten with range bounds because we would need to
       // duplicate the field and update all structure initializations to
       // properly set the new field.
-      // TODO: Followup issue.
-      IneligibleForRangeBounds.insert(NK);
+      // TODO: Followup issue: Add the duplicate declaration as a new field in
+      //       the struct and then also update all struct initializer to include
+      //       the new field.
+      markIneligibleForRangeBounds(NK);
     }
   }
   return getVarKey(PSL);
