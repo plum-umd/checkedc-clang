@@ -174,13 +174,27 @@ void test9() {
   // expected-error@-1 {{expression has unknown bounds}}
 }
 
+// Creating a temporary local `int a _Checked[10]` would be incorrect here
+// because the local variable array type does not decay to a pointer type.
+// Future work can instead use checked array pointer type for the local.
+void test10(int a[10]) {
+// CHECK_ALL: void test10(int a _Checked[10]) _Checked {
+// expected-note@-2 {{}}
+
+  // A warning is expected because we keep the bound for the checked array. It
+  // could instead be rewritten to `_Array_ptr<int> a` without a bound.
+  a++;
+  // expected-warning@-1 {{cannot prove declared bounds for 'a' are valid after increment}}
+  // expected-note@-2 {{}}
+}
+
 // Another case where range bounds aren't allowed: if we would have to update
-// an assignemnt expression in a macro (which would be a rewriting error), then
+// an assignment expression in a macro (which would be a rewriting error), then
 // the pointer cannot get range bounds.
 #define set_a_to_null a = 0
 #define null_with_semi 0;
 #define another_macro d =
-void test10(size_t n){
+void test11(size_t n){
   int *a = malloc(sizeof(int) * n);
   //CHECK: _Array_ptr<int> a = malloc<int>(sizeof(int) * n);
   a++;
@@ -210,8 +224,8 @@ void test10(size_t n){
 // Check byte_count rewriting. Interesting because range bound needs a cast to
 // `_Array_ptr<char>` for pointer arithmetic with offset to be correct.
 void byte_count_fn(int *a : byte_count(n), unsigned int n);
-void test11(int *b, unsigned int n) {
-// CHECK: void test11(_Array_ptr<int> __3c_tmp_b : byte_count(n), unsigned int n) _Checked {
+void test12(int *b, unsigned int n) {
+// CHECK: void test12(_Array_ptr<int> __3c_tmp_b : byte_count(n), unsigned int n) _Checked {
 // CHECK: _Array_ptr<int> b : bounds(((_Array_ptr<char>)__3c_tmp_b), ((_Array_ptr<char>)__3c_tmp_b) + n) = __3c_tmp_b;
 
   byte_count_fn(b, n);

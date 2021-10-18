@@ -203,6 +203,20 @@ bool isPtrOrArrayType(const clang::QualType &QT) {
   return QT->isPointerType() || QT->isArrayType();
 }
 
+bool isArrayType(const QualType &QT) {
+  // This is an array type. Just return true.
+  if (QT->isArrayType())
+    return true;
+
+  // It might instead be an array which has decayed to a pointer. We still want
+  // to treat this as an array.
+  const DecayedType *T = QT->getAs<DecayedType>();
+  if (T && T->getOriginalType()->isArrayType())
+    return true;
+
+  return false;
+}
+
 bool isNullableType(const clang::QualType &QT) {
   if (QT.getTypePtrOrNull())
     return QT->isPointerType() || QT->isArrayType() || QT->isIntegerType();

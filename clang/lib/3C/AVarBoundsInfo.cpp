@@ -846,8 +846,16 @@ BoundsKey AVarBoundsInfo::getVariable(clang::ParmVarDecl *PVD) {
     auto *PVar = ProgramVar::createNewProgramVar(NK, ParamName, FPS);
     insertProgramVar(NK, PVar);
     insertParamKey(ParamKey, NK);
-    if (isPtrOrArrayType(PVD->getType()))
+    if (isPtrOrArrayType(PVD->getType())) {
       PointerBoundsKey.insert(NK);
+      // We do not give range bounds to parameters with an array type. Doing
+      // this causes the local variable duplicate definition to have an array
+      // type, but pointer arithmetic on constant size arrays is not allowed.
+      // TODO: Follow up issue: Can we add some special logic in rewriting to
+      //       emit the duplicate definition with an _Array_pointer type?
+      if (isArrayType(PVD->getType()))
+        markIneligibleForRangeBounds(NK);
+    }
   }
   return ParamDeclVarMap.left().at(ParamKey);
 }

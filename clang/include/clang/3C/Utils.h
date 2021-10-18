@@ -128,6 +128,11 @@ bool isPointerType(clang::ValueDecl *VD);
 // Is this a pointer or array type?
 bool isPtrOrArrayType(const clang::QualType &QT);
 
+// Is this an array type? Note that this includes pointer types decayed from
+// array types (i.e., arrays in function parameters) but does not include
+// Checked C checked array pointers (unless they decayed from a checked array).
+bool isArrayType(const clang::QualType &QT);
+
 // Is this a type that can go inside an _Nt_array_ptr?
 bool isNullableType(const clang::QualType &QT);
 
