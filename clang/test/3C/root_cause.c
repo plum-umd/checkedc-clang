@@ -108,8 +108,3 @@ void test_conflict() {
 // expected-note@#as_nt {{Assigning from c to s}}
 
 #include "root_cause.h"
-void undef_caller() {
-  int *p;
-  undefined(p);
-  // unwritable-expected-warning@-1 {{0 unchecked pointers: Source code in non-writable file}}
-}
