@@ -169,15 +169,24 @@ private:
   // avoid colliding with them.
   std::set<std::string> UsedTagNames;
   
-  // Map from PSL of an originally unnamed TagDecl to the string that should be
-  // used to refer to its type, so we can ensure that names are assigned
-  // consistently when 3C naively rewrites the same header file multiple times
-  // as part of different translation units (see
+  // Information about an originally unnamed tag definition in a multi-decl for
+  // which we're using a new name.
+  struct RenamedTagDefInfo {
+    // The new string that should be used to refer to the type of the TagDecl.
+    // Unlike UsedTagNames, this includes the tag kind keyword (such as
+    // `struct`), except when we use an existing typedef (which doesn't require
+    // a tag keyword).
+    std::string AssignedTypeStr;
+    // Whether the TagDecl should be split from the multi-decl. True except when
+    // we use an existing typedef.
+    bool ShouldSplit;
+  };
+
+  // Map from PSL of a TagDecl to its RenamedTagDefInfo, to ensure that we
+  // handle the TagDecl consistently when 3C naively rewrites the same header
+  // file multiple times as part of different translation units (see
   // https://github.com/correctcomputation/checkedc-clang/issues/374#issuecomment-804283984).
-  // Note that unlike UsedTagNames, this includes the tag kind keyword (such as
-  // `struct`), except when we use an existing typedef (which doesn't require a
-  // tag keyword).
-  std::map<PersistentSourceLoc, std::string> AssignedTagTypeStrs;
+  std::map<PersistentSourceLoc, RenamedTagDefInfo> RenamedTagDefs;
 
   std::map<ASTContext *, TUMultiDeclsInfo> TUInfos;
 

@@ -96,6 +96,8 @@ void ProgramMultiDeclsInfo::findMultiDecls(DeclContext *DC, ASTContext &Context)
   SourceLocation CurrentBeginLoc;
   PersistentSourceLoc TagDefPSL;
   bool TagDefNeedsName;
+  llvm::Optional<RenamedTagDefInfo> RenameInfo;
+  bool AppliedRenameInfo;
 
   for (Decl *D : DC->decls()) {
     TagDecl *TagD = dyn_cast<TagDecl>(D);
@@ -113,7 +115,9 @@ void ProgramMultiDeclsInfo::findMultiDecls(DeclContext *DC, ASTContext &Context)
         assert(CurrentMultiDecl->Members.empty() &&
                "Multi-decl members are not consecutive in traversal order");
         TagDefNeedsName = false;
-        
+        RenameInfo = llvm::None;
+        AppliedRenameInfo = false;
+
         // Check for an inline tag definition.
         // Wanted: CurrentBeginLoc <= LastTagDef->getBeginLoc().
         // Implemented as: !(LastTagDef->getBeginLoc() < CurrentBeginLoc).
@@ -126,8 +130,10 @@ void ProgramMultiDeclsInfo::findMultiDecls(DeclContext *DC, ASTContext &Context)
           if (LastTagDef->getName().empty()) {
             // REVIEW: Assert that we don't get here with isAnonymousStructOrUnion true?
             TagDefPSL = PersistentSourceLoc::mkPSL(LastTagDef, Context);
-            if (AssignedTagTypeStrs.find(TagDefPSL) == AssignedTagTypeStrs.end() &&
-                canWrite(TagDefPSL.getFileName()))
+            auto Iter = RenamedTagDefs.find(TagDefPSL);
+            if (Iter != RenamedTagDefs.end())
+              RenameInfo = Iter->second;
+            else if (canWrite(TagDefPSL.getFileName()))
               TagDefNeedsName = true;
           }
         }
@@ -171,12 +177,9 @@ void ProgramMultiDeclsInfo::findMultiDecls(DeclContext *DC, ASTContext &Context)
             !(Underlying = TyD->getUnderlyingType()).hasLocalQualifiers() &&
             QualType(unelaborateType(Underlying.getTypePtr()), 0) ==
                 Context.getTagDeclType(LastTagDef)) {
-          AssignedTagTypeStrs.insert(std::make_pair(TagDefPSL, MemberName));
-          TagDefNeedsName = false;
-          CurrentMultiDecl->BaseTypeRenamed = true;
-          // Tell the rewriter that the tag definition should not be moved out of
-          // the typedef.
-          CurrentMultiDecl->TagDefToSplit = nullptr;
+          // In this case, ShouldSplit = false: the tag definition should not be
+          // moved out of the typedef.
+          RenameInfo = RenamedTagDefInfo{MemberName, false};
         } else {
           // Otherwise, just generate a new tag name based on the member name.
           // Example: `struct { ... } foo;` ->
@@ -189,9 +192,7 @@ void ProgramMultiDeclsInfo::findMultiDecls(DeclContext *DC, ASTContext &Context)
             if (UsedTagNames.find(NewName) == UsedTagNames.end())
               break;
           }
-          AssignedTagTypeStrs.insert(std::make_pair(TagDefPSL, KindName + " " + NewName));
-          TagDefNeedsName = false;
-          CurrentMultiDecl->BaseTypeRenamed = true;
+          RenameInfo = RenamedTagDefInfo{KindName + " " + NewName, true};
           // Consider this name taken and ensure that other automatically
           // generated names do not collide with it.
           //
@@ -204,8 +205,20 @@ void ProgramMultiDeclsInfo::findMultiDecls(DeclContext *DC, ASTContext &Context)
           // which multi-decls will be rewritten.
           UsedTagNames.insert(NewName);
         }
+        RenamedTagDefs.insert(std::make_pair(TagDefPSL, *RenameInfo));
+        TagDefNeedsName = false;
+      }
+
+      // To help avoid bugs, use the same code whether the RenameInfo was just
+      // assigned or was saved from a previous translation unit.
+      if (RenameInfo && !AppliedRenameInfo) {
+        CurrentMultiDecl->BaseTypeRenamed = true;
+        if (!RenameInfo->ShouldSplit)
+          CurrentMultiDecl->TagDefToSplit = nullptr;
+        AppliedRenameInfo = true;
       }
     }
+
     if (DeclContext *NestedDC = dyn_cast<DeclContext>(D)) {
       findMultiDecls(NestedDC, Context);
     }
@@ -223,9 +236,9 @@ ProgramMultiDeclsInfo::getTypeStrOverride(const Type *Ty, const ASTContext &C) {
     TagDecl *TD = TTy->getDecl();
     if (TD->getName().empty()) {
       PersistentSourceLoc PSL = PersistentSourceLoc::mkPSL(TD, C);
-      auto Iter = AssignedTagTypeStrs.find(PSL);
-      if (Iter != AssignedTagTypeStrs.end())
-        return Iter->second;
+      auto Iter = RenamedTagDefs.find(PSL);
+      if (Iter != RenamedTagDefs.end())
+        return Iter->second.AssignedTypeStr;
       // REVIEW: Assert that we don't get here in writable code? We should have
       // named all unnamed TagDecls in writable code.
     }
@@ -252,8 +265,8 @@ ProgramMultiDeclsInfo::findContainingMultiDecl(MultiDeclMemberDecl *MMD) {
 bool ProgramMultiDeclsInfo::wasBaseTypeRenamed(Decl *D) {
   // We assume that the base type was renamed if and only if D belongs to a
   // multi-decl marked as having the base type renamed. It might be better to
-  // actually extract the base type from D and look it up in
-  // AssignedTagTypeStrs, but that's more work.
+  // actually extract the base type from D and look it up in RenamedTagDefs,
+  // but that's more work.
   MultiDeclMemberDecl *MMD = getAsMultiDeclMember(D);
   if (!MMD)
     return false;
