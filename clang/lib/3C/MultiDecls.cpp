@@ -111,7 +111,7 @@ void ProgramMultiDeclsInfo::findMultiDecls(DeclContext *DC, ASTContext &Context)
       if (CurrentMultiDecl == nullptr || MMD->getBeginLoc() != CurrentBeginLoc) {
         // We are starting a new multi-decl.
         CurrentBeginLoc = MMD->getBeginLoc();
-        CurrentMultiDecl = &TUInfo[CurrentBeginLoc];
+        CurrentMultiDecl = &TUInfo.MultiDeclsByBeginLoc[CurrentBeginLoc];
         assert(CurrentMultiDecl->Members.empty() &&
                "Multi-decl members are not consecutive in traversal order");
         TagDefNeedsName = false;
@@ -125,6 +125,7 @@ void ProgramMultiDeclsInfo::findMultiDecls(DeclContext *DC, ASTContext &Context)
             !Context.getSourceManager().isBeforeInTranslationUnit(
                 LastTagDef->getBeginLoc(), CurrentBeginLoc)) {
           CurrentMultiDecl->TagDefToSplit = LastTagDef;
+          TUInfo.ContainingMultiDeclOfTagDecl[LastTagDef] = CurrentMultiDecl;
 
           // Do we need to automatically name the TagDefToSplit?
           if (LastTagDef->getName().empty()) {
@@ -248,11 +249,11 @@ ProgramMultiDeclsInfo::getTypeStrOverride(const Type *Ty, const ASTContext &C) {
 
 MultiDeclInfo *
 ProgramMultiDeclsInfo::findContainingMultiDecl(MultiDeclMemberDecl *MMD) {
-  TUMultiDeclsInfo &TUInfo = TUInfos[&MMD->getASTContext()];
+  auto &MultiDeclsByLoc = TUInfos[&MMD->getASTContext()].MultiDeclsByBeginLoc;
   // Look for a MultiDeclInfo for the beginning location of MMD, then check that
   // the MultiDeclInfo actually contains MMD.
-  auto It = TUInfo.find(MMD->getBeginLoc());
-  if (It == TUInfo.end())
+  auto It = MultiDeclsByLoc.find(MMD->getBeginLoc());
+  if (It == MultiDeclsByLoc.end())
     return nullptr;
   MultiDeclInfo &MDI = It->second;
   // Hope we don't have multi-decls with so many members that this becomes a
@@ -260,6 +261,14 @@ ProgramMultiDeclsInfo::findContainingMultiDecl(MultiDeclMemberDecl *MMD) {
   if (std::find(MDI.Members.begin(), MDI.Members.end(), MMD) != MDI.Members.end())
     return &MDI;
   return nullptr;
+}
+
+MultiDeclInfo *ProgramMultiDeclsInfo::findContainingMultiDecl(TagDecl *TD) {
+  auto &MDOfTD = TUInfos[&TD->getASTContext()].ContainingMultiDeclOfTagDecl;
+  auto It = MDOfTD.find(TD);
+  if (It == MDOfTD.end())
+    return nullptr;
+  return It->second;
 }
 
 bool ProgramMultiDeclsInfo::wasBaseTypeRenamed(Decl *D) {

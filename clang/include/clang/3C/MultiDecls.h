@@ -158,10 +158,21 @@ struct MultiDeclInfo {
   bool AlreadyRewritten = false;
 };
 
-// All multi-decls, keyed by the common beginning source location of their
-// members. Note that the beginning source location of TagDefToSplit may be
-// later if there is a keyword such as `static` or `typedef` in between.
-typedef std::map<SourceLocation, MultiDeclInfo> TUMultiDeclsInfo;
+struct TUMultiDeclsInfo {
+  // All multi-decls, keyed by the common beginning source location of their
+  // members. Note that the beginning source location of TagDefToSplit may be
+  // later if there is a keyword such as `static` or `typedef` in between.
+  std::map<SourceLocation, MultiDeclInfo> MultiDeclsByBeginLoc;
+
+  // Map from a tag definition to its containing multi-decl (if it is part of
+  // one). Note that the TagDefToSplit of the MultiDeclInfo is not guaranteed to
+  // equal the TagDecl: it may be null in the `typedef struct { ... } T` case.
+  //
+  // Note that the MultiDeclInfo pointers remain valid for as long as the
+  // MultiDeclInfo objects remain in MultiDeclsByBeginLoc: see
+  // https://en.cppreference.com/w/cpp/container#Iterator_invalidation.
+  std::map<TagDecl *, MultiDeclInfo *> ContainingMultiDeclOfTagDecl;
+};
 
 class ProgramMultiDeclsInfo {
 private:
@@ -200,6 +211,7 @@ public:
   llvm::Optional<std::string> getTypeStrOverride(const Type *Ty,
                                                  const ASTContext &C);
   MultiDeclInfo *findContainingMultiDecl(MultiDeclMemberDecl *MMD);
+  MultiDeclInfo *findContainingMultiDecl(TagDecl *TD);
   bool wasBaseTypeRenamed(Decl *D);
 };
 

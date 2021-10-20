@@ -276,16 +276,35 @@ void DeclRewriter::denestTagDecls() {
     // that were originally named, so we can't just use `TD->getDeclContext()`.
     // In any event, maybe we wouldn't want to rely on this kind of internal
     // Clang behavior.
-    DeclContext *TopTagDecl = TD;
-    for (;;) {
-      DeclContext *Parent = TopTagDecl->getLexicalParent();
-      if (!isa<TagDecl>(Parent))
-        break;
-      TopTagDecl = Parent;
-    }
+    TagDecl *TopTagDecl = TD;
+    while (TagDecl *ParentTagDecl =
+               dyn_cast<TagDecl>(TopTagDecl->getLexicalDeclContext()))
+      TopTagDecl = ParentTagDecl;
+    // If TopTagDecl is preceded by qualifiers, ideally we'd like to insert TD
+    // before those qualifiers. If TopTagDecl is actually part of a multi-decl
+    // with at least one member, then we can just use the begin location of that
+    // multi-decl as the insertion point.
+    //
+    // If there are no members (so the qualifiers have no effect and generate a
+    // compiler warning), then there isn't an easy way for us to find the source
+    // location before the qualifiers. In that case, we just insert TD at the
+    // begin location of TopTagDecl (after the qualifiers) and hope for the
+    // best. In the cases we're aware of so far (storage qualifiers, including
+    // `typedef`), this just means that the qualifiers end up applying to the
+    // first TagDecl de-nested from TopTagDecl instead of to TopTagDecl itself,
+    // and they generate the same compiler warning as before but on a different
+    // TagDecl. However, we haven't confirmed that there aren't any obscure
+    // cases that could lead to an error, such as if a qualifier is valid on one
+    // kind of TagDecl but not another.
+    SourceLocation InsertLoc;
+    if (MultiDeclInfo *MDI =
+            Info.TheMultiDeclsInfo.findContainingMultiDecl(TopTagDecl))
+      InsertLoc = MDI->Members[0]->getBeginLoc();
+    else
+      InsertLoc = TopTagDecl->getBeginLoc();
     // TODO: Use a wrapper like rewriteSourceRange that tries harder with
     // macros, reports failure, etc.
-    R.InsertText(cast<Decl>(TopTagDecl)->getBeginLoc(), DefinitionStr);
+    R.InsertText(InsertLoc, DefinitionStr);
   }
 }
 
