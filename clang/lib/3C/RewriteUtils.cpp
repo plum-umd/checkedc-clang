@@ -60,25 +60,13 @@ std::string mkStringForDeclWithUnchangedType(MultiDeclMemberDecl *MMD,
                                              ProgramInfo &Info) {
   bool BaseTypeRenamed = Info.TheMultiDeclsInfo.wasBaseTypeRenamed(MMD);
   if (!BaseTypeRenamed) {
-    // As far as we know, we can let Clang generate the declaration string. To
-    // get it without any initializer, we temporarily mutate the Decl to remove
-    // the initializer: a hack, but there isn't an obvious better way.
-    auto *VD = dyn_cast<VarDecl>(MMD);
-    Expr *Init = nullptr;
-    if (VD && VD->hasInit()) {
-      Init = VD->getInit();
-      VD->setInit(nullptr);
-    }
-
+    // As far as we know, we can let Clang generate the declaration string.
+    PrintingPolicy Policy = MMD->getASTContext().getPrintingPolicy();
+    Policy.SuppressInitializers = true;
     std::string DeclStr = "";
     raw_string_ostream DeclStream(DeclStr);
-    MMD->print(DeclStream);
+    MMD->print(DeclStream, Policy);
     assert("Original decl string empty." && !DeclStr.empty());
-
-    // Undo the mutation, if applicable.
-    if (VD && Init)
-      VD->setInit(Init);
-
     return DeclStr;
   }
 
