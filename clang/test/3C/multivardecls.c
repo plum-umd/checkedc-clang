@@ -224,7 +224,7 @@ struct { int *x; } s, *s_force_rewrite, s_const_arr0[10], *s_const_arr1[10],
 // The reason this isn't `_Ptr<struct s_struct_1>` is probably the "outer wild
 // -> inner wild" constraint
 // (https://github.com/correctcomputation/checkedc-clang/issues/656).
-//CHECK_NOALL: struct s_struct_1 * s_const_arr1[10];
+//CHECK_NOALL: struct s_struct_1 *s_const_arr1[10];
 // Like with m_implicit_itype above, 3C treats s_implicit_itype as having type
 // _Array_ptr<struct s_struct_1>, but now 3C uses mkString and that type
 // actually shows up in the output: not a great result, but at least we test

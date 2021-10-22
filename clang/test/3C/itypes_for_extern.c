@@ -129,8 +129,8 @@ struct { int *x; } s, *s_force_rewrite, s_const_arr0[10], *s_const_arr1[10],
 //CHECK:       struct s_struct_1 *s_force_rewrite : itype(_Ptr<struct s_struct_1>) = ((void *)0);
 //CHECK_ALL:   struct s_struct_1 s_const_arr0[10] : itype(struct s_struct_1 _Checked[10]);
 //CHECK_NOALL: struct s_struct_1 s_const_arr0[10];
-//CHECK_ALL:   struct s_struct_1 * s_const_arr1[10] : itype(_Ptr<struct s_struct_1> _Checked[10]) = {((void *)0)};
-//CHECK_NOALL: struct s_struct_1 * s_const_arr1[10];
+//CHECK_ALL:   struct s_struct_1 *s_const_arr1[10] : itype(_Ptr<struct s_struct_1> _Checked[10]) = {((void *)0)};
+//CHECK_NOALL: struct s_struct_1 *s_const_arr1[10];
 // As in the corresponding test in multivardecls.c, the type of s_implicit_type
 // is loaded as _Array_ptr<struct s_struct_1>, but it is downgraded back to an
 // itype by -itypes-for-extern. As long as 3C lacks real support for itypes on
