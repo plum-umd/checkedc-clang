@@ -58,10 +58,12 @@ std::string mkStringForPVDecl(MultiDeclMemberDecl *MMD,
 
 std::string mkStringForDeclWithUnchangedType(MultiDeclMemberDecl *MMD,
                                              ProgramInfo &Info) {
+  ASTContext &Context = MMD->getASTContext();
+
   bool BaseTypeRenamed = Info.TheMultiDeclsInfo.wasBaseTypeRenamed(MMD);
   if (!BaseTypeRenamed) {
     // As far as we know, we can let Clang generate the declaration string.
-    PrintingPolicy Policy = MMD->getASTContext().getPrintingPolicy();
+    PrintingPolicy Policy = Context.getPrintingPolicy();
     Policy.SuppressInitializers = true;
     std::string DeclStr = "";
     raw_string_ostream DeclStream(DeclStr);
@@ -71,7 +73,6 @@ std::string mkStringForDeclWithUnchangedType(MultiDeclMemberDecl *MMD,
   }
 
   // OK, we have to use mkString.
-  ASTContext &Context = MMD->getASTContext();
   QualType DType = getTypeOfMultiDeclMember(MMD);
   if (isPtrOrArrayType(DType)) {
     CVarOption CVO =
