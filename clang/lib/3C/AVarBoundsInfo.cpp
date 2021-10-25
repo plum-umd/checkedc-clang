@@ -13,18 +13,12 @@
 #include "clang/3C/AVarBoundsInfo.h"
 #include "clang/3C/ConstraintResolver.h"
 #include "clang/3C/ProgramInfo.h"
+#include "clang/3C/3CGlobalOptions.h"
 #include <sstream>
 #include <clang/3C/BasePointerAssignment.h>
 
 std::vector<BoundsPriority> AVarBoundsInfo::PrioList{Declared, Allocator,
                                                      FlowInferred, Heuristics};
-
-extern cl::OptionCategory ArrBoundsInferCat;
-static cl::opt<bool> DisableInfDecls("disable-arr-missd",
-                                     cl::desc("Disable ignoring of missed "
-                                              "bounds from declarations."),
-                                     cl::init(false),
-                                     cl::cat(ArrBoundsInferCat));
 
 void AVarBoundsStats::print(llvm::raw_ostream &O,
                             const std::set<BoundsKey> *InSrcArrs,
@@ -408,7 +402,7 @@ bool AvarBoundsInference::predictBounds(BoundsKey K,
         } else {
           bool IsDeclaredB = areDeclaredBounds(NBK, NKBChoice);
 
-          if (!IsDeclaredB || DisableInfDecls) {
+          if (!IsDeclaredB || _3COpts.DisableInfDecls) {
             // Oh, there are bounds for neighbour NBK but no bounds
             // can be inferred for K from it.
             InferredNBnds.clear();
