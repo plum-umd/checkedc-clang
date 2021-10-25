@@ -60,6 +60,10 @@ public:
   std::set<std::string> ValidSourceFiles;
   std::map<ConstraintKey, PersistentSourceLoc> AtomSourceMap;
 
+  std::map<ConstraintKey, CVars>& getRCMap(void) {
+    return RCMap;
+  }
+
 private:
   // Root cause map: This is the map of a Constraint var and a set of
   // Constraint vars (that are directly assigned WILD) which are the reason

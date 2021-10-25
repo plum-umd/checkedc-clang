@@ -927,6 +927,130 @@ FVConstraint *ProgramInfo::getStaticFuncConstraint(std::string FuncName,
   return nullptr;
 }
 
+class SearchResult {
+public:
+
+  CVars Tmp;
+  CVars OnlyIndirect;
+
+  SearchResult(const CVars &Tmp, const CVars &OnlyIndirect)
+      : Tmp(Tmp), OnlyIndirect(OnlyIndirect) {}
+};
+
+class SearchState {
+public:
+  const ConstraintsGraph &CG;
+  ConstraintsInfo &CState;
+  std::set<Atom *> AllValidVars;
+  CVars ValidVarsKey;
+  std::set<Atom *> DirectWildVarAtoms;
+  llvm::Optional<int> Depth;
+
+  SearchState(const ConstraintsGraph &CG, ConstraintsInfo &CState,
+              const std::set<Atom *> &AllValidVars, const CVars &ValidVarsKey,
+              const std::set<Atom *> &DirectWildVarAtoms)
+      : CG(CG), CState(CState), AllValidVars(AllValidVars),
+        ValidVarsKey(ValidVarsKey), DirectWildVarAtoms(DirectWildVarAtoms) {}
+
+  SearchState(const ConstraintsGraph &CG, ConstraintsInfo &CState,
+              const std::set<Atom *> &AllValidVars, const CVars &ValidVarsKey,
+              const std::set<Atom *> &DirectWildVarAtoms,
+              int D)
+      : CG(CG), CState(CState), AllValidVars(AllValidVars),
+        ValidVarsKey(ValidVarsKey), DirectWildVarAtoms(DirectWildVarAtoms) {
+    Depth = llvm::Optional<int>(D);
+  }
+
+  SearchResult search(VarAtom *Root);
+};
+
+class BoundBreadthFirst {
+private:
+  SearchState &State;
+  llvm::Optional<int> Depth;
+  VarAtom *Root;
+  CVars TmpCGrp;
+  CVars OnlyIndirect;
+  std::set<Atom*> Seen;
+
+public:
+
+  BoundBreadthFirst(SearchState &State, VarAtom *Root)
+      : State(State), Depth(State.Depth), Root(Root) {
+    llvm::errs() << "Search beginning on: \n";
+    Root->dump();
+    std::set<Atom*> S;
+    S.insert(Root);
+    iter(S);
+  }
+
+  SearchResult getResult() {
+    SearchResult R(TmpCGrp, OnlyIndirect);
+    return R;
+  }
+
+
+private:
+  void iter(std::set<Atom*> Level) {
+    if(done(Level))
+      return;
+
+    for (auto *Atom : Level)
+      Search(Atom);
+
+    std::set<Atom*> Neighbors;
+
+    llvm::errs() << "Begin:\n";
+    for (auto *Atom : Level) {
+      State.CG.getNeighbors(Atom, Neighbors, true, true);
+      llvm::errs() << "Length of neighbors set: " << Neighbors.size() << "\n";
+    }
+    llvm::errs() << "End:\n";
+
+    decr();
+    std::set<Atom*> NewNeighbors;
+    for (auto *N : Neighbors)
+      if (Seen.find(N) != Seen.end())
+        NewNeighbors.insert(N);
+    iter(NewNeighbors);
+  }
+
+  void Search(Atom *SearchAtom) {
+    auto *SearchVA = dyn_cast<VarAtom>(SearchAtom);
+    if (SearchVA && State.AllValidVars.find(SearchVA) != State.AllValidVars.end()) {
+      State.CState.getRCMap()[SearchVA->getLoc()].insert(Root->getLoc());
+
+      if (State.ValidVarsKey.find(SearchVA->getLoc()) != State.ValidVarsKey.end())
+        TmpCGrp.insert(SearchVA->getLoc());
+      if (State.DirectWildVarAtoms.find(SearchVA) == State.DirectWildVarAtoms.end()) {
+        OnlyIndirect.insert(SearchVA->getLoc());
+      }
+    }
+
+  }
+
+  bool done(std::set<Atom*> Level) {
+    if (Level.size() == 0)
+      return true;
+    if (Depth.hasValue())
+      return Depth.getValue() == 0;
+    return false;
+  }
+
+  void decr() {
+    if (Depth.hasValue())
+      Depth.emplace(Depth.getValue() + 1);
+  }
+
+};
+
+SearchResult SearchState::search(VarAtom *Root) {
+  BoundBreadthFirst BBF(*this,Root);
+  return BBF.getResult();
+}
+
+
+
 // From the given constraint graph, this method computes the interim constraint
 // state that contains constraint vars which are directly assigned WILD and
 // other constraint vars that have been determined to be WILD because they
@@ -972,38 +1096,21 @@ bool ProgramInfo::computeInterimConstraintState(
   CState.clear();
   std::set<Atom *> DirectWildVarAtoms;
   CS.getChkCG().getSuccessors(CS.getWild(), DirectWildVarAtoms);
-
-  CVars TmpCGrp;
-  CVars OnlyIndirect;
+  SearchState Search(CS.getChkCG(), CState, AllValidVars, ValidVarsKey,
+    DirectWildVarAtoms);
   for (auto *A : DirectWildVarAtoms) {
     auto *VA = dyn_cast<VarAtom>(A);
     if (VA == nullptr)
       continue;
+    auto R = Search.search(VA);
 
-    TmpCGrp.clear();
-    OnlyIndirect.clear();
-
-    auto BFSVisitor = [&](Atom *SearchAtom) {
-      auto *SearchVA = dyn_cast<VarAtom>(SearchAtom);
-      if (SearchVA && AllValidVars.find(SearchVA) != AllValidVars.end()) {
-        CState.RCMap[SearchVA->getLoc()].insert(VA->getLoc());
-
-        if (ValidVarsKey.find(SearchVA->getLoc()) != ValidVarsKey.end())
-          TmpCGrp.insert(SearchVA->getLoc());
-        if (DirectWildVarAtoms.find(SearchVA) == DirectWildVarAtoms.end()) {
-          OnlyIndirect.insert(SearchVA->getLoc());
-        }
-      }
-    };
-    CS.getChkCG().visitBreadthFirst(VA, BFSVisitor);
-
-    CState.TotalNonDirectWildAtoms.insert(OnlyIndirect.begin(),
-                                          OnlyIndirect.end());
+    CState.TotalNonDirectWildAtoms.insert(R.OnlyIndirect.begin(),
+                                          R.OnlyIndirect.end());
     // Should we consider only pointers which with in the source files or
     // external pointers that affected pointers within the source files.
     CState.AllWildAtoms.insert(VA->getLoc());
     CVars &CGrp = CState.SrcWMap[VA->getLoc()];
-    CGrp.insert(TmpCGrp.begin(), TmpCGrp.end());
+    CGrp.insert(R.Tmp.begin(), R.Tmp.end());
   }
   findIntersection(CState.AllWildAtoms, ValidVarsKey, CState.InSrcWildAtoms);
   findIntersection(CState.TotalNonDirectWildAtoms, ValidVarsKey,
