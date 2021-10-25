@@ -75,7 +75,7 @@ are "#include"-d by that file and it is an error if any other file changes.
 // Skip the 2 initial newlines.
 static cl::extrahelp MoreHelp(MoreHelpStr + 2);
 
-// Letting clang-format reflow this declaration gives very inconsistent
+// Letting clang-format reflow these declarations gives very inconsistent
 // formatting between options.
 // clang-format off
 
