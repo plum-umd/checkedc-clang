@@ -111,9 +111,10 @@ DeclRewriter::buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
 
   std::string SDecl;
   if (NeedsRangeBound) {
-    // For itypes, the the copy of the array cannot use a checked type because
-    // we know it will be used unsafely somewhere. Giving it a checked type
-    // would result in Checked C type errors at tee unsafe uses.
+    // For itypes, the copy of the array cannot use a checked type because we
+    // know it will be used unsafely somewhere in the body of the function.
+    // Giving it a checked type would result in Checked C type errors at the
+    // unsafe uses.
     SDecl = Defn->mkString(Info.getConstraints(),
                            MKSTRING_OPTS(ForItypeBase = true)) + " = " +
             DeclName + ";";
