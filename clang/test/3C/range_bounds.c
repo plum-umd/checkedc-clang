@@ -28,11 +28,14 @@ void test1(int *a, int l);
 void test1(int *a, int l) {
   // CHECK_ALL: void test1(_Array_ptr<int> __3c_tmp_a : count(l), int l) _Checked {
   // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + l) = __3c_tmp_a;
-  a++;
 
-  // The increment above means this loop isn't safe. 3c won't consider this,
-  // but, now that we give `a` a bound, the access `a[l-1]` can be caught by
-  // Checked C.
+  // Also check that other types assignment are recognized.
+  a = a + 1;
+
+  // The increment above means this loop reads out of bounds if `l` is the
+  // length of `a`.  3c won't consider this, but, now that we give `a` a bound,
+  // the access `a[l-1]` can be caught by Checked C, and the programmer can
+  // correct the loop limit or the declared bound as appropriate.
   for(int i = 0; i < l; i++)
     a[i];
 }
@@ -45,7 +48,8 @@ void test2(int *a, int l) {
   // CHECK_ALL: int *a  = __3c_tmp_a;
   for(int i = 0; i < l; i++)
     a[i];
-  a++;
+
+  a = a + 2;
   a = (int*) 1;
 }
 
@@ -56,7 +60,7 @@ void test3(int *a, int *b, int *c, int *d) {
   // CHECK_ALL: int *b = __3c_tmp_b;
   // CHECK_ALL: _Array_ptr<int> c : bounds(__3c_tmp_c, __3c_tmp_c + 10) = __3c_tmp_c;
   // CHECK_ALL: int *d = __3c_tmp_d;
-  a++, b++, c++, d++;
+  a += 1, b += 2, c--, d -= 1;
   b = d = (int*) 1;
 
   for (int i = 0; i < 10; i++)
