@@ -304,7 +304,8 @@ void DeclRewriter::denestTagDecls() {
       InsertLoc = TopTagDecl->getBeginLoc();
     // TODO: Use a wrapper like rewriteSourceRange that tries harder with
     // macros, reports failure, etc.
-    R.InsertText(InsertLoc, DefinitionStr);
+    //R.InsertText(InsertLoc, DefinitionStr);
+    R.ReplaceText(CharSourceRange(SourceRange(InsertLoc, InsertLoc), false), DefinitionStr);
   }
 }
 
