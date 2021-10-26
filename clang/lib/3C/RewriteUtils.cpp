@@ -77,18 +77,18 @@ void rewriteSourceRange(Rewriter &R, const CharSourceRange &Range,
   // Attempt to rewrite the source range. First use the source range directly
   // from the parameter.
   bool RewriteSuccess = false;
-  if (canRewrite(R, Range))
-    RewriteSuccess = !R.ReplaceText(Range, NewText);
+  //if (canRewrite(R, Range))
+  //  RewriteSuccess = !R.ReplaceText(Range, NewText);
 
   // If initial rewriting attempt failed (either because canRewrite returned
   // false or because ReplaceText failed (returning true), try rewriting again
   // with the source range expanded to be outside any macros used in the range.
-  if (!RewriteSuccess) {
+  //if (!RewriteSuccess) {
     CharSourceRange Expand = clang::Lexer::makeFileCharRange(
         Range, R.getSourceMgr(), R.getLangOpts());
     if (canRewrite(R, Expand))
       RewriteSuccess = !R.ReplaceText(Expand, NewText);
-  }
+  //}
 
   // Emit an error if we were unable to rewrite the source range. This is more
   // likely to be a bug in 3C than an issue with the input, but emitting a
