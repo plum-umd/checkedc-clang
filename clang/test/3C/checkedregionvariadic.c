@@ -1,6 +1,5 @@
 // RUN: 3c -base-dir=%S -addcr  %s -- | FileCheck -match-full-lines --check-prefixes="CHECK" %s
 // RUN: 3c -base-dir=%S -addcr %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -
-// XFAIL: *
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -21,7 +20,10 @@ void sum(int *ptr, int count, ...) {
 }
 
 void bad_sum(int **ptr, int count, ...) {
-  //CHECK: void bad_sum(_Ptr<int*> ptr, int count, ...) {
+  // The expected new type for `ptr` was previously `_Ptr<int*>`. Presumably the
+  // reason we aren't getting that on the "unchecked" side now is
+  // https://github.com/correctcomputation/checkedc-clang/issues/704.
+  //CHECK: void bad_sum(int **ptr : itype(_Ptr<_Ptr<int>>), int count, ...) {
   va_list ap;
   int sum = 0;
 
@@ -41,15 +43,15 @@ int foo(int *ptr) {
   //CHECK: int foo(_Ptr<int> ptr) _Checked {
   *ptr += 2;
   sum(ptr, 1, 2, 3);
-  //CHECK: _Unchecked { sum(ptr,1,2,3); };
+  //CHECK: _Unchecked { sum(ptr, 1, 2, 3); };
   return *ptr;
 }
 
 int bar(int *ptr) {
-  //CHECK: int bar(int *ptr) {
+  //CHECK: int bar(_Ptr<int> ptr) _Checked {
   *ptr += 2;
   bad_sum(&ptr, 1, 2, 3);
-  //CHECK: bad_sum(((int **)&ptr),1,2,3);
+  //CHECK: _Unchecked { bad_sum(&ptr, 1, 2, 3); };
   return *ptr;
 }
 
