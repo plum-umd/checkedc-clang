@@ -1011,8 +1011,6 @@ private:
   }
 
   void Search(Atom *SearchAtom) {
-    SearchAtom->dump();
-    llvm::errs() << "\n";
     auto *SearchVA = dyn_cast<VarAtom>(SearchAtom);
     if (SearchVA && State.AllValidVars.find(SearchVA) != State.AllValidVars.end()) {
       State.CState.getRCMap()[SearchVA->getLoc()].insert(Root->getLoc());
