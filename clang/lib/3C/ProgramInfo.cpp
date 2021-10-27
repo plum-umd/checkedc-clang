@@ -955,11 +955,10 @@ public:
   SearchState(const ConstraintsGraph &CG, ConstraintsInfo &CState,
               const std::set<Atom *> &AllValidVars, const CVars &ValidVarsKey,
               const std::set<Atom *> &DirectWildVarAtoms,
-              int D)
+              llvm::Optional<int> Depth)
       : CG(CG), CState(CState), AllValidVars(AllValidVars),
-        ValidVarsKey(ValidVarsKey), DirectWildVarAtoms(DirectWildVarAtoms) {
-    Depth = llvm::Optional<int>(D);
-  }
+        ValidVarsKey(ValidVarsKey), DirectWildVarAtoms(DirectWildVarAtoms),
+        Depth(Depth) {}
 
   SearchResult search(VarAtom *Root);
 };
@@ -977,9 +976,6 @@ public:
 
   BoundBreadthFirst(SearchState &State, VarAtom *Root)
       : State(State), Depth(State.Depth), Root(Root) {
-    llvm::errs() << "Search beginning on: \n";
-    Root->dump();
-    llvm::errs() << "\n";
     std::set<Atom*> S;
     S.insert(Root);
     iter(S);
@@ -1098,7 +1094,7 @@ bool ProgramInfo::computeInterimConstraintState(
   std::set<Atom *> DirectWildVarAtoms;
   CS.getChkCG().getSuccessors(CS.getWild(), DirectWildVarAtoms);
   SearchState Search(CS.getChkCG(), CState, AllValidVars, ValidVarsKey,
-    DirectWildVarAtoms);
+    DirectWildVarAtoms, _3COpts.RootCauseHorizon);
   for (auto *A : DirectWildVarAtoms) {
     auto *VA = dyn_cast<VarAtom>(A);
     if (VA == nullptr)

@@ -69,6 +69,9 @@ struct _3COptions {
   bool ItypesForExtern;
 
   bool InferTypesForUndefs;
+
+  llvm::Optional<int> RootCauseHorizon;
+
 };
 
 // NOLINTNEXTLINE(readability-identifier-naming)

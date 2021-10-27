@@ -157,6 +157,11 @@ static cl::opt<bool> OptAddCheckedRegions("addcr",
                                           cl::init(false),
                                           cl::cat(_3CCategory));
 
+static cl::opt<int> OptRootCauseHorizon("bound_rca",
+                                      cl::desc("Adds a bounded horizon to the Root Cause Analysis"),
+                                      cl::init(-1),
+                                      cl::cat(_3CCategory));
+
 static cl::opt<bool> OptEnableCCTypeChecker(
     "enccty",
     cl::desc(
@@ -321,6 +326,8 @@ int main(int argc, const char **argv) {
   CcOptions.AllowRewriteFailures = OptAllowRewriteFailures;
   CcOptions.ItypesForExtern = OptItypesForExtern;
   CcOptions.InferTypesForUndefs = OptInferTypesForUndef;
+  if (OptRootCauseHorizon != -1)
+    CcOptions.RootCauseHorizon = llvm::Optional<int>(OptRootCauseHorizon);
 
 #ifdef FIVE_C
   CcOptions.RemoveItypes = OptRemoveItypes;
