@@ -351,7 +351,7 @@ void AvarBoundsInference::getRelevantBounds(BoundsKey BK,
     // get the bounds inferred from the current iteration
     ResBounds = CurrIterInferBounds[BK];
   } else if (ABounds *PrevBounds = BI->getBounds(BK)) {
-    ResBounds[PrevBounds->getKind()].insert(PrevBounds->getBKey());
+    ResBounds[PrevBounds->getKind()].insert(PrevBounds->getLengthKey());
   }
 }
 
@@ -365,7 +365,7 @@ bool AvarBoundsInference::areDeclaredBounds(
   if (DeclB && DeclB->getKind() == Bnds.first) {
     IsDeclaredB = true;
     for (auto TmpNBK : Bnds.second) {
-      if (!this->BI->areSameProgramVar(TmpNBK, DeclB->getBKey())) {
+      if (!this->BI->areSameProgramVar(TmpNBK, DeclB->getLengthKey())) {
         IsDeclaredB = false;
         break;
       }
@@ -906,19 +906,6 @@ BoundsKey AVarBoundsInfo::getRandomBKey() {
   BoundsKey Ret = ++BCount;
   TmpBoundsKey.insert(Ret);
   return Ret;
-}
-
-bool AVarBoundsInfo::addAssignment(clang::Decl *L, clang::Decl *R) {
-  BoundsKey BL, BR;
-  if (tryGetVariable(L, BL) && tryGetVariable(R, BR)) {
-    return addAssignment(BL, BR);
-  }
-  return false;
-}
-
-bool AVarBoundsInfo::addAssignment(clang::DeclRefExpr *L,
-                                   clang::DeclRefExpr *R) {
-  return addAssignment(L->getDecl(), R->getDecl());
 }
 
 bool AVarBoundsInfo::handleAssignment(clang::Expr *L, const CVarSet &LCVars,

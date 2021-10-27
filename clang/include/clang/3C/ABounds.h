@@ -38,11 +38,14 @@ public:
   BoundsKind getKind() const { return Kind; }
 
 protected:
+  ABounds(BoundsKind K, BoundsKey L) : Kind(K), LenVar(L) {}
+
   BoundsKind Kind;
 
-protected:
-  ABounds(BoundsKind K) : Kind(K) {}
-  void addBoundsUsedKey(BoundsKey);
+  // Bounds key representing the length of the bounds from the base pointer of
+  // the range. The exact interpretation of this field varies by subclass.
+  BoundsKey LenVar;
+
   // Get the variable name of the the given bounds key that corresponds
   // to the given declaration.
   static std::string getBoundsKeyStr(BoundsKey, AVarBoundsInfo *,
@@ -50,18 +53,13 @@ protected:
 
 public:
   virtual ~ABounds() {}
-
   virtual std::string mkString(AVarBoundsInfo *, clang::Decl *D = nullptr) = 0;
   virtual std::string mkRangeString(AVarBoundsInfo *, clang::Decl *D,
                                     std::string BasePtr) = 0;
   virtual bool areSame(ABounds *, AVarBoundsInfo *) = 0;
-  virtual BoundsKey getBKey() = 0;
   virtual ABounds *makeCopy(BoundsKey NK) = 0;
 
-  // Set that maintains all the bound keys that are used inin
-  // TODO: Is this still needed?
-  static std::set<BoundsKey> KeysUsedInBounds;
-  static bool isKeyUsedInBounds(BoundsKey ToCheck);
+  BoundsKey getLengthKey() const { return LenVar; }
 
   static ABounds *getBoundsInfo(AVarBoundsInfo *AVBInfo, BoundsExpr *BExpr,
                                 const ASTContext &C);
@@ -69,33 +67,23 @@ public:
 
 class CountBound : public ABounds {
 public:
-  CountBound(BoundsKey Var) : ABounds(CountBoundKind), CountVar(Var) {
-    addBoundsUsedKey(Var);
-  }
-
-  ~CountBound() override {}
+  CountBound(BoundsKey L) : ABounds(CountBoundKind, L) {}
 
   std::string mkString(AVarBoundsInfo *ABI, clang::Decl *D = nullptr) override;
   std::string mkRangeString(AVarBoundsInfo *, clang::Decl *D,
                             std::string BasePtr) override;
 
   bool areSame(ABounds *O, AVarBoundsInfo *ABI) override;
-  BoundsKey getBKey() override;
   ABounds *makeCopy(BoundsKey NK) override;
 
   static bool classof(const ABounds *S) {
     return S->getKind() == CountBoundKind;
   }
-
-  BoundsKey getCountVar() { return CountVar; }
-
-protected:
-  BoundsKey CountVar;
 };
 
 class CountPlusOneBound : public CountBound {
 public:
-  CountPlusOneBound(BoundsKey Var) : CountBound(Var) {
+  CountPlusOneBound(BoundsKey L) : CountBound(L) {
     this->Kind = CountPlusOneBoundKind;
   }
 
@@ -111,34 +99,25 @@ public:
 
 class ByteBound : public ABounds {
 public:
-  ByteBound(BoundsKey Var) : ABounds(ByteBoundKind), ByteVar(Var) {
-    addBoundsUsedKey(Var);
-  }
-
-  ~ByteBound() override {}
+  ByteBound(BoundsKey L) : ABounds(ByteBoundKind, L) {}
 
   std::string mkString(AVarBoundsInfo *ABI, clang::Decl *D = nullptr) override;
   std::string mkRangeString(AVarBoundsInfo *, clang::Decl *D,
                             std::string BasePtr) override;
   bool areSame(ABounds *O, AVarBoundsInfo *ABI) override;
-  BoundsKey getBKey() override;
   ABounds *makeCopy(BoundsKey NK) override;
 
   static bool classof(const ABounds *S) {
     return S->getKind() == ByteBoundKind;
   }
-  BoundsKey getByteVar() { return ByteVar; }
-
-private:
-  BoundsKey ByteVar;
 };
 
+#define OLD_RANGE_BOUNDS 0
+#if OLD_RANGE_BOUNDS
 class RangeBound : public ABounds {
 public:
-  RangeBound(BoundsKey L, BoundsKey R) : ABounds(RangeBoundKind), LB(L), UB(R) {
-    addBoundsUsedKey(L);
-    addBoundsUsedKey(R);
-  }
+  RangeBound(BoundsKey L, BoundsKey R) : ABounds(RangeBoundKind), LB(L),
+                                         UB(R) {}
 
   ~RangeBound() override {}
 
@@ -165,4 +144,5 @@ private:
   BoundsKey LB;
   BoundsKey UB;
 };
+#endif
 #endif // LLVM_CLANG_3C_ABOUNDS_H

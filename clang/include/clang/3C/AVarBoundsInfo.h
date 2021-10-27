@@ -231,8 +231,6 @@ public:
 
   // Add Assignments between variables. These methods will add edges between
   // corresponding BoundsKeys
-  bool addAssignment(clang::Decl *L, clang::Decl *R);
-  bool addAssignment(clang::DeclRefExpr *L, clang::DeclRefExpr *R);
   bool addAssignment(BoundsKey L, BoundsKey R);
   bool handlePointerAssignment(clang::Expr *L, clang::Expr *R, ASTContext *C,
                                ConstraintResolver *CR);

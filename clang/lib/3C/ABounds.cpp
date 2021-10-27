@@ -13,14 +13,6 @@
 #include "clang/3C/ABounds.h"
 #include "clang/3C/AVarBoundsInfo.h"
 
-std::set<BoundsKey> ABounds::KeysUsedInBounds;
-
-void ABounds::addBoundsUsedKey(BoundsKey BK) { KeysUsedInBounds.insert(BK); }
-
-bool ABounds::isKeyUsedInBounds(BoundsKey ToCheck) {
-  return KeysUsedInBounds.find(ToCheck) != KeysUsedInBounds.end();
-}
-
 ABounds *ABounds::getBoundsInfo(AVarBoundsInfo *ABInfo, BoundsExpr *BExpr,
                                 const ASTContext &C) {
   ABounds *Ret = nullptr;
@@ -81,7 +73,7 @@ std::string ABounds::getBoundsKeyStr(BoundsKey BK, AVarBoundsInfo *ABI,
 }
 
 std::string CountBound::mkString(AVarBoundsInfo *ABI, clang::Decl *D) {
-  return "count(" + ABounds::getBoundsKeyStr(CountVar, ABI, D) + ")";
+  return "count(" + ABounds::getBoundsKeyStr(LenVar, ABI, D) + ")";
 }
 
 std::string CountBound::mkRangeString(AVarBoundsInfo *ABI, clang::Decl *D,
@@ -89,23 +81,21 @@ std::string CountBound::mkRangeString(AVarBoundsInfo *ABI, clang::Decl *D,
   // Assume that BasePtr is the same pointer type as this pointer this bound
   // acts on, so pointer arithmetic works as expected.
   return "bounds(" + BasePtr + ", " + BasePtr + " + " +
-         ABounds::getBoundsKeyStr(CountVar, ABI, D) + ")";
+         ABounds::getBoundsKeyStr(LenVar, ABI, D) + ")";
 }
 
 bool CountBound::areSame(ABounds *O, AVarBoundsInfo *ABI) {
   if (O != nullptr) {
     if (CountBound *OT = dyn_cast<CountBound>(O))
-      return ABI->areSameProgramVar(this->CountVar, OT->CountVar);
+      return ABI->areSameProgramVar(this->LenVar, OT->LenVar);
   }
   return false;
 }
 
-BoundsKey CountBound::getBKey() { return this->CountVar; }
-
 ABounds *CountBound::makeCopy(BoundsKey NK) { return new CountBound(NK); }
 
 std::string CountPlusOneBound::mkString(AVarBoundsInfo *ABI, clang::Decl *D) {
-  std::string CVar = ABounds::getBoundsKeyStr(CountVar, ABI, D);
+  std::string CVar = ABounds::getBoundsKeyStr(LenVar, ABI, D);
   return "count(" + CVar + " + 1)";
 }
 
@@ -113,17 +103,17 @@ std::string CountPlusOneBound::mkRangeString(AVarBoundsInfo *ABI,
                                              clang::Decl *D,
                                              std::string BasePtr) {
   return "bounds(" + BasePtr + ", " + BasePtr + " + " +
-         ABounds::getBoundsKeyStr(CountVar, ABI, D) + "+ 1)";
+         ABounds::getBoundsKeyStr(LenVar, ABI, D) + "+ 1)";
 }
 
 bool CountPlusOneBound::areSame(ABounds *O, AVarBoundsInfo *ABI) {
   if (CountPlusOneBound *OT = dyn_cast_or_null<CountPlusOneBound>(O))
-    return ABI->areSameProgramVar(this->CountVar, OT->CountVar);
+    return ABI->areSameProgramVar(this->LenVar, OT->LenVar);
   return false;
 }
 
 std::string ByteBound::mkString(AVarBoundsInfo *ABI, clang::Decl *D) {
-  return "byte_count(" + ABounds::getBoundsKeyStr(ByteVar, ABI, D) + ")";
+  return "byte_count(" + ABounds::getBoundsKeyStr(LenVar, ABI, D) + ")";
 }
 
 std::string ByteBound::mkRangeString(AVarBoundsInfo *ABI, clang::Decl *D,
@@ -132,19 +122,18 @@ std::string ByteBound::mkRangeString(AVarBoundsInfo *ABI, clang::Decl *D,
   // pointer arithmetic will not give the behavior needed for a byte count.
   // First cast the pointer to a char pointer, and then add byte count.
   return "bounds(((_Array_ptr<char>)" + BasePtr + "), ((_Array_ptr<char>)" +
-         BasePtr + ") + " + ABounds::getBoundsKeyStr(ByteVar, ABI, D) + ")";
+         BasePtr + ") + " + ABounds::getBoundsKeyStr(LenVar, ABI, D) + ")";
 }
 
 bool ByteBound::areSame(ABounds *O, AVarBoundsInfo *ABI) {
   if (ByteBound *BB = dyn_cast_or_null<ByteBound>(O))
-    return ABI->areSameProgramVar(this->ByteVar, BB->ByteVar);
+    return ABI->areSameProgramVar(this->LenVar, BB->LenVar);
   return false;
 }
 
-BoundsKey ByteBound::getBKey() { return this->ByteVar; }
-
 ABounds *ByteBound::makeCopy(BoundsKey NK) { return new ByteBound(NK); }
 
+#if OLD_RANGE_BOUNDS
 std::string RangeBound::mkString(AVarBoundsInfo *ABI, clang::Decl *D) {
   std::string LBStr = ABounds::getBoundsKeyStr(LB, ABI, D);
   std::string UBStr = ABounds::getBoundsKeyStr(UB, ABI, D);
@@ -162,3 +151,4 @@ bool RangeBound::areSame(ABounds *O, AVarBoundsInfo *ABI) {
            ABI->areSameProgramVar(this->UB, RB->UB);
   return false;
 }
+#endif
