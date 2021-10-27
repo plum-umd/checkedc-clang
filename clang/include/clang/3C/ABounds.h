@@ -38,13 +38,19 @@ public:
   BoundsKind getKind() const { return Kind; }
 
 protected:
-  ABounds(BoundsKind K, BoundsKey L) : Kind(K), LenVar(L) {}
+  ABounds(BoundsKind K, BoundsKey L, BoundsKey B) : Kind(K), LenVar(L),
+                                                    BaseVar(B) {}
+  ABounds(BoundsKind K, BoundsKey L) : ABounds(K, L, 0) {}
 
   BoundsKind Kind;
 
   // Bounds key representing the length of the bounds from the base pointer of
   // the range. The exact interpretation of this field varies by subclass.
   BoundsKey LenVar;
+
+  // The base pointer representing the start of the range of the bounds. May be
+  // and invalid bounds key if this bound cannot be expressed as a range.
+  BoundsKey BaseVar;
 
   // Get the variable name of the the given bounds key that corresponds
   // to the given declaration.
@@ -60,6 +66,7 @@ public:
   virtual ABounds *makeCopy(BoundsKey NK) = 0;
 
   BoundsKey getLengthKey() const { return LenVar; }
+  BoundsKey getBaseKey() const { return BaseVar; }
 
   static ABounds *getBoundsInfo(AVarBoundsInfo *AVBInfo, BoundsExpr *BExpr,
                                 const ASTContext &C);
@@ -67,6 +74,7 @@ public:
 
 class CountBound : public ABounds {
 public:
+  CountBound(BoundsKey L, BoundsKey B) : ABounds(CountBoundKind, L, B) {}
   CountBound(BoundsKey L) : ABounds(CountBoundKind, L) {}
 
   std::string mkString(AVarBoundsInfo *ABI, clang::Decl *D = nullptr) override;
@@ -83,6 +91,9 @@ public:
 
 class CountPlusOneBound : public CountBound {
 public:
+  CountPlusOneBound(BoundsKey L, BoundsKind B) : CountBound(L, B) {
+    this->Kind = CountPlusOneBoundKind;
+  }
   CountPlusOneBound(BoundsKey L) : CountBound(L) {
     this->Kind = CountPlusOneBoundKind;
   }
@@ -99,6 +110,7 @@ public:
 
 class ByteBound : public ABounds {
 public:
+  ByteBound(BoundsKey L, BoundsKey B) : ABounds(ByteBoundKind, L, B) {}
   ByteBound(BoundsKey L) : ABounds(ByteBoundKind, L) {}
 
   std::string mkString(AVarBoundsInfo *ABI, clang::Decl *D = nullptr) override;
