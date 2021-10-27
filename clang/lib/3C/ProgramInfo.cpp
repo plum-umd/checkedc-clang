@@ -979,6 +979,7 @@ public:
       : State(State), Depth(State.Depth), Root(Root) {
     llvm::errs() << "Search beginning on: \n";
     Root->dump();
+    llvm::errs() << "\n";
     std::set<Atom*> S;
     S.insert(Root);
     iter(S);
@@ -1000,22 +1001,22 @@ private:
 
     std::set<Atom*> Neighbors;
 
-    llvm::errs() << "Begin:\n";
-    for (auto *Atom : Level) {
+    for (auto *Atom : Level)
       State.CG.getNeighbors(Atom, Neighbors, true, true);
-      llvm::errs() << "Length of neighbors set: " << Neighbors.size() << "\n";
-    }
-    llvm::errs() << "End:\n";
 
     decr();
     std::set<Atom*> NewNeighbors;
     for (auto *N : Neighbors)
-      if (Seen.find(N) != Seen.end())
+      if (Seen.find(N) == Seen.end()) {
+        Seen.insert(N);
         NewNeighbors.insert(N);
+      }
     iter(NewNeighbors);
   }
 
   void Search(Atom *SearchAtom) {
+    SearchAtom->dump();
+    llvm::errs() << "\n";
     auto *SearchVA = dyn_cast<VarAtom>(SearchAtom);
     if (SearchVA && State.AllValidVars.find(SearchVA) != State.AllValidVars.end()) {
       State.CState.getRCMap()[SearchVA->getLoc()].insert(Root->getLoc());
