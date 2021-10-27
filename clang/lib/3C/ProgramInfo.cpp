@@ -1036,7 +1036,7 @@ private:
 
   void decr() {
     if (Depth.hasValue())
-      Depth.emplace(Depth.getValue() + 1);
+      Depth.emplace(Depth.getValue() - 1);
   }
 
 };
