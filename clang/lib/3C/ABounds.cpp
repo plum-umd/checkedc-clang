@@ -113,7 +113,7 @@ std::string CountPlusOneBound::mkRangeString(AVarBoundsInfo *ABI,
                                              clang::Decl *D,
                                              std::string BasePtr) {
   return "bounds(" + BasePtr + ", " + BasePtr + " + " +
-         ABounds::getBoundsKeyStr(CountVar, ABI, D) + "+ 1)";
+         ABounds::getBoundsKeyStr(CountVar, ABI, D) + " + 1)";
 }
 
 bool CountPlusOneBound::areSame(ABounds *O, AVarBoundsInfo *ABI) {

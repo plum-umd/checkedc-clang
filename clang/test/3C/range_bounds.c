@@ -234,4 +234,11 @@ void test12(int *b, unsigned int n) {
 
   byte_count_fn(b, n);
   b++;
+
+  // And also check count-plus-ones bounds.
+  int *c;
+  // _Array_ptr<int> __3c_tmp_c : count(0 + 1) = ((void *)0);
+  // _Array_ptr<int> c : bounds(__3c_tmp_c, __3c_tmp_c + 0 + 1) = __3c_tmp_c;
+  c[0];
+  c++;
 }
