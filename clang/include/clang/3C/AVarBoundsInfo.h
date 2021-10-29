@@ -271,6 +271,9 @@ public:
   // Get the ProgramVar for the provided VarKey.
   ProgramVar *getProgramVar(BoundsKey VK);
 
+  // Check if the provided bounds key corresponds to function return.
+  bool isFunctionReturn(BoundsKey BK);
+
   // Propagate the array bounds information for all array ptrs.
   void performFlowAnalysis(ProgramInfo *PI);
 
@@ -388,9 +391,6 @@ private:
   void insertVarKey(PersistentSourceLoc &PSL, BoundsKey NK);
 
   void insertProgramVar(BoundsKey NK, ProgramVar *PV);
-
-  // Check if the provided bounds key corresponds to function return.
-  bool isFunctionReturn(BoundsKey BK);
 
   // Of all the pointer bounds key, find arr pointers.
   void computeArrPointers(const ProgramInfo *PI);

@@ -93,16 +93,13 @@ bool isInSrcArray(const ConstraintVariable *CK, const Constraints &CS) {
 // This class picks variables that are in the same scope as the provided scope.
 class ScopeVisitor {
 public:
-  ScopeVisitor(const ProgramVarScope *S,
-               const std::map<BoundsKey, ProgramVar *> &VM,
-               const std::set<BoundsKey> &P)
-    : Scope(S), InScopeKeys(), VisibleKeys(), PVarInfo(VM),
-      PointerBoundsKey(P) {}
+  ScopeVisitor(const ProgramVarScope *S, AVarBoundsInfo *BI)
+    : Scope(S), InScopeKeys(), VisibleKeys(), BI(BI) {}
   void visitBoundsKey(BoundsKey V) {
-    // If the variable is non-pointer?
-    if (PVarInfo.find(V) != PVarInfo.end() &&
-        PointerBoundsKey.find(V) == PointerBoundsKey.end()) {
-      ProgramVar *S = PVarInfo.at(V);
+    // TODO: Ad-hoc removal of function returns. Function returns shouldn't be
+    //       considered in scope for locals.
+    if (!BI->isFunctionReturn(V)) {
+      ProgramVar *S = BI->getProgramVar(V);
       // If the variable is constant or in the same scope?
       if (S->isNumConstant() || (*Scope == *(S->getScope()))) {
         InScopeKeys.insert(V);
@@ -128,15 +125,7 @@ private:
   // bounds keys from scopes where this scope is an inner scope.
   std::set<BoundsKey> VisibleKeys;
 
-  // A constant reference to PVarInfo frm the AVarBoundsInfo instance. This set
-  // maps each bounds key to variable. BoundsKeys are just a uint_32, so a
-  // corresponding ProgramVar is required find the scope of a key.
-  const std::map<BoundsKey, ProgramVar *> &PVarInfo;
-
-  // A constant reference to the field PointerBoundsKey from the AVarBoundsInfo
-  // instance. This set contains the bounds keys that correspond to pointers.
-  // Used to verify that a visited bounds key is not a pointer.
-  const std::set<BoundsKey> &PointerBoundsKey;
+  AVarBoundsInfo *BI;
 };
 
 void AvarBoundsInference::mergeReachableProgramVars(
@@ -306,9 +295,10 @@ bool AvarBoundsInference::getReachableBoundKeys(const ProgramVarScope *DstScope,
   }
 
   // Find all in scope variables reachable from the FromVarK bounds variable.
-  ScopeVisitor TV(DstScope, BI->PVarInfo, BI->PointerBoundsKey);
+  ScopeVisitor TV(DstScope, BI);
   BKGraph.visitBreadthFirst(FromVarK,
                             [&TV](BoundsKey BK) { TV.visitBoundsKey(BK); });
+
   // Prioritize in scope keys.
   if (!TV.getInScopeKeys().empty()) {
     PotK.insert(TV.getInScopeKeys().begin(), TV.getInScopeKeys().end());
