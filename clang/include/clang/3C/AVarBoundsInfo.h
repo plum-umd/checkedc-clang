@@ -108,6 +108,8 @@ public:
   // The flag FromPB requests the inference to use potential length variables.
   bool inferBounds(BoundsKey K, const AVarGraph &BKGraph, bool FromPB = false);
 
+  bool inferBase(BoundsKey K, const AVarGraph &BKGraph);
+
   // Get a consistent bound for all the arrays whose bounds have been inferred.
   void convergeInferredBounds();
 
@@ -131,6 +133,9 @@ private:
   // Return true if there is any change in the captured bounds information.
   bool predictBounds(BoundsKey DstArrK, const std::set<BoundsKey> &Neighbours,
                      const AVarGraph &BKGraph);
+
+  bool predictBase(BoundsKey K, const std::set<BoundsKey> &Neighbours,
+                   const AVarGraph &BKGraph);
 
   void mergeReachableProgramVars(BoundsKey TarBK, std::set<BoundsKey> &AllVars);
 
