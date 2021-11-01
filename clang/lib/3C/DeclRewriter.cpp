@@ -37,7 +37,7 @@ DeclRewriter::buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
                              ProgramInfo &Info, ArrayBoundsRewriter &ABR,
                              bool GenerateSDecls) {
   bool NeedsRangeBound =
-    GenerateSDecls && Info.getABoundsInfo().needsRangeBound(Defn);
+    false && GenerateSDecls && Info.getABoundsInfo().needsRangeBound(Defn);
 
   std::string DeclName = Decl ? Decl->getNameAsString() : "";
   // The idea here is that the name should only be empty if this is an unnamed
@@ -127,7 +127,7 @@ DeclRewriter::buildCheckedDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
                                std::string UseName, ProgramInfo &Info,
                                ArrayBoundsRewriter &ABR, bool GenerateSDecls) {
   bool NeedsRangeBound =
-    GenerateSDecls && Info.getABoundsInfo().needsRangeBound(Defn);
+    false && GenerateSDecls && Info.getABoundsInfo().needsRangeBound(Defn);
   assert("Adding range bounds on return, global variable, or field!" &&
          (!NeedsRangeBound || (isa_and_nonnull<VarDecl>(Decl) &&
                                cast<VarDecl>(Decl)->isLocalVarDeclOrParm())));

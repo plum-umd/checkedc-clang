@@ -102,6 +102,7 @@ public:
   void clearInferredBounds() {
     CurrIterInferBounds.clear();
     BKsFailedFlowInference.clear();
+    CurrIterBaseVars.clear();
   }
 
   // Infer bounds for the given key from the set of given ARR atoms.
@@ -134,10 +135,8 @@ private:
   bool predictBounds(BoundsKey DstArrK, const std::set<BoundsKey> &Neighbours,
                      const AVarGraph &BKGraph);
 
-  bool predictBase(BoundsKey K, const std::set<BoundsKey> &Neighbours,
-                   const AVarGraph &BKGraph);
-
   void mergeReachableProgramVars(BoundsKey TarBK, std::set<BoundsKey> &AllVars);
+  void mergeLowerBounds(BoundsKey Ptr, std::set<BoundsKey> &LB);
 
   // Check if the pointer variable has impossible bounds.
   bool hasImpossibleBounds(BoundsKey BK);
@@ -152,6 +151,9 @@ private:
   std::map<BoundsKey, BndsKindMap> CurrIterInferBounds;
   // BoundsKey that failed the flow inference.
   std::set<BoundsKey> BKsFailedFlowInference;
+
+  // Potential lower bounds for this iteration.
+  std::map<BoundsKey, std::set<BoundsKey>> CurrIterBaseVars;
 
   static ABounds *getPreferredBound(const BndsKindMap &BKindMap);
 };
