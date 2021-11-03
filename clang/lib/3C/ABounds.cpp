@@ -72,7 +72,10 @@ std::string ABounds::getBoundsKeyStr(BoundsKey BK, AVarBoundsInfo *ABI,
   return BKStr;
 }
 
-std::string CountBound::mkString(AVarBoundsInfo *ABI, clang::Decl *D) {
+std::string CountBound::mkString(AVarBoundsInfo *ABI, clang::Decl *D,
+                                 BoundsKey BK) {
+  if (BaseVar != 0 && BaseVar != BK)
+    return mkRangeString(ABI, D, ABounds::getBoundsKeyStr(BaseVar, ABI, D));
   return "count(" + ABounds::getBoundsKeyStr(LenVar, ABI, D) + ")";
 }
 
@@ -94,7 +97,10 @@ bool CountBound::areSame(ABounds *O, AVarBoundsInfo *ABI) {
 
 ABounds *CountBound::makeCopy(BoundsKey NK) { return new CountBound(NK); }
 
-std::string CountPlusOneBound::mkString(AVarBoundsInfo *ABI, clang::Decl *D) {
+std::string CountPlusOneBound::mkString(AVarBoundsInfo *ABI, clang::Decl *D,
+                                        BoundsKey BK) {
+  if (BaseVar != 0 && BaseVar != BK)
+    return mkRangeString(ABI, D, ABounds::getBoundsKeyStr(BaseVar, ABI, D));
   std::string CVar = ABounds::getBoundsKeyStr(LenVar, ABI, D);
   return "count(" + CVar + " + 1)";
 }
@@ -112,7 +118,10 @@ bool CountPlusOneBound::areSame(ABounds *O, AVarBoundsInfo *ABI) {
   return false;
 }
 
-std::string ByteBound::mkString(AVarBoundsInfo *ABI, clang::Decl *D) {
+std::string ByteBound::mkString(AVarBoundsInfo *ABI, clang::Decl *D,
+                                BoundsKey BK) {
+  if (BaseVar != 0 && BaseVar != BK)
+    return mkRangeString(ABI, D, ABounds::getBoundsKeyStr(BaseVar, ABI, D));
   return "byte_count(" + ABounds::getBoundsKeyStr(LenVar, ABI, D) + ")";
 }
 

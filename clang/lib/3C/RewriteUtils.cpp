@@ -571,7 +571,7 @@ std::string ArrayBoundsRewriter::getBoundsString(const PVConstraint *PV,
       if (UseRange)
         BString = ArrB->mkRangeString(&ABInfo, D, BasePtr);
       else
-        BString = ArrB->mkString(&ABInfo, D);
+        BString = ArrB->mkString(&ABInfo, D, DK);
       if (!BString.empty())
         BString = Pfix + BString;
     }

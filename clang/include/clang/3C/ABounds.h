@@ -59,7 +59,10 @@ protected:
 
 public:
   virtual ~ABounds() {}
-  virtual std::string mkString(AVarBoundsInfo *, clang::Decl *D = nullptr) = 0;
+
+  virtual std::string
+  mkString(AVarBoundsInfo *, clang::Decl *D = nullptr, BoundsKey BK = 0) = 0;
+
   virtual std::string mkRangeString(AVarBoundsInfo *, clang::Decl *D,
                                     std::string BasePtr) = 0;
   virtual bool areSame(ABounds *, AVarBoundsInfo *) = 0;
@@ -77,7 +80,9 @@ public:
   CountBound(BoundsKey L, BoundsKey B) : ABounds(CountBoundKind, L, B) {}
   CountBound(BoundsKey L) : ABounds(CountBoundKind, L) {}
 
-  std::string mkString(AVarBoundsInfo *ABI, clang::Decl *D = nullptr) override;
+  std::string mkString(AVarBoundsInfo *ABI, clang::Decl *D = nullptr,
+                       BoundsKey BK = 0) override;
+
   std::string mkRangeString(AVarBoundsInfo *, clang::Decl *D,
                             std::string BasePtr) override;
 
@@ -91,14 +96,16 @@ public:
 
 class CountPlusOneBound : public CountBound {
 public:
-  CountPlusOneBound(BoundsKey L, BoundsKind B) : CountBound(L, B) {
+  CountPlusOneBound(BoundsKey L, BoundsKey B) : CountBound(L, B) {
     this->Kind = CountPlusOneBoundKind;
   }
   CountPlusOneBound(BoundsKey L) : CountBound(L) {
     this->Kind = CountPlusOneBoundKind;
   }
 
-  std::string mkString(AVarBoundsInfo *ABI, clang::Decl *D = nullptr) override;
+  std::string mkString(AVarBoundsInfo *ABI, clang::Decl *D = nullptr,
+                       BoundsKey BK = 0) override;
+
   std::string mkRangeString(AVarBoundsInfo *, clang::Decl *D,
                             std::string BasePtr) override;
   bool areSame(ABounds *O, AVarBoundsInfo *ABI) override;
@@ -113,7 +120,9 @@ public:
   ByteBound(BoundsKey L, BoundsKey B) : ABounds(ByteBoundKind, L, B) {}
   ByteBound(BoundsKey L) : ABounds(ByteBoundKind, L) {}
 
-  std::string mkString(AVarBoundsInfo *ABI, clang::Decl *D = nullptr) override;
+  std::string mkString(AVarBoundsInfo *ABI, clang::Decl *D = nullptr,
+                       BoundsKey BK = 0) override;
+
   std::string mkRangeString(AVarBoundsInfo *, clang::Decl *D,
                             std::string BasePtr) override;
   bool areSame(ABounds *O, AVarBoundsInfo *ABI) override;

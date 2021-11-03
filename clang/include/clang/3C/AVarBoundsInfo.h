@@ -90,7 +90,8 @@ enum BoundsPriority {
 };
 
 class AVarBoundsInfo;
-typedef std::map<ABounds::BoundsKind, std::set<BoundsKey>> BndsKindMap;
+typedef std::map<BoundsKey, std::set<BoundsKey>> BoundsWithCauses;
+typedef std::map<ABounds::BoundsKind, BoundsWithCauses> BndsKindMap;
 // The main class that handles figuring out bounds of arr variables.
 class AvarBoundsInference {
 public:
@@ -114,18 +115,20 @@ public:
   // Get a consistent bound for all the arrays whose bounds have been inferred.
   void convergeInferredBounds();
 
+  void dumpCurrIterBounds();
+
 private:
   // Find all the reachable variables form FromVarK that are visible
   // in DstScope
   bool getReachableBoundKeys(const ProgramVarScope *DstScope,
-                             BoundsKey FromVarK, std::set<BoundsKey> &PotK,
+                             BoundsKey FromVarK, BoundsWithCauses &PotK,
                              const AVarGraph &BKGraph,
                              bool CheckImmediate = false);
 
   // Check if bounds specified by Bnds are declared bounds of K.
   bool areDeclaredBounds(
       BoundsKey K,
-      const std::pair<ABounds::BoundsKind, std::set<BoundsKey>> &Bnds);
+      const std::pair<ABounds::BoundsKind, BoundsWithCauses> &Bnds);
 
   // Get all the bounds of the given array i.e., BK
   void getRelevantBounds(BoundsKey BK, BndsKindMap &ResBounds);
@@ -135,8 +138,8 @@ private:
   bool predictBounds(BoundsKey DstArrK, const std::set<BoundsKey> &Neighbours,
                      const AVarGraph &BKGraph);
 
-  void mergeReachableProgramVars(BoundsKey TarBK, std::set<BoundsKey> &AllVars);
-  void mergeLowerBounds(BoundsKey Ptr, std::set<BoundsKey> &LB);
+  void mergeReachableProgramVars(BoundsKey TarBK, BoundsWithCauses &AllVars);
+  void mergeLowerBounds(BoundsKey Ptr, std::set<BoundsKey> &LB, const std::set<BoundsKey> &InvalidLBs);
 
   // Check if the pointer variable has impossible bounds.
   bool hasImpossibleBounds(BoundsKey BK);
@@ -155,7 +158,8 @@ private:
   // Potential lower bounds for this iteration.
   std::map<BoundsKey, std::set<BoundsKey>> CurrIterBaseVars;
 
-  static ABounds *getPreferredBound(const BndsKindMap &BKindMap);
+  ABounds *getPreferredBound(BoundsKey BK,
+                             const std::set<BoundsKey> &InvalidBasePtrs);
 };
 
 // Class that maintains information about potential bounds for
