@@ -158,8 +158,8 @@ private:
   // Potential lower bounds for this iteration.
   std::map<BoundsKey, std::set<BoundsKey>> CurrIterBaseVars;
 
-  ABounds *getPreferredBound(BoundsKey BK,
-                             const std::set<BoundsKey> &InvalidBasePtrs);
+  std::pair<ABounds *, std::set<BoundsKey>>
+  getPreferredBound(BoundsKey BK, const std::set<BoundsKey> &InvalidBasePtrs);
 };
 
 // Class that maintains information about potential bounds for
@@ -210,11 +210,15 @@ public:
   void insertDeclaredBounds(clang::Decl *D, ABounds *B);
   void insertDeclaredBounds(BoundsKey BK, ABounds *B);
 
-  bool mergeBounds(BoundsKey L, BoundsPriority P, ABounds *B);
+  bool mergeBounds(BoundsKey L, BoundsPriority P, ABounds *B,
+                   const std::set<BoundsKey> &Reason);
   bool removeBounds(BoundsKey L, BoundsPriority P = Invalid);
-  bool replaceBounds(BoundsKey L, BoundsPriority P, ABounds *B);
+  bool replaceBounds(BoundsKey L, BoundsPriority P, ABounds *B,
+                     const std::set<BoundsKey> &Reason);
   ABounds *getBounds(BoundsKey L, BoundsPriority ReqP = Invalid,
                      BoundsPriority *RetP = nullptr);
+  std::set<BoundsKey>
+  getBoundsReason(BoundsKey L, BoundsPriority ReqP = Invalid);
   void updatePotentialCountBounds(BoundsKey BK,
                                   const std::set<BoundsKey> &CntBK);
   void updatePotentialCountPOneBounds(BoundsKey BK,
@@ -338,7 +342,7 @@ private:
   // Map of BoundsKey and corresponding prioritized bounds information.
   // Note that although each PSL could have multiple ConstraintKeys Ex: **p.
   // Only the outer most pointer can have bounds.
-  std::map<BoundsKey, std::map<BoundsPriority, ABounds *>> BInfo;
+  std::map<BoundsKey, std::map<BoundsPriority, std::pair<ABounds *, std::set<BoundsKey>>>> BInfo;
   // Set that contains BoundsKeys of variables which have invalid bounds.
   std::set<BoundsKey> InvalidBounds;
   // These are the bounds key of the pointers that has arithmetic operations

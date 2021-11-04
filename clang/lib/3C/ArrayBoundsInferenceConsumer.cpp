@@ -296,7 +296,7 @@ static void handleAllocatorCall(QualType LHSType, BoundsKey LK, Expr *E,
       // Either both should be in same scope or the RHS should be constant.
       if (*(PrgLVar->getScope()) == *(PrgRVar->getScope()) ||
           PrgRVar->isNumConstant()) {
-        if (!AVarBInfo.mergeBounds(LK, Allocator, LBounds)) {
+        if (!AVarBInfo.mergeBounds(LK, Allocator, LBounds, {})) {
           delete (LBounds);
         } else {
           ABStats.AllocatorMatch.insert(LK);
@@ -318,7 +318,7 @@ static void handleAllocatorCall(QualType LHSType, BoundsKey LK, Expr *E,
         // TODO: This trick of introducing bounds for RHS expressions
         //  could be useful in other places (e.g., &{1,2,3} would have bounds 3)
         BoundsKey TmpKey = AVarBInfo.getRandomBKey();
-        AVarBInfo.replaceBounds(TmpKey, Declared, LBounds);
+        AVarBInfo.replaceBounds(TmpKey, Declared, LBounds, {});
         AVarBInfo.addAssignment(LK, TmpKey);
       } else {
         assert(LBounds != nullptr && "LBounds cannot be nullptr here.");
@@ -409,11 +409,11 @@ bool GlobalABVisitor::VisitRecordDecl(RecordDecl *RD) {
             // variable name heuristic lets use it.
             if (hasLengthKeyword(LenField.first)) {
               ABStats.NamePrefixMatch.insert(PtrField.second);
-              ABInfo.replaceBounds(PtrField.second, Heuristics, FldBounds);
+              ABInfo.replaceBounds(PtrField.second, Heuristics, FldBounds, {});
               break;
             }
             ABStats.VariableNameMatch.insert(PtrField.second);
-            ABInfo.replaceBounds(PtrField.second, Heuristics, FldBounds);
+            ABInfo.replaceBounds(PtrField.second, Heuristics, FldBounds, {});
           }
         }
         // If the name-correspondence heuristics failed.
@@ -487,7 +487,7 @@ bool GlobalABVisitor::VisitFunctionDecl(FunctionDecl *FD) {
           BoundsKey PBKey = ArrParamPair.second.second;
           if (LengthParams.find(PIdx + 1) != LengthParams.end()) {
             ABounds *PBounds = new CountBound(LengthParams[PIdx + 1].second);
-            ABInfo.replaceBounds(PBKey, Heuristics, PBounds);
+            ABInfo.replaceBounds(PBKey, Heuristics, PBounds, {});
             ABStats.NeighbourParamMatch.insert(PBKey);
             continue;
           }
@@ -498,7 +498,7 @@ bool GlobalABVisitor::VisitFunctionDecl(FunctionDecl *FD) {
                              LenParamPair.second.first)) {
               FoundLen = true;
               ABounds *PBounds = new CountBound(LenParamPair.second.second);
-              ABInfo.replaceBounds(PBKey, Heuristics, PBounds);
+              ABInfo.replaceBounds(PBKey, Heuristics, PBounds, {});
               ABStats.NamePrefixMatch.insert(PBKey);
               break;
             }
@@ -507,7 +507,7 @@ bool GlobalABVisitor::VisitFunctionDecl(FunctionDecl *FD) {
                                    LenParamPair.second.first)) {
               FoundLen = true;
               ABounds *PBounds = new CountBound(LenParamPair.second.second);
-              ABInfo.replaceBounds(PBKey, Heuristics, PBounds);
+              ABInfo.replaceBounds(PBKey, Heuristics, PBounds, {});
               ABStats.NamePrefixMatch.insert(PBKey);
               continue;
             }
@@ -520,7 +520,7 @@ bool GlobalABVisitor::VisitFunctionDecl(FunctionDecl *FD) {
                 FoundLen = true;
                 ABounds *PBounds =
                     new CountBound(CurrLenParamPair.second.second);
-                ABInfo.replaceBounds(PBKey, Heuristics, PBounds);
+                ABInfo.replaceBounds(PBKey, Heuristics, PBounds, {});
                 ABStats.VariableNameMatch.insert(PBKey);
               }
             }
@@ -560,7 +560,7 @@ void LocalVarABVisitor::handleAssignment(BoundsKey LK, QualType LHSType,
   if (SL != nullptr) {
     ABounds *ByBounds =
         new ByteBound(ABoundsInfo.getConstKey(SL->getByteLength()));
-    if (!ABoundsInfo.mergeBounds(LK, Allocator, ByBounds)) {
+    if (!ABoundsInfo.mergeBounds(LK, Allocator, ByBounds, {})) {
       delete (ByBounds);
     } else {
       ABoundsInfo.getBStats().AllocatorMatch.insert(LK);
@@ -688,7 +688,7 @@ void addMainFuncHeuristic(ASTContext *C, ProgramInfo &I, FunctionDecl *FD) {
             tryGetBoundsKeyVar(Argv, ArgvKey, I, C) &&
             tryGetBoundsKeyVar(FD->getParamDecl(0), ArgcKey, I, C)) {
           ABounds *ArgcBounds = new CountBound(ArgcKey);
-          ABInfo.replaceBounds(ArgvKey, Declared, ArgcBounds);
+          ABInfo.replaceBounds(ArgvKey, Declared, ArgcBounds, {});
         }
       }
     }

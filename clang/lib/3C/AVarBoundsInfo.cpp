@@ -282,17 +282,28 @@ AvarBoundsInference::mergeLowerBounds(BoundsKey Ptr, std::set<BoundsKey> &LBs,
 void AvarBoundsInference::convergeInferredBounds() {
 
   std::set<BoundsKey> InvalidBasePtrs;
-  for (auto &CInfABnds : CurrIterInferBounds) {
-    BoundsKey PtrBoundsKey = CInfABnds.first;
-    if (BI->hasPointerArithmetic(PtrBoundsKey)) {
+  for (BoundsKey PtrBoundsKey : BI->ArrPointerBoundsKey)  {
+    if (BI->hasPointerArithmetic(PtrBoundsKey))
       InvalidBasePtrs.insert(PtrBoundsKey);
-    } else {
-      for (auto KindEntry : CInfABnds.second) {
-        for (BoundsKey Reason : KindEntry.second.begin()->second)  {
-          if (BI->hasPointerArithmetic(Reason))
+
+    if (CurrIterInferBounds.find(PtrBoundsKey) != CurrIterInferBounds.end()) {
+      for (auto KindEntry: CurrIterInferBounds[PtrBoundsKey]) {
+        for (BoundsKey Reason: KindEntry.second.begin()->second) {
+          if (BI->hasPointerArithmetic(Reason)) {
+            InvalidBasePtrs.insert(Reason);
             InvalidBasePtrs.insert(PtrBoundsKey);
+          }
         }
       }
+    } else if (BI->getBounds(PtrBoundsKey)) {
+      for (BoundsKey Reason : BI->getBoundsReason(PtrBoundsKey)) {
+        if (BI->hasPointerArithmetic(Reason)) {
+          InvalidBasePtrs.insert(Reason);
+          InvalidBasePtrs.insert(PtrBoundsKey);
+        }
+      }
+    } else {
+      InvalidBasePtrs.insert(PtrBoundsKey);
     }
   }
 
@@ -312,12 +323,16 @@ void AvarBoundsInference::convergeInferredBounds() {
   for (auto &CInfABnds : CurrIterInferBounds) {
     BoundsKey PtrBoundsKey = CInfABnds.first;
     if (BI->getBounds(PtrBoundsKey) == nullptr) {
-      ABounds *NewBound = getPreferredBound(PtrBoundsKey, InvalidBasePtrs);
+      ABounds *NewBound;
+      std::set<BoundsKey> Reason;
+      std::tie(NewBound, Reason) = getPreferredBound(PtrBoundsKey,
+                                                     InvalidBasePtrs);
       // If we found any bounds?
       if (NewBound != nullptr) {
         // Record that we inferred bounds using data-flow.
         BI->BoundsInferStats.DataflowMatch.insert(PtrBoundsKey);
-        BI->replaceBounds(PtrBoundsKey, BoundsPriority::FlowInferred, NewBound);
+        BI->replaceBounds(PtrBoundsKey, BoundsPriority::FlowInferred, NewBound,
+                          Reason);
       } else {
         BKsFailedFlowInference.insert(PtrBoundsKey);
       }
@@ -330,11 +345,18 @@ void AvarBoundsInference::convergeInferredBounds() {
 // count-plus-one bounds. This function assumes that the BoundsKey sets in the
 // map contain either zero or one BoundsKey. This is be achieved by first
 // passing the sets to `mergeReachableProgramVars`.
-ABounds *AvarBoundsInference::getPreferredBound(BoundsKey BK,
-                                                const std::set<BoundsKey> &InvalidBasePtrs) {
+std::pair<ABounds *, std::set<BoundsKey>>
+AvarBoundsInference::getPreferredBound(BoundsKey BK,
+                                       const std::set<BoundsKey> &InvalidBasePtrs) {
+
   BoundsKey BaseVar = 0;
-  if (!CurrIterBaseVars[BK].empty())
+  bool NeedsBasePointer = InvalidBasePtrs.find(BK) != InvalidBasePtrs.end();
+  if (NeedsBasePointer && !CurrIterBaseVars[BK].empty())
     BaseVar = getOnly(CurrIterBaseVars[BK]);
+
+  if (NeedsBasePointer && BaseVar == 0)
+    llvm::errs() << "Lower bound pointer required for " << BK
+                 << " but not available.\n";
 
   auto &BKindMap = CurrIterInferBounds[BK];
   // Utility to check if the map contains a non-empty set of bounds for a
@@ -344,49 +366,19 @@ ABounds *AvarBoundsInference::getPreferredBound(BoundsKey BK,
   };
 
 
-
   // Order of preference: Count, Byte, Count-plus-one
-  if (HasBoundKind(ABounds::CountBoundKind)) {
-    const auto &BC = *BKindMap.at(ABounds::CountBoundKind).begin();
-    BoundsKey Bound = BC.first;
-    //const std::set<BoundsKey> &Causes = BC.second;
-
-    //BoundsKey BasePointer = 0;
-    bool NeedsBasePointer = InvalidBasePtrs.find(BK) != InvalidBasePtrs.end();
-    //bool Conflict = false;
-    //for (BoundsKey C : Causes) {
-    //  NeedsBasePointer =
-    //    NeedsBasePointer || InvalidBasePtrs.find(C) != InvalidBasePtrs.end();
-    //  //if (IsCValidBase && !BI->isFunctionReturn(C)) {
-    //  //  if (BasePointer != 0)
-    //  //    Conflict = true;
-    //  //  BasePointer = C;
-    //  //}
-    //}
-    //if (NeedsBasePointer) {
-    //  for ()
-    //}
-
-    //if (NeedsBasePointer && Conflict)
-    //  llvm::errs() << "A base pointer is required, but could not find a unique base pointer.\n";
-    //if (NeedsBasePointer && BasePointer == 0)
-    //  llvm::errs() << "A base pointer is required, but could not find a valid base pointer.\n";
-
-    if (!NeedsBasePointer)
-      BaseVar = 0;
-
-    return new CountBound(Bound, BaseVar);
+  std::vector<ABounds::BoundsKind> BoundsPref = {ABounds::CountBoundKind,
+                                                 ABounds::ByteBoundKind,
+                                                 ABounds::CountPlusOneBoundKind};
+  for (ABounds::BoundsKind K : BoundsPref) {
+    if (HasBoundKind(K)) {
+      return std::make_pair(
+        new CountBound(BKindMap.at(K).begin()->first, BaseVar),
+        BKindMap.at(K).begin()->second);
+    }
   }
 
-  if (HasBoundKind(ABounds::ByteBoundKind))
-    return new ByteBound(BKindMap.at(ABounds::ByteBoundKind).begin()->first,
-                         BaseVar);
-
-  if (HasBoundKind(ABounds::CountPlusOneBoundKind))
-    return new CountPlusOneBound(
-      BKindMap.at(ABounds::CountPlusOneBoundKind).begin()->first, BaseVar);
-
-  return nullptr;
+  return std::make_pair(nullptr, std::set<BoundsKey>());
 }
 
 bool AvarBoundsInference::hasImpossibleBounds(BoundsKey BK) {
@@ -480,10 +472,9 @@ void AvarBoundsInference::getRelevantBounds(BoundsKey BK,
     // get the bounds inferred from the current iteration
     ResBounds = CurrIterInferBounds[BK];
   } else if (ABounds *PrevBounds = BI->getBounds(BK)) {
-    // FIXME: Needs cause set
-    auto &PrevKBounds = ResBounds[PrevBounds->getKind()];
+    BoundsWithCauses &PrevKBounds = ResBounds[PrevBounds->getKind()];
     if (PrevKBounds.find(PrevBounds->getLengthKey()) == PrevKBounds.end())
-      PrevKBounds[PrevBounds->getLengthKey()] = {};
+      PrevKBounds[PrevBounds->getLengthKey()] = BI->getBoundsReason(BK);
   }
 }
 
@@ -682,16 +673,12 @@ bool AvarBoundsInference::inferBase(BoundsKey K, const AVarGraph &BKGraph) {
     //if (!BI->hasPointerArithmetic(K) && !BI->isFunctionReturn(K))
     BaseKeys.insert(K);
 
-    auto *KVar = BI->getProgramVar(K);
     for (BoundsKey P : PredKeys) {
       if (!CurrIterBaseVars[P].empty()) {
         for (BoundsKey BK : CurrIterBaseVars[P])
           BaseKeys.insert(BK);
-      } //else if (!BI->hasPointerArithmetic(P)) {
-        //auto *PVar = BI->getProgramVar(P);
-        //if (*KVar->getScope() == *PVar->getScope())
-          BaseKeys.insert(P);
-      //}
+      }
+      BaseKeys.insert(P);
     }
 
     const std::set<BoundsKey> &OldBaseKeys = CurrIterBaseVars[K];
@@ -851,7 +838,7 @@ void AVarBoundsInfo::insertDeclaredBounds(BoundsKey BK, ABounds *B) {
   if (B != nullptr) {
     // If there is already bounds information, release it.
     removeBounds(BK);
-    BInfo[BK][Declared] = B;
+    BInfo[BK][Declared] = std::make_pair(B, std::set<BoundsKey>());
     BoundsInferStats.DeclaredBounds.insert(BK);
   } else {
     // Set bounds to be invalid.
@@ -916,17 +903,20 @@ bool AVarBoundsInfo::tryGetVariable(clang::Expr *E, const ASTContext &C,
 
 // Merging bounds B with the present bounds of key L at the same priority P
 // Returns true if we update the bounds for L (with B)
-bool AVarBoundsInfo::mergeBounds(BoundsKey L, BoundsPriority P, ABounds *B) {
+bool AVarBoundsInfo::mergeBounds(BoundsKey L, BoundsPriority P, ABounds *B, const std::set<BoundsKey> &Reason) {
   bool RetVal = false;
   if (BInfo.find(L) != BInfo.end() && BInfo[L].find(P) != BInfo[L].end()) {
     // If previous computed bounds are not same? Then release the old bounds.
-    if (!BInfo[L][P]->areSame(B, this)) {
+    if (!BInfo[L][P].first->areSame(B, this)) {
       InvalidBounds.insert(L);
       // TODO: Should we keep bounds for other priorities?
       removeBounds(L);
+    } else {
+      // Bounds Same; Merge Reasons
+      BInfo[L][P].second.insert(Reason.begin(), Reason.end());
     }
   } else {
-    BInfo[L][P] = B;
+    BInfo[L][P] = std::make_pair(B, Reason);
     RetVal = true;
   }
   return RetVal;
@@ -939,14 +929,14 @@ bool AVarBoundsInfo::removeBounds(BoundsKey L, BoundsPriority P) {
     if (P == Invalid) {
       // Delete bounds for all priorities.
       for (auto &T : PriBInfo) {
-        delete (T.second);
+        delete (T.second.first);
       }
       BInfo.erase(L);
       RetVal = true;
     } else {
       // Delete bounds for only the given priority.
       if (PriBInfo.find(P) != PriBInfo.end()) {
-        delete (PriBInfo[P]);
+        delete (PriBInfo[P].first);
         PriBInfo.erase(P);
         RetVal = true;
       }
@@ -960,9 +950,11 @@ bool AVarBoundsInfo::removeBounds(BoundsKey L, BoundsPriority P) {
   return RetVal;
 }
 
-bool AVarBoundsInfo::replaceBounds(BoundsKey L, BoundsPriority P, ABounds *B) {
+bool AVarBoundsInfo::replaceBounds(BoundsKey L, BoundsPriority P, ABounds *B,
+                                   const std::set<BoundsKey> &Reason) {
+  // FIXME: Removing bound drops old Reasons
   removeBounds(L);
-  return mergeBounds(L, P, B);
+  return mergeBounds(L, P, B, Reason);
 }
 
 ABounds *AVarBoundsInfo::getBounds(BoundsKey L, BoundsPriority ReqP,
@@ -976,15 +968,34 @@ ABounds *AVarBoundsInfo::getBounds(BoundsKey L, BoundsPriority ReqP,
         if (PriBInfo.find(P) != PriBInfo.end()) {
           if (RetP != nullptr)
             *RetP = P;
-          return PriBInfo[P];
+          return PriBInfo[P].first;
         }
       }
       assert(false && "Bounds present but has invalid priority.");
     } else if (PriBInfo.find(ReqP) != PriBInfo.end()) {
-      return PriBInfo[ReqP];
+      return PriBInfo[ReqP].first;
     }
   }
   return nullptr;
+}
+
+std::set<BoundsKey>
+AVarBoundsInfo::getBoundsReason(BoundsKey L, BoundsPriority ReqP) {
+  if (InvalidBounds.find(L) == InvalidBounds.end() &&
+      BInfo.find(L) != BInfo.end()) {
+    auto &PriBInfo = BInfo[L];
+    if (ReqP == Invalid) {
+      // Fetch bounds by priority i.e., give the highest priority bounds.
+      for (BoundsPriority P : PrioList) {
+        if (PriBInfo.find(P) != PriBInfo.end())
+          return PriBInfo[P].second;
+      }
+      assert(false && "Bounds present but has invalid priority.");
+    } else if (PriBInfo.find(ReqP) != PriBInfo.end()) {
+      return PriBInfo[ReqP].second;
+    }
+  }
+  return {};
 }
 
 void AVarBoundsInfo::updatePotentialCountBounds(
