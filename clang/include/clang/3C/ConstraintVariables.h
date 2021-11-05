@@ -245,15 +245,18 @@ void constrainConsVarGeq(const std::set<ConstraintVariable *> &LHS,
                          const std::set<ConstraintVariable *> &RHS,
                          Constraints &CS, const ReasonLoc &Rsn,
                          ConsAction CA, bool DoEqType, ProgramInfo *Info,
-                         bool HandleBoundsKey = true);
+                         bool HandleBoundsKey = true,
+                         bool FromCallExpr = false);
 void constrainConsVarGeq(ConstraintVariable *LHS, const CVarSet &RHS,
                          Constraints &CS, const ReasonLoc &Rsn,
                          ConsAction CA, bool DoEqType, ProgramInfo *Info,
-                         bool HandleBoundsKey = true);
+                         bool HandleBoundsKey = true,
+                         bool FromCallExpr = false);
 void constrainConsVarGeq(ConstraintVariable *LHS, ConstraintVariable *RHS,
                          Constraints &CS, const ReasonLoc &Rsn,
                          ConsAction CA, bool DoEqType, ProgramInfo *Info,
-                         bool HandleBoundsKey = true);
+                         bool HandleBoundsKey = true,
+                         bool FromCallExpr = false);
 
 // True if [C] is a PVConstraint that contains at least one Atom (i.e.,
 //   it represents a C pointer)

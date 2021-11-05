@@ -165,12 +165,12 @@ bool TypeVarVisitor::VisitCallExpr(CallExpr *CE) {
         if (FD->getNameAsString() == "realloc") {
           constrainConsVarGeq(P, TVEntry.second.getConstraintVariables(),
                               Info.getConstraints(), Rsn, Wild_to_Safe, false,
-                              &Info);
+                              &Info, true, true);
 
         } else {
           constrainConsVarGeq(P, TVEntry.second.getConstraintVariables(),
                             Info.getConstraints(), Rsn, Safe_to_Wild, false,
-                            &Info);
+                            &Info, true, true);
       }
 
         TVEntry.second.setTypeParamConsVar(P);

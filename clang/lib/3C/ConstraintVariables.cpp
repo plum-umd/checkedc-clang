@@ -1781,7 +1781,7 @@ static void createAtomGeq(Constraints &CS, Atom *L, Atom *R,
 void constrainConsVarGeq(ConstraintVariable *LHS, ConstraintVariable *RHS,
                          Constraints &CS, const ReasonLoc &Rsn,
                          ConsAction CA, bool DoEqType, ProgramInfo *Info,
-                         bool HandleBoundsKey) {
+                         bool HandleBoundsKey, bool FromCallExpr) {
 
   // If one of the constraint is NULL, make the other constraint WILD.
   // This can happen when a non-function pointer gets assigned to
@@ -1863,11 +1863,16 @@ void constrainConsVarGeq(ConstraintVariable *LHS, ConstraintVariable *RHS,
         CAtoms CLHS = PCLHS->getCvars();
         CAtoms CRHS = PCRHS->getCvars();
 
+        int GenericCount = (PCLHS->isGeneric() ? 1 : 0)
+                       + (PCRHS->isGeneric() ? 1 : 0);
+        bool IsGenericInterface =
+            FromCallExpr && GenericCount == 1 && PCLHS->isGeneric() == true;
         // Only generate constraint if LHS is not a base type.
         if (CLHS.size() != 0) {
-          if (CLHS.size() == CRHS.size() ||
-              (CLHS.size() < CRHS.size() && PCLHS->isGeneric()) ||
-              (CLHS.size() > CRHS.size() && PCRHS->isGeneric())) {
+          if ((CLHS.size() == CRHS.size() && GenericCount == 0) ||
+              IsGenericInterface ||
+              // allow this for now
+              GenericCount == 2) {
             unsigned Min = std::min(CLHS.size(), CRHS.size());
             for (unsigned N = 0; N < Min; N++) {
               Atom *IAtom = PCLHS->getAtom(N, CS);
@@ -1935,18 +1940,20 @@ void constrainConsVarGeq(ConstraintVariable *LHS, ConstraintVariable *RHS,
 void constrainConsVarGeq(ConstraintVariable *LHS, const CVarSet &RHS,
                          Constraints &CS, const ReasonLoc &Rsn,
                          ConsAction CA, bool DoEqType, ProgramInfo *Info,
-                         bool HandleBoundsKey) {
+                         bool HandleBoundsKey, bool FromCallExpr) {
   for (const auto &J : RHS)
-    constrainConsVarGeq(LHS, J, CS, Rsn, CA, DoEqType, Info, HandleBoundsKey);
+    constrainConsVarGeq(LHS, J, CS, Rsn, CA, DoEqType, Info,
+                        HandleBoundsKey, FromCallExpr);
 }
 
 // Given an RHS and a LHS, constrain them to be equal.
 void constrainConsVarGeq(const CVarSet &LHS, const CVarSet &RHS,
                          Constraints &CS, const ReasonLoc &Rsn,
                          ConsAction CA, bool DoEqType, ProgramInfo *Info,
-                         bool HandleBoundsKey) {
+                         bool HandleBoundsKey, bool FromCallExpr) {
   for (const auto &I : LHS)
-    constrainConsVarGeq(I, RHS, CS, Rsn, CA, DoEqType, Info, HandleBoundsKey);
+    constrainConsVarGeq(I, RHS, CS, Rsn, CA, DoEqType, Info,
+                        HandleBoundsKey, FromCallExpr);
 }
 
 // True if [C] is a PVConstraint that contains at least one Atom (i.e.,
