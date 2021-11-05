@@ -270,8 +270,8 @@ public:
               // Do not handle bounds key here because we will be
               // doing context-sensitive assignment next.
               constrainConsVarGeq(ParameterDC, ArgumentConstraints.first, CS,
-                                  Rsn, CA, false, &Info,
-                                  false, true);
+                                  Rsn, CA, false, &Info, false,
+                                  TargetFV->IsGeneric());
 
               if (_3COpts.AllTypes && TFD != nullptr &&
                   I < TFD->getNumParams()) {

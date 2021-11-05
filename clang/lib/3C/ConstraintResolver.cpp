@@ -571,7 +571,7 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
                               ? Safe_to_Wild
                               : Same_to_Same;
           constrainConsVarGeq(NewCV, CV, CS, Rsn, CA, false, &Info,
-                              true, true);
+                              true, !TypeVars.empty());
         }
         TmpCVs.insert(NewCV);
         // If this is realloc, constrain the first arg to flow to the return
@@ -579,7 +579,7 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
         if (!ReallocFlow.empty()) {
           constrainConsVarGeq(NewCV, ReallocFlow, Info.getConstraints(), Rsn,
                               Wild_to_Safe, false, &Info,
-                              true, true);
+                              true, !TypeVars.empty());
         }
       }
       Ret = std::make_pair(TmpCVs, ReturnBSet);

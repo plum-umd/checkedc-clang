@@ -1781,7 +1781,7 @@ static void createAtomGeq(Constraints &CS, Atom *L, Atom *R,
 void constrainConsVarGeq(ConstraintVariable *LHS, ConstraintVariable *RHS,
                          Constraints &CS, const ReasonLoc &Rsn,
                          ConsAction CA, bool DoEqType, ProgramInfo *Info,
-                         bool HandleBoundsKey, bool FromCallExpr) {
+                         bool HandleBoundsKey, bool FromGenCallExpr) {
 
   // If one of the constraint is NULL, make the other constraint WILD.
   // This can happen when a non-function pointer gets assigned to
@@ -1866,7 +1866,7 @@ void constrainConsVarGeq(ConstraintVariable *LHS, ConstraintVariable *RHS,
         int GenericCount = (PCLHS->isGeneric() ? 1 : 0)
                        + (PCRHS->isGeneric() ? 1 : 0);
         bool IsGenericInterface =
-            FromCallExpr && GenericCount == 1;
+            FromGenCallExpr && GenericCount == 1;
         // Only generate constraint if LHS is not a base type.
         if (CLHS.size() != 0) {
           if ((CLHS.size() == CRHS.size() && GenericCount == 0) ||
@@ -1940,20 +1940,20 @@ void constrainConsVarGeq(ConstraintVariable *LHS, ConstraintVariable *RHS,
 void constrainConsVarGeq(ConstraintVariable *LHS, const CVarSet &RHS,
                          Constraints &CS, const ReasonLoc &Rsn,
                          ConsAction CA, bool DoEqType, ProgramInfo *Info,
-                         bool HandleBoundsKey, bool FromCallExpr) {
+                         bool HandleBoundsKey, bool FromGenCallExpr) {
   for (const auto &J : RHS)
     constrainConsVarGeq(LHS, J, CS, Rsn, CA, DoEqType, Info,
-                        HandleBoundsKey, FromCallExpr);
+                        HandleBoundsKey, FromGenCallExpr);
 }
 
 // Given an RHS and a LHS, constrain them to be equal.
 void constrainConsVarGeq(const CVarSet &LHS, const CVarSet &RHS,
                          Constraints &CS, const ReasonLoc &Rsn,
                          ConsAction CA, bool DoEqType, ProgramInfo *Info,
-                         bool HandleBoundsKey, bool FromCallExpr) {
+                         bool HandleBoundsKey, bool FromGenCallExpr) {
   for (const auto &I : LHS)
     constrainConsVarGeq(I, RHS, CS, Rsn, CA, DoEqType, Info,
-                        HandleBoundsKey, FromCallExpr);
+                        HandleBoundsKey, FromGenCallExpr);
 }
 
 // True if [C] is a PVConstraint that contains at least one Atom (i.e.,
