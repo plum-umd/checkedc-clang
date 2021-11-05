@@ -1866,7 +1866,7 @@ void constrainConsVarGeq(ConstraintVariable *LHS, ConstraintVariable *RHS,
         int GenericCount = (PCLHS->isGeneric() ? 1 : 0)
                        + (PCRHS->isGeneric() ? 1 : 0);
         bool IsGenericInterface =
-            FromCallExpr && GenericCount == 1 && PCLHS->isGeneric() == true;
+            FromCallExpr && GenericCount == 1;
         // Only generate constraint if LHS is not a base type.
         if (CLHS.size() != 0) {
           if ((CLHS.size() == CRHS.size() && GenericCount == 0) ||
