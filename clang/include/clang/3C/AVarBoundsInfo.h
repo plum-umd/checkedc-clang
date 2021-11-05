@@ -110,7 +110,8 @@ public:
   // The flag FromPB requests the inference to use potential length variables.
   bool inferBounds(BoundsKey K, const AVarGraph &BKGraph, bool FromPB = false);
 
-  bool inferBase(BoundsKey K, const AVarGraph &BKGraph);
+  bool inferBase(BoundsKey,
+                 llvm::function_ref<void(BoundsKey, std::set<BoundsKey> &)>);
 
   // Get a consistent bound for all the arrays whose bounds have been inferred.
   void convergeInferredBounds();
