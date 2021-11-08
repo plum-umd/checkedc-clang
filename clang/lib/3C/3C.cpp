@@ -586,6 +586,7 @@ bool _3CInterface::solveConstraints() {
 
     // Propagate initial data-flow information for Array pointers from
     // bounds declarations.
+    GlobalProgramInfo.getABoundsInfo().findInvalidatedBounds();
     GlobalProgramInfo.getABoundsInfo().performFlowAnalysis(&GlobalProgramInfo);
 
     // 4. Infer the bounds based on calls to malloc and calloc

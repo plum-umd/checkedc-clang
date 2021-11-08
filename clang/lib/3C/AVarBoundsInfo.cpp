@@ -217,11 +217,9 @@ void AvarBoundsInference::mergeReachableProgramVars(
 }
 
 void
-AvarBoundsInference::mergeLowerBounds(BoundsKey Ptr, std::set<BoundsKey> &LBs,
-                                      const std::set<BoundsKey> &InvalidLBs) {
+AvarBoundsInference::mergeLowerBounds(BoundsKey Ptr, std::set<BoundsKey> &LBs) {
   auto *PVar = BI->getProgramVar(Ptr);
   auto *PVarScope = PVar->getScope();
-
 
   // Get all valid, in scope lower bounds.
   std::set<BoundsKey> ValidLBs;
@@ -229,7 +227,7 @@ AvarBoundsInference::mergeLowerBounds(BoundsKey Ptr, std::set<BoundsKey> &LBs,
     auto *LBVar = BI->getProgramVar(LB);
     auto *LBScope = LBVar->getScope();
     if ((*LBScope == *PVarScope || PVarScope->isInInnerScope(*LBScope)) &&
-        InvalidLBs.find(LB) == InvalidLBs.end())
+        BI->InvalidatedBounds.find(LB) == BI->InvalidatedBounds.end())
       ValidLBs.insert(LB);
   }
   LBs.clear();
@@ -273,7 +271,7 @@ AvarBoundsInference::mergeLowerBounds(BoundsKey Ptr, std::set<BoundsKey> &LBs,
         if (LBScope->isInInnerScope(*MergeScope))
           MergeLB = LBVar;
       } else if (MergeLB->getKey() != LBVar->getKey()) {
-        // TODO: How to merge?
+        llvm::errs() << "Multiple possible lower bound pointers for " << Ptr << "\n";
       }
     }
   }
@@ -286,33 +284,6 @@ AvarBoundsInference::mergeLowerBounds(BoundsKey Ptr, std::set<BoundsKey> &LBs,
 // these. If they all converge to one possibility, use that. If not, give up and
 // don't assign any bounds to the pointer.
 void AvarBoundsInference::convergeInferredBounds() {
-
-  std::set<BoundsKey> InvalidBasePtrs;
-  for (BoundsKey PtrBoundsKey : BI->ArrPointerBoundsKey)  {
-    if (BI->hasPointerArithmetic(PtrBoundsKey))
-      InvalidBasePtrs.insert(PtrBoundsKey);
-
-    if (CurrIterInferBounds.find(PtrBoundsKey) != CurrIterInferBounds.end()) {
-      for (auto KindEntry: CurrIterInferBounds[PtrBoundsKey]) {
-        for (BoundsKey Reason: KindEntry.second.begin()->second) {
-          if (BI->hasPointerArithmetic(Reason)) {
-            InvalidBasePtrs.insert(Reason);
-            InvalidBasePtrs.insert(PtrBoundsKey);
-          }
-        }
-      }
-    } else if (BI->getBounds(PtrBoundsKey)) {
-      for (BoundsKey Reason : BI->getBoundsReason(PtrBoundsKey)) {
-        if (BI->hasPointerArithmetic(Reason)) {
-          InvalidBasePtrs.insert(Reason);
-          InvalidBasePtrs.insert(PtrBoundsKey);
-        }
-      }
-    } else {
-      InvalidBasePtrs.insert(PtrBoundsKey);
-    }
-  }
-
   for (auto &CInfABnds : CurrIterInferBounds) {
     BoundsKey PtrBoundsKey = CInfABnds.first;
     // If there are no bounds?
@@ -321,7 +292,7 @@ void AvarBoundsInference::convergeInferredBounds() {
       // the current PtrBoundsKey.
       for (auto &TySet: CInfABnds.second) {
         mergeReachableProgramVars(PtrBoundsKey, TySet.second);
-        mergeLowerBounds(PtrBoundsKey, CurrIterBaseVars[PtrBoundsKey], InvalidBasePtrs);
+        mergeLowerBounds(PtrBoundsKey, CurrIterBaseVars[PtrBoundsKey]);
       }
     }
   }
@@ -331,8 +302,7 @@ void AvarBoundsInference::convergeInferredBounds() {
     if (BI->getBounds(PtrBoundsKey) == nullptr) {
       ABounds *NewBound;
       std::set<BoundsKey> Reason;
-      std::tie(NewBound, Reason) = getPreferredBound(PtrBoundsKey,
-                                                     InvalidBasePtrs);
+      std::tie(NewBound, Reason) = getPreferredBound(PtrBoundsKey);
       // If we found any bounds?
       if (NewBound != nullptr) {
         // Record that we inferred bounds using data-flow.
@@ -352,11 +322,11 @@ void AvarBoundsInference::convergeInferredBounds() {
 // map contain either zero or one BoundsKey. This is be achieved by first
 // passing the sets to `mergeReachableProgramVars`.
 std::pair<ABounds *, std::set<BoundsKey>>
-AvarBoundsInference::getPreferredBound(BoundsKey BK,
-                                       const std::set<BoundsKey> &InvalidBasePtrs) {
+AvarBoundsInference::getPreferredBound(BoundsKey BK) {
 
   BoundsKey BaseVar = 0;
-  bool NeedsBasePointer = InvalidBasePtrs.find(BK) != InvalidBasePtrs.end();
+  bool NeedsBasePointer =
+    BI->InvalidatedBounds.find(BK) != BI->InvalidatedBounds.end();
   if (NeedsBasePointer && !CurrIterBaseVars[BK].empty())
     BaseVar = getOnly(CurrIterBaseVars[BK]);
 
@@ -1215,10 +1185,13 @@ bool AVarBoundsInfo::addAssignment(BoundsKey L, BoundsKey R) {
     // So, if we create a edge from return to itself then we create a cyclic
     // dependency and never will be able to find the bounds for the return
     // value.
-    if (L != R)
+    if (L != R) {
       AddEdgeUnlessPointerArithmetic(R, L);
+      InvalidationGraph.addUniqueEdge(R, L);
+    }
   } else {
     AddEdgeUnlessPointerArithmetic(R, L);
+    InvalidationGraph.addUniqueEdge(R, L);
     ProgramVar *PV = getProgramVar(R);
     if (!(PV && PV->isNumConstant()))
       AddEdgeUnlessPointerArithmetic(L, R);
@@ -1246,8 +1219,11 @@ void AVarBoundsInfo::recordArithmeticOperation(clang::Expr *E,
                                                ConstraintResolver *CR) {
   CVarSet CSet = CR->getExprConstraintVarsSet(E);
   for (auto *CV : CSet) {
-    if (CV->hasBoundsKey())
-      ArrPointersWithArithmetic.insert(CV->getBoundsKey());
+    if (CV->hasBoundsKey()) {
+      BoundsKey BK = CV->getBoundsKey();
+      ArrPointersWithArithmetic.insert(BK);
+      InvalidationGraph.addUniqueEdge(0, BK);
+    }
   }
 }
 
@@ -1591,6 +1567,36 @@ void AVarBoundsInfo::performFlowAnalysis(ProgramInfo *PI) {
   PStats.endArrayBoundsInferenceTime();
 }
 
+void AVarBoundsInfo::findInvalidatedBounds() {
+  assert(InvalidatedBounds.empty());
+  std::queue<BoundsKey> WorkList;
+  WorkList.push(0);
+
+  auto IsInvalidated = [this](BoundsKey BK) {
+    return BK == 0 || InvalidatedBounds.find(BK) != InvalidatedBounds.end();
+  };
+
+  while (!WorkList.empty()) {
+    BoundsKey Curr = WorkList.front();
+    WorkList.pop();
+    assert(IsInvalidated(Curr));
+
+    std::set<BoundsKey> Neighbors;
+    InvalidationGraph.getSuccessors(Curr, Neighbors);
+    for (BoundsKey NK : Neighbors) {
+      if (!IsInvalidated(NK)) {
+        InvalidatedBounds.insert(NK);
+        WorkList.push(NK);
+      }
+    }
+  }
+
+  llvm::errs() << "Invalidated Bounds: {";
+  for (BoundsKey BK : InvalidatedBounds)
+    llvm::errs() << BK << ", ";
+  llvm::errs() << "}\n";
+}
+
 bool AVarBoundsInfo::keepHighestPriorityBounds() {
   bool HasChanged = false;
   for (auto BK : ArrPointerBoundsKey) {
@@ -1629,6 +1635,7 @@ void AVarBoundsInfo::dumpAVarGraph(const std::string &DFPath) {
   DumpGraph(ProgVarGraph, "ProgVar");
   DumpGraph(CtxSensProgVarGraph, "CtxSen");
   DumpGraph(RevCtxSensProgVarGraph, "RevCtxSen");
+  DumpGraph(InvalidationGraph, "Invalid");
 }
 
 bool AVarBoundsInfo::isFunctionReturn(BoundsKey BK) {

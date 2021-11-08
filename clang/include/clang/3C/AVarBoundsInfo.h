@@ -140,7 +140,7 @@ private:
                      const AVarGraph &BKGraph);
 
   void mergeReachableProgramVars(BoundsKey TarBK, BoundsWithCauses &AllVars);
-  void mergeLowerBounds(BoundsKey Ptr, std::set<BoundsKey> &LB, const std::set<BoundsKey> &InvalidLBs);
+  void mergeLowerBounds(BoundsKey Ptr, std::set<BoundsKey> &LB);
 
   // Check if the pointer variable has impossible bounds.
   bool hasImpossibleBounds(BoundsKey BK);
@@ -159,8 +159,7 @@ private:
   // Potential lower bounds for this iteration.
   std::map<BoundsKey, std::set<BoundsKey>> CurrIterBaseVars;
 
-  std::pair<ABounds *, std::set<BoundsKey>>
-  getPreferredBound(BoundsKey BK, const std::set<BoundsKey> &InvalidBasePtrs);
+  std::pair<ABounds *, std::set<BoundsKey>> getPreferredBound(BoundsKey BK);
 };
 
 // Class that maintains information about potential bounds for
@@ -193,7 +192,8 @@ class AVarBoundsInfo {
 public:
   AVarBoundsInfo()
       : ProgVarGraph(this), CtxSensProgVarGraph(this),
-        RevCtxSensProgVarGraph(this), CSBKeyHandler(this) {
+        RevCtxSensProgVarGraph(this), CSBKeyHandler(this),
+        InvalidationGraph(this) {
     BCount = 1;
     PVarInfo.clear();
     InProgramArrPtrBoundsKeys.clear();
@@ -292,6 +292,8 @@ public:
 
   // Propagate the array bounds information for all array ptrs.
   void performFlowAnalysis(ProgramInfo *PI);
+
+  void findInvalidatedBounds();
 
   // Get the context sensitive BoundsKey for the given key at CallSite
   // located at PSL.
@@ -395,6 +397,10 @@ private:
   PotentialBoundsInfo PotBoundsInfo;
   // Context-sensitive bounds key handler
   CtxSensitiveBoundsKeyHandler CSBKeyHandler;
+
+  AVarGraph InvalidationGraph;
+  // FIXME: The name InvalidBounds is already used. Find better names.
+  std::set<BoundsKey> InvalidatedBounds;
 
   // BoundsKey helper function: These functions help in getting bounds key from
   // various artifacts.
