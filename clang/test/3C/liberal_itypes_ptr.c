@@ -116,8 +116,7 @@ void bounds_fn(void *b : byte_count(1));
 // CHECK: void bounds_fn(void *b : byte_count(1));
 
 void bounds_call(void *p) {
-  // CHECK_NOALL: void bounds_call(void *p) {
-  // CHECK_ALL: _For_any(T) void bounds_call(_Array_ptr<T> p) {
+  // CHECK: void bounds_call(void *p) {
   bounds_fn(p);
   // CHECK: bounds_fn(p);
 }

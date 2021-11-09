@@ -579,7 +579,7 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
         if (!ReallocFlow.empty()) {
           constrainConsVarGeq(NewCV, ReallocFlow, Info.getConstraints(), Rsn,
                               Wild_to_Safe, false, &Info,
-                              true, !TypeVars.empty());
+                              true, true);
         }
       }
       Ret = std::make_pair(TmpCVs, ReturnBSet);
