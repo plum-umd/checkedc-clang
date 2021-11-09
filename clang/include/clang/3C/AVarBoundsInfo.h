@@ -103,15 +103,13 @@ public:
   void clearInferredBounds() {
     CurrIterInferBounds.clear();
     BKsFailedFlowInference.clear();
-    CurrIterBaseVars.clear();
   }
 
   // Infer bounds for the given key from the set of given ARR atoms.
   // The flag FromPB requests the inference to use potential length variables.
   bool inferBounds(BoundsKey K, const AVarGraph &BKGraph, bool FromPB = false);
 
-  bool inferBase(BoundsKey,
-                 llvm::function_ref<void(BoundsKey, std::set<BoundsKey> &)>);
+
 
   // Get a consistent bound for all the arrays whose bounds have been inferred.
   void convergeInferredBounds();
@@ -140,7 +138,6 @@ private:
                      const AVarGraph &BKGraph);
 
   void mergeReachableProgramVars(BoundsKey TarBK, BoundsWithCauses &AllVars);
-  void mergeLowerBounds(BoundsKey Ptr, std::set<BoundsKey> &LB);
 
   // Check if the pointer variable has impossible bounds.
   bool hasImpossibleBounds(BoundsKey BK);
@@ -155,9 +152,6 @@ private:
   std::map<BoundsKey, BndsKindMap> CurrIterInferBounds;
   // BoundsKey that failed the flow inference.
   std::set<BoundsKey> BKsFailedFlowInference;
-
-  // Potential lower bounds for this iteration.
-  std::map<BoundsKey, std::set<BoundsKey>> CurrIterBaseVars;
 
   std::pair<ABounds *, std::set<BoundsKey>> getPreferredBound(BoundsKey BK);
 };
@@ -328,6 +322,10 @@ public:
 
   void addConstantArrayBounds(ProgramInfo &I);
 
+  void inferLowerBounds(ProgramInfo *PI);
+  std::map<BoundsKey, BoundsKey>
+  convergeLowerBounds(const std::map<BoundsKey, std::set<BoundsKey>> &LBs);
+
 private:
   friend class AvarBoundsInference;
   friend class CtxSensitiveBoundsKeyHandler;
@@ -401,6 +399,7 @@ private:
   AVarGraph InvalidationGraph;
   // FIXME: The name InvalidBounds is already used. Find better names.
   std::set<BoundsKey> InvalidatedBounds;
+  std::map<BoundsKey, BoundsKey> LowerBounds;
 
   // BoundsKey helper function: These functions help in getting bounds key from
   // various artifacts.

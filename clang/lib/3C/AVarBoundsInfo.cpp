@@ -216,69 +216,6 @@ void AvarBoundsInference::mergeReachableProgramVars(
   }
 }
 
-void
-AvarBoundsInference::mergeLowerBounds(BoundsKey Ptr, std::set<BoundsKey> &LBs) {
-  auto *PVar = BI->getProgramVar(Ptr);
-  auto *PVarScope = PVar->getScope();
-
-  // Get all valid, in scope lower bounds.
-  std::set<BoundsKey> ValidLBs;
-  for (BoundsKey LB : LBs) {
-    auto *LBVar = BI->getProgramVar(LB);
-    auto *LBScope = LBVar->getScope();
-    if ((*LBScope == *PVarScope || PVarScope->isInInnerScope(*LBScope)) &&
-        BI->InvalidatedBounds.find(LB) == BI->InvalidatedBounds.end())
-      ValidLBs.insert(LB);
-  }
-  LBs.clear();
-
-  // If size 1, then there's no need to merge anything
-  if (ValidLBs.size() == 1) {
-    LBs = ValidLBs;
-    return;
-  }
-
-  // If the pointer can be it's own lower bound, do that.
-  for (auto LB : ValidLBs) {
-    if (LB == Ptr) {
-      LBs = {LB};
-      return;
-    }
-  }
-
-  // If there is a single pointer in the same scope, use that.
-  std::set<BoundsKey> SameScopeVars;
-  for (auto LB : ValidLBs)
-    if (*(BI->getProgramVar(LB)->getScope()) == *PVarScope)
-      SameScopeVars.insert(LB);
-
-  if (SameScopeVars.size() == 1) {
-    LBs = SameScopeVars;
-    return;
-  }
-
-  ProgramVar *MergeLB = nullptr;
-  for (auto LB : ValidLBs) {
-    // Convert the bounds key to corresponding program var.
-    auto *LBVar = BI->getProgramVar(LB);
-    auto *LBScope = LBVar->getScope();
-    if (MergeLB == nullptr) {
-      if (*LBScope == *PVarScope || PVarScope->isInInnerScope(*LBScope))
-        MergeLB = LBVar;
-    } else {
-      auto *MergeScope = MergeLB->getScope();
-      if (*MergeScope != *LBScope) {
-        if (LBScope->isInInnerScope(*MergeScope))
-          MergeLB = LBVar;
-      } else if (MergeLB->getKey() != LBVar->getKey()) {
-        llvm::errs() << "Multiple possible lower bound pointers for " << Ptr << "\n";
-      }
-    }
-  }
-
-  if (MergeLB)
-    LBs.insert(MergeLB->getKey());
-}
 
 // Consider all pointers, each of which may have multiple bounds, and intersect
 // these. If they all converge to one possibility, use that. If not, give up and
@@ -292,7 +229,6 @@ void AvarBoundsInference::convergeInferredBounds() {
       // the current PtrBoundsKey.
       for (auto &TySet: CInfABnds.second) {
         mergeReachableProgramVars(PtrBoundsKey, TySet.second);
-        mergeLowerBounds(PtrBoundsKey, CurrIterBaseVars[PtrBoundsKey]);
       }
     }
   }
@@ -327,8 +263,8 @@ AvarBoundsInference::getPreferredBound(BoundsKey BK) {
   BoundsKey BaseVar = 0;
   bool NeedsBasePointer =
     BI->InvalidatedBounds.find(BK) != BI->InvalidatedBounds.end();
-  if (NeedsBasePointer && !CurrIterBaseVars[BK].empty())
-    BaseVar = getOnly(CurrIterBaseVars[BK]);
+  if (NeedsBasePointer && BI->LowerBounds.find(BK) != BI->LowerBounds.end())
+    BaseVar = BI->LowerBounds[BK];
 
   if (NeedsBasePointer && BaseVar == 0)
     llvm::errs() << "Lower bound pointer required for " << BK
@@ -638,40 +574,121 @@ bool AvarBoundsInference::inferBounds(BoundsKey K, const AVarGraph &BKGraph,
   return IsChanged;
 }
 
-bool AvarBoundsInference::inferBase(BoundsKey K, llvm::function_ref<void (BoundsKey, std::set<BoundsKey> &)> GetPred) {
-  bool IsChanged = false;
-  if (BI->InvalidBounds.find(K) == BI->InvalidBounds.end()) {
-    std::set<BoundsKey> PredKeys;
-    GetPred(K, PredKeys);
+void
+AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
+  std::map<BoundsKey, std::set<BoundsKey>> InfLowerBounds;
 
-    std::set<BoundsKey> BaseKeys;
+  computeArrPointers(PI);
+  std::set<BoundsKey> BaseWorkList;
+  getBoundsNeededArrPointers(BaseWorkList);
 
-    //if (!BI->hasPointerArithmetic(K) && !BI->isFunctionReturn(K))
-    BaseKeys.insert(K);
+  while (!BaseWorkList.empty()) {
+    std::set<BoundsKey> NextIterArrs;
+    for (BoundsKey CurrArrKey : BaseWorkList) {
+      bool FoundNewLB  = false;
+      auto InsertLB = [&FoundNewLB, &InfLowerBounds, CurrArrKey](BoundsKey LB) {
+        if (InfLowerBounds[CurrArrKey].insert(LB).second)
+          FoundNewLB = true;
+      };
 
-    for (BoundsKey P : PredKeys) {
-      if (!CurrIterBaseVars[P].empty()) {
-        for (BoundsKey BK : CurrIterBaseVars[P])
-          BaseKeys.insert(BK);
+      if (InvalidBounds.find(CurrArrKey) == InvalidBounds.end()) {
+        std::set<BoundsKey> PredKeys;
+        ProgVarGraph.getPredecessors(CurrArrKey, PredKeys, true);
+        CtxSensProgVarGraph.getPredecessors(CurrArrKey, PredKeys, true);
+        RevCtxSensProgVarGraph.getPredecessors(CurrArrKey, PredKeys, true);
+
+        InsertLB(CurrArrKey);
+        for (BoundsKey P: PredKeys) {
+          InsertLB(P);
+          for (BoundsKey BK: InfLowerBounds[P])
+            InsertLB(BK);
+        }
       }
-      if (BI->getBounds(P)) {
-        // FIXME: Hack? This should lookup BaseVars instead of reasons
-        for (BoundsKey BK : BI->getBoundsReason(P))
-          BaseKeys.insert(BK);
+
+      if (FoundNewLB) {
+        ProgVarGraph.getSuccessors(CurrArrKey, NextIterArrs, true);
+        CtxSensProgVarGraph.getSuccessors(CurrArrKey, NextIterArrs, true);
+        RevCtxSensProgVarGraph.getSuccessors(CurrArrKey, NextIterArrs, true);
       }
-      BaseKeys.insert(P);
+    }
+    BaseWorkList = NextIterArrs;
+  }
+
+  LowerBounds = convergeLowerBounds(InfLowerBounds);
+}
+
+std::map<BoundsKey, BoundsKey> AVarBoundsInfo::convergeLowerBounds(
+  const std::map<BoundsKey, std::set<BoundsKey>> &InfLowerBounds) {
+  std::map<BoundsKey, BoundsKey> ConvergedBounds;
+
+  for (auto LBEntry : InfLowerBounds) {
+    BoundsKey Ptr = LBEntry.first;
+    const std::set<BoundsKey> &LBs = LBEntry.second;
+
+    auto *PVar = getProgramVar(Ptr);
+    auto *PVarScope = PVar->getScope();
+
+    // Get all valid, in scope lower bounds.
+    std::set<BoundsKey> ValidLBs;
+    for (BoundsKey LB : LBs) {
+      auto *LBVar = getProgramVar(LB);
+      auto *LBScope = LBVar->getScope();
+      if ((*LBScope == *PVarScope || PVarScope->isInInnerScope(*LBScope)) &&
+          InvalidatedBounds.find(LB) == InvalidatedBounds.end())
+        ValidLBs.insert(LB);
     }
 
-    const std::set<BoundsKey> &OldBaseKeys = CurrIterBaseVars[K];
-    std::set<BoundsKey> NewBaseKeys;
-    std::set_difference(BaseKeys.begin(), BaseKeys.end(),
-                        OldBaseKeys.begin(), OldBaseKeys.end(),
-                        std::inserter(NewBaseKeys, NewBaseKeys.begin()));
-    IsChanged = !NewBaseKeys.empty();
-    for (BoundsKey B : BaseKeys)
-      CurrIterBaseVars[K].insert(B);
+    // If size 1, then there's no need to merge anything
+    if (ValidLBs.size() == 1) {
+      ConvergedBounds[Ptr] = getOnly(ValidLBs);
+      continue;
+    }
+
+    // If the pointer can be it's own lower bound, do that.
+    bool LBSelf = false;
+    for (auto LB : ValidLBs)
+      LBSelf = LBSelf || LB == Ptr;
+    if (LBSelf) {
+      ConvergedBounds[Ptr] = Ptr;
+      continue;
+    }
+
+    // If there is a single pointer in the same scope, use that.
+    std::set<BoundsKey> SameScopeVars;
+    for (auto LB : ValidLBs)
+      if (*(getProgramVar(LB)->getScope()) == *PVarScope)
+        SameScopeVars.insert(LB);
+
+    if (SameScopeVars.size() == 1) {
+      ConvergedBounds[Ptr] = getOnly(SameScopeVars);
+      continue;
+    }
+
+    ProgramVar *MergeLB = nullptr;
+    for (auto LB : ValidLBs) {
+      // Convert the bounds key to corresponding program var.
+      auto *LBVar = getProgramVar(LB);
+      auto *LBScope = LBVar->getScope();
+      if (MergeLB == nullptr) {
+        if (*LBScope == *PVarScope || PVarScope->isInInnerScope(*LBScope))
+          MergeLB = LBVar;
+      } else {
+        auto *MergeScope = MergeLB->getScope();
+        if (*MergeScope != *LBScope) {
+          if (LBScope->isInInnerScope(*MergeScope))
+            MergeLB = LBVar;
+        } else if (MergeLB->getKey() != LBVar->getKey()) {
+          llvm::errs() << "Multiple possible lower bound pointers for " << Ptr
+                       << "\n";
+        }
+      }
+    }
+
+    if (MergeLB)
+      ConvergedBounds[Ptr] = MergeLB->getKey();
   }
-  return IsChanged;
+
+  return ConvergedBounds;
 }
 
 bool AvarBoundsInference::inferFromPotentialBounds(BoundsKey BK,
@@ -716,7 +733,7 @@ void AvarBoundsInference::dumpCurrIterBounds() {
   bool AnyBounds = false;
   for (auto &CInfABnds : CurrIterInferBounds) {
     BoundsKey Ptr = CInfABnds.first;
-    if (!CInfABnds.second.empty() || !CurrIterBaseVars[Ptr].empty()) {
+    if (!CInfABnds.second.empty()) {
       llvm::errs() << "Bounds For " << Ptr << ": \n";
       AnyBounds = true;
     }
@@ -730,14 +747,6 @@ void AvarBoundsInference::dumpCurrIterBounds() {
         llvm::errs() << "}\n";
       }
     }
-    bool HasBase = !CurrIterBaseVars[Ptr].empty();
-    if (HasBase)
-      llvm::errs() << "\tBase Ptrs: {";
-    for (auto B : CurrIterBaseVars[Ptr]) {
-      llvm::errs() << B << ", ";
-    }
-    if (HasBase)
-      llvm::errs() << "}\n";
   }
   if (AnyBounds)
     llvm::errs() << "\n";
@@ -1331,23 +1340,6 @@ void AVarBoundsInfo::performWorkListInference(const AVarGraph &BKGraph,
     findIntersection(ArrNeededBounds, NextIterArrs, WorkList);
   }
 
-  std::set<BoundsKey> BaseWorkList(ArrNeededBounds);
-  while (!BaseWorkList.empty()) {
-    std::set<BoundsKey> NextIterArrs;
-    for (BoundsKey CurrArrKey : BaseWorkList) {
-      auto GetSucc = [this](BoundsKey BK, std::set<BoundsKey> &Pred) {
-        ProgVarGraph.getPredecessors(BK, Pred, true);
-        CtxSensProgVarGraph.getPredecessors(BK, Pred, true);
-        RevCtxSensProgVarGraph.getPredecessors(BK, Pred, true);
-      };
-      if (BI.inferBase(CurrArrKey, GetSucc)) {
-        ProgVarGraph.getSuccessors(CurrArrKey, NextIterArrs, true);
-        CtxSensProgVarGraph.getSuccessors(CurrArrKey, NextIterArrs, true);
-        RevCtxSensProgVarGraph.getSuccessors(CurrArrKey, NextIterArrs, true);
-      }
-    }
-    BaseWorkList = NextIterArrs;
-  }
 
   BI.dumpCurrIterBounds();
 
