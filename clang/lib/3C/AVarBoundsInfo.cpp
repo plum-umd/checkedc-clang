@@ -266,9 +266,6 @@ AvarBoundsInference::getPreferredBound(BoundsKey BK) {
   if (NeedsBasePointer && BI->LowerBounds.find(BK) != BI->LowerBounds.end())
     BaseVar = BI->LowerBounds[BK];
 
-  if (NeedsBasePointer && BaseVar == 0)
-    llvm::errs() << "Lower bound pointer required for " << BK
-                 << " but not available.\n";
 
   auto &BKindMap = CurrIterInferBounds[BK];
   // Utility to check if the map contains a non-empty set of bounds for a
@@ -620,6 +617,7 @@ AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
 std::map<BoundsKey, BoundsKey> AVarBoundsInfo::convergeLowerBounds(
   const std::map<BoundsKey, std::set<BoundsKey>> &InfLowerBounds) {
   std::map<BoundsKey, BoundsKey> ConvergedBounds;
+  std::set<BoundsKey> NeedLowerBounds;
 
   for (auto LBEntry : InfLowerBounds) {
     BoundsKey Ptr = LBEntry.first;
@@ -686,6 +684,57 @@ std::map<BoundsKey, BoundsKey> AVarBoundsInfo::convergeLowerBounds(
 
     if (MergeLB)
       ConvergedBounds[Ptr] = MergeLB->getKey();
+    else {
+      llvm::errs() << "Lower bound pointer required for " << Ptr
+                   << " but not available.\n";
+      NeedLowerBounds.insert(Ptr);
+    }
+  }
+
+  std::set<BoundsKey> MinSet;
+  for (BoundsKey BK : NeedLowerBounds) {
+    std::set<BoundsKey> PredKeys;
+    InvalidationGraph.getPredecessors(BK, PredKeys, true);
+    bool AnyPreds = false;
+    for (BoundsKey Pred: PredKeys)
+      if (NeedLowerBounds.find(Pred) != NeedLowerBounds.end())
+        AnyPreds = true;
+    if (!AnyPreds)
+      MinSet.insert(BK);
+  }
+
+  std::queue<BoundsKey> WorkList;
+  for (BoundsKey Ptr : MinSet) {
+    ProgramVar *PtrVar = getProgramVar(Ptr);
+    BoundsKey FreshLBKey = getRandomBKey();
+    ProgramVar *FreshLBVar =
+      ProgramVar::createNewProgramVar(FreshLBKey,
+                                      "__3c_tmp_" + PtrVar->getVarName(),
+                                      PtrVar->getScope());
+
+    insertProgramVar(FreshLBKey, FreshLBVar);
+    ConvergedBounds[Ptr] = FreshLBKey;
+    WorkList.push(Ptr);
+  }
+
+  while(!WorkList.empty()) {
+    BoundsKey Ptr = WorkList.front();
+    WorkList.pop();
+
+    assert(ConvergedBounds.find(Ptr) != ConvergedBounds.end());
+    BoundsKey LB = ConvergedBounds[Ptr];
+
+    std::set<BoundsKey> SuccKeys;
+    InvalidationGraph.getSuccessors(Ptr, SuccKeys, true);
+    for (BoundsKey SK : SuccKeys) {
+      if (ConvergedBounds.find(SK) != ConvergedBounds.end()) {
+        llvm::errs() << "Multiple possible lower bound pointers for " << SK
+                     << "\n";
+      } else {
+        ConvergedBounds[SK] = LB;
+        WorkList.push(SK);
+      }
+    }
   }
 
   return ConvergedBounds;
@@ -1339,9 +1388,6 @@ void AVarBoundsInfo::performWorkListInference(const AVarGraph &BKGraph,
     // terminate.
     findIntersection(ArrNeededBounds, NextIterArrs, WorkList);
   }
-
-
-  BI.dumpCurrIterBounds();
 
   // From all the sets of bounds computed for various array variables. Intersect
   // them and find the common bound variable.
