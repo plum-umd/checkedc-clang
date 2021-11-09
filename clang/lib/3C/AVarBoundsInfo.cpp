@@ -619,6 +619,7 @@ std::map<BoundsKey, BoundsKey> AVarBoundsInfo::convergeLowerBounds(
   std::map<BoundsKey, BoundsKey> ConvergedBounds;
   std::set<BoundsKey> NeedLowerBounds;
 
+  // Merge sets of possible lower bounds down to a single lower bound.
   for (auto LBEntry : InfLowerBounds) {
     BoundsKey Ptr = LBEntry.first;
     const std::set<BoundsKey> &LBs = LBEntry.second;
@@ -685,13 +686,19 @@ std::map<BoundsKey, BoundsKey> AVarBoundsInfo::convergeLowerBounds(
     if (MergeLB)
       ConvergedBounds[Ptr] = MergeLB->getKey();
     else {
+      // We couldn't find an existing pointer to use as a lower bound. We'll
+      // create a temporary variable to use later.
       llvm::errs() << "Lower bound pointer required for " << Ptr
                    << " but not available.\n";
       NeedLowerBounds.insert(Ptr);
     }
   }
 
-  std::set<BoundsKey> MinSet;
+  // From the pointers that still need a lower bound, select those that are the
+  // least in the partial ordering (i.e., they have no predecessors in the
+  // graph). These will be used as the basis for the temporary lower bounds
+  // pointers.
+  std::set<BoundsKey> MinimalPtrs;
   for (BoundsKey BK : NeedLowerBounds) {
     std::set<BoundsKey> PredKeys;
     InvalidationGraph.getPredecessors(BK, PredKeys, true);
@@ -699,42 +706,34 @@ std::map<BoundsKey, BoundsKey> AVarBoundsInfo::convergeLowerBounds(
     for (BoundsKey Pred: PredKeys)
       if (NeedLowerBounds.find(Pred) != NeedLowerBounds.end())
         AnyPreds = true;
-    if (!AnyPreds)
-      MinSet.insert(BK);
-  }
+    ProgramVar *PtrVar = getProgramVar(BK);
+    const ProgramVarScope *PtrScope = PtrVar->getScope();
+    bool IsCtxSen =
+      isa<CtxFunctionArgScope>(PtrScope) || isa<CtxStructScope>(PtrScope);
+    if (!AnyPreds && !IsCtxSen) {
+      BoundsKey FreshLBKey = getRandomBKey();
+      ProgramVar *FreshLBVar =
+        ProgramVar::createNewProgramVar(FreshLBKey,
+                                        "__3c_tmp_" + PtrVar->getVarName(),
+                                        PtrVar->getScope());
 
-  std::queue<BoundsKey> WorkList;
-  for (BoundsKey Ptr : MinSet) {
-    ProgramVar *PtrVar = getProgramVar(Ptr);
-    BoundsKey FreshLBKey = getRandomBKey();
-    ProgramVar *FreshLBVar =
-      ProgramVar::createNewProgramVar(FreshLBKey,
-                                      "__3c_tmp_" + PtrVar->getVarName(),
-                                      PtrVar->getScope());
-
-    insertProgramVar(FreshLBKey, FreshLBVar);
-    ConvergedBounds[Ptr] = FreshLBKey;
-    WorkList.push(Ptr);
-  }
-
-  while(!WorkList.empty()) {
-    BoundsKey Ptr = WorkList.front();
-    WorkList.pop();
-
-    assert(ConvergedBounds.find(Ptr) != ConvergedBounds.end());
-    BoundsKey LB = ConvergedBounds[Ptr];
-
-    std::set<BoundsKey> SuccKeys;
-    InvalidationGraph.getSuccessors(Ptr, SuccKeys, true);
-    for (BoundsKey SK : SuccKeys) {
-      if (ConvergedBounds.find(SK) != ConvergedBounds.end()) {
-        llvm::errs() << "Multiple possible lower bound pointers for " << SK
-                     << "\n";
-      } else {
-        ConvergedBounds[SK] = LB;
-        WorkList.push(SK);
-      }
+      insertProgramVar(FreshLBKey, FreshLBVar);
+      ConvergedBounds[BK] = FreshLBKey;
+      MinimalPtrs.insert(BK);
     }
+  }
+
+  for (BoundsKey BK : NeedLowerBounds) {
+     const std::set<BoundsKey> &PossibleLBs = InfLowerBounds.at(BK);
+     for (BoundsKey MinK : MinimalPtrs)  {
+       if (PossibleLBs.find(MinK) != PossibleLBs.end()) {
+         if (ConvergedBounds.find(BK) != ConvergedBounds.end())
+           llvm::errs() << "Multiple possible lower bound pointers for " << BK
+                        << "\n";
+         else
+           ConvergedBounds[BK] = ConvergedBounds[MinK];
+       }
+     }
   }
 
   return ConvergedBounds;

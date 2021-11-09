@@ -37,7 +37,7 @@ DeclRewriter::buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
                              ProgramInfo &Info, ArrayBoundsRewriter &ABR,
                              bool GenerateSDecls) {
   bool NeedsRangeBound =
-    false && GenerateSDecls && Info.getABoundsInfo().needsRangeBound(Defn);
+    GenerateSDecls && Info.getABoundsInfo().needsRangeBound(Defn);
 
   std::string DeclName = Decl ? Decl->getNameAsString() : "";
   // The idea here is that the name should only be empty if this is an unnamed
@@ -103,11 +103,11 @@ DeclRewriter::buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
     }
   }
 
-  std::string IType = " : itype(";
-  IType += Defn->mkString(Info.getConstraints(),
-                          MKSTRING_OPTS(EmitName = false, ForItype = true,
-                                        UnmaskTypedef = IsUncheckedTypedef));
-  IType += ")" + ABR.getBoundsString(Defn, Decl, true, false);
+  std::string IType = " : itype(" +
+    Defn->mkString(Info.getConstraints(),
+                   MKSTRING_OPTS(EmitName = false, ForItype = true,
+                                 UnmaskTypedef = IsUncheckedTypedef)) + ")";
+  IType += ABR.getBoundsString(Defn, Decl, true, NeedsRangeBound);
 
   std::string SDecl;
   if (NeedsRangeBound) {
@@ -127,7 +127,7 @@ DeclRewriter::buildCheckedDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
                                std::string UseName, ProgramInfo &Info,
                                ArrayBoundsRewriter &ABR, bool GenerateSDecls) {
   bool NeedsRangeBound =
-    false && GenerateSDecls && Info.getABoundsInfo().needsRangeBound(Defn);
+    GenerateSDecls && Info.getABoundsInfo().needsRangeBound(Defn);
   assert("Adding range bounds on return, global variable, or field!" &&
          (!NeedsRangeBound || (isa_and_nonnull<VarDecl>(Decl) &&
                                cast<VarDecl>(Decl)->isLocalVarDeclOrParm())));
@@ -140,12 +140,12 @@ DeclRewriter::buildCheckedDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
 
   std::string Type =
     Defn->mkString(Info.getConstraints(), MKSTRING_OPTS(UseName = DeclName));
-  std::string IType = ABR.getBoundsString(Defn, Decl);
+  std::string IType = ABR.getBoundsString(Defn, Decl, false, NeedsRangeBound);
   std::string SDecl;
   if (NeedsRangeBound) {
     SDecl =
       Defn->mkString(Info.getConstraints(), MKSTRING_OPTS(UseName = UseName)) +
-      ABR.getBoundsString(Defn, Decl, false, true, DeclName) + " = " +
+      ABR.getBoundsString(Defn, Decl) + " = " +
       DeclName + ";";
   }
   return RewrittenDecl(Type, IType, SDecl);

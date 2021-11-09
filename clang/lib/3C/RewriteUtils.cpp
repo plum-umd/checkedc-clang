@@ -543,10 +543,7 @@ SourceLocation FunctionDeclReplacement::getDeclEnd(SourceManager &SM) const {
 
 std::string ArrayBoundsRewriter::getBoundsString(const PVConstraint *PV,
                                                  Decl *D, bool Isitype,
-                                                 bool UseRange,
-                                                 std::string BasePtr) {
-  assert("Need a base pointer to emit range bounds." &&
-         (!UseRange || !BasePtr.empty()));
+                                                 bool OmitLowerBound) {
   auto &ABInfo = Info.getABoundsInfo();
 
   // Try to find a bounds key for the constraint variable. If we can't,
@@ -568,10 +565,13 @@ std::string ArrayBoundsRewriter::getBoundsString(const PVConstraint *PV,
     // emit any bounds string.
     if (ArrB != nullptr &&
         (!ABInfo.hasPointerArithmetic(DK) || ABInfo.isEligibleForRangeBounds(DK))) {
-      if (UseRange)
-        BString = ArrB->mkRangeString(&ABInfo, D, BasePtr);
-      else
+      if (OmitLowerBound) {
+        ABounds *WithoutLB = ArrB->makeCopy(ArrB->getLengthKey());
+        BString = WithoutLB->mkString(&ABInfo, D, DK);
+        delete WithoutLB;
+      } else {
         BString = ArrB->mkString(&ABInfo, D, DK);
+      }
       if (!BString.empty())
         BString = Pfix + BString;
     }
