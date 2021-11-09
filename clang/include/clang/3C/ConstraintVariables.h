@@ -246,15 +246,18 @@ void constrainConsVarGeq(const std::set<ConstraintVariable *> &LHS,
                          const std::set<ConstraintVariable *> &RHS,
                          Constraints &CS, const ReasonLoc &Rsn,
                          ConsAction CA, bool DoEqType, ProgramInfo *Info,
-                         bool HandleBoundsKey = true);
+                         bool HandleBoundsKey = true,
+                         bool FromGenCallExpr = false);
 void constrainConsVarGeq(ConstraintVariable *LHS, const CVarSet &RHS,
                          Constraints &CS, const ReasonLoc &Rsn,
                          ConsAction CA, bool DoEqType, ProgramInfo *Info,
-                         bool HandleBoundsKey = true);
+                         bool HandleBoundsKey = true,
+                         bool FromGenCallExpr = false);
 void constrainConsVarGeq(ConstraintVariable *LHS, ConstraintVariable *RHS,
                          Constraints &CS, const ReasonLoc &Rsn,
                          ConsAction CA, bool DoEqType, ProgramInfo *Info,
-                         bool HandleBoundsKey = true);
+                         bool HandleBoundsKey = true,
+                         bool FromGenCallExpr = false);
 
 // True if [C] is a PVConstraint that contains at least one Atom (i.e.,
 //   it represents a C pointer)
@@ -712,6 +715,9 @@ public:
   // The number of type variables
   int getGenericParams() const {
     return TypeParams;
+  }
+  bool IsGeneric() const {
+    return TypeParams > 0;
   }
   // remove added generics
   // use when we constrain a potential generic param to wild

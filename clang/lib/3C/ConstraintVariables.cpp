@@ -14,23 +14,11 @@
 #include "clang/3C/ProgramInfo.h"
 #include "clang/Lex/Lexer.h"
 #include "llvm/ADT/StringSwitch.h"
-#include "llvm/Support/CommandLine.h"
 #include <sstream>
 
 using namespace clang;
 // Macro for boolean implication.
 #define IMPLIES(a, b) ((a) ? (b) : true)
-
-static llvm::cl::OptionCategory OptimizationCategory("Optimization category");
-static llvm::cl::opt<bool>
-    DisableRDs("disable-rds",
-               llvm::cl::desc("Disable reverse edges for Checked Constraints."),
-               llvm::cl::init(false), llvm::cl::cat(OptimizationCategory));
-
-static llvm::cl::opt<bool> DisableFunctionEdges(
-    "disable-fnedgs",
-    llvm::cl::desc("Disable reverse edges for external functions."),
-    llvm::cl::init(false), llvm::cl::cat(OptimizationCategory));
 
 std::string ConstraintVariable::getRewritableOriginalTy() const {
   std::string OrigTyString = getOriginalTy();
@@ -1739,7 +1727,7 @@ static void createAtomGeq(Constraints &CS, Atom *L, Atom *R,
       }
       break;
     case Wild_to_Safe:
-      if (!DisableRDs) {
+      if (!_3COpts.DisableRDs) {
         // Note: reversal.
         CS.addConstraint(CS.createGeq(R, L, Rsn, true));
       } else {
@@ -1768,7 +1756,7 @@ static void createAtomGeq(Constraints &CS, Atom *L, Atom *R,
           CS.addConstraint(CS.createGeq(R, L, Rsn, true));
         break;
       case Wild_to_Safe:
-        if (!DisableRDs) {
+        if (!_3COpts.DisableRDs) {
           // Note: reversal.
           CS.addConstraint(CS.createGeq(R, L, Rsn, true));
         } else {
@@ -1798,7 +1786,7 @@ static void createAtomGeq(Constraints &CS, Atom *L, Atom *R,
 void constrainConsVarGeq(ConstraintVariable *LHS, ConstraintVariable *RHS,
                          Constraints &CS, const ReasonLoc &Rsn,
                          ConsAction CA, bool DoEqType, ProgramInfo *Info,
-                         bool HandleBoundsKey) {
+                         bool HandleBoundsKey, bool FromGenCallExpr) {
 
   // If one of the constraint is NULL, make the other constraint WILD.
   // This can happen when a non-function pointer gets assigned to
@@ -1880,11 +1868,16 @@ void constrainConsVarGeq(ConstraintVariable *LHS, ConstraintVariable *RHS,
         CAtoms CLHS = PCLHS->getCvars();
         CAtoms CRHS = PCRHS->getCvars();
 
+        int GenericCount = (PCLHS->isGeneric() ? 1 : 0)
+                       + (PCRHS->isGeneric() ? 1 : 0);
+        bool IsGenericInterface =
+            FromGenCallExpr && GenericCount == 1;
         // Only generate constraint if LHS is not a base type.
         if (CLHS.size() != 0) {
-          if (CLHS.size() == CRHS.size() ||
-              (CLHS.size() < CRHS.size() && PCLHS->isGeneric()) ||
-              (CLHS.size() > CRHS.size() && PCRHS->isGeneric())) {
+          if ((CLHS.size() == CRHS.size() && GenericCount == 0) ||
+              IsGenericInterface ||
+              // allow this for now
+              GenericCount == 2) {
             unsigned Min = std::min(CLHS.size(), CRHS.size());
             for (unsigned N = 0; N < Min; N++) {
               Atom *IAtom = PCLHS->getAtom(N, CS);
@@ -1952,18 +1945,20 @@ void constrainConsVarGeq(ConstraintVariable *LHS, ConstraintVariable *RHS,
 void constrainConsVarGeq(ConstraintVariable *LHS, const CVarSet &RHS,
                          Constraints &CS, const ReasonLoc &Rsn,
                          ConsAction CA, bool DoEqType, ProgramInfo *Info,
-                         bool HandleBoundsKey) {
+                         bool HandleBoundsKey, bool FromGenCallExpr) {
   for (const auto &J : RHS)
-    constrainConsVarGeq(LHS, J, CS, Rsn, CA, DoEqType, Info, HandleBoundsKey);
+    constrainConsVarGeq(LHS, J, CS, Rsn, CA, DoEqType, Info,
+                        HandleBoundsKey, FromGenCallExpr);
 }
 
 // Given an RHS and a LHS, constrain them to be equal.
 void constrainConsVarGeq(const CVarSet &LHS, const CVarSet &RHS,
                          Constraints &CS, const ReasonLoc &Rsn,
                          ConsAction CA, bool DoEqType, ProgramInfo *Info,
-                         bool HandleBoundsKey) {
+                         bool HandleBoundsKey, bool FromGenCallExpr) {
   for (const auto &I : LHS)
-    constrainConsVarGeq(I, RHS, CS, Rsn, CA, DoEqType, Info, HandleBoundsKey);
+    constrainConsVarGeq(I, RHS, CS, Rsn, CA, DoEqType, Info,
+                        HandleBoundsKey, FromGenCallExpr);
 }
 
 // True if [C] is a PVConstraint that contains at least one Atom (i.e.,
@@ -2318,8 +2313,8 @@ void FVComponentVariable::linkInternalExternal(ProgramInfo &I,
         // level. This is because CheckedC does not allow assignment from e.g.
         // a function return of type `int ** : itype(_Ptr<_Ptr<int>>)` to a
         // variable with type `int **`.
-        if (DisableFunctionEdges || DisableRDs || EquateChecked ||
-            (ExternalConstraint->getName() == RETVAR && J > 0))
+        if (_3COpts.DisableFunctionEdges || _3COpts.DisableRDs ||
+            EquateChecked || (ExternalConstraint->getName() == RETVAR && J > 0))
           CS.addConstraint(CS.createGeq(ExternalA, InternalA,
                                         LinkReason, true));
       }
