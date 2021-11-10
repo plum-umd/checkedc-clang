@@ -641,7 +641,7 @@ CSetBkeyPair ConstraintResolver::getExprConstraintVars(Expr *E) {
 
       BoundsKey CBKey = ABI.getConstKey(Str->getByteLength());
       ABounds *NB = new CountBound(CBKey);
-      ABI.replaceBounds(TmpKey, Declared, NB, {});
+      ABI.replaceBounds(TmpKey, Declared, NB);
 
       T = {P};
 

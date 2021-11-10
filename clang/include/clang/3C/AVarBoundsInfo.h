@@ -90,8 +90,7 @@ enum BoundsPriority {
 };
 
 class AVarBoundsInfo;
-typedef std::map<BoundsKey, std::set<BoundsKey>> BoundsWithCauses;
-typedef std::map<ABounds::BoundsKind, BoundsWithCauses> BndsKindMap;
+typedef std::map<ABounds::BoundsKind, std::set<BoundsKey>> BndsKindMap;
 // The main class that handles figuring out bounds of arr variables.
 class AvarBoundsInference {
 public:
@@ -120,14 +119,14 @@ private:
   // Find all the reachable variables form FromVarK that are visible
   // in DstScope
   bool getReachableBoundKeys(const ProgramVarScope *DstScope,
-                             BoundsKey FromVarK, BoundsWithCauses &PotK,
+                             BoundsKey FromVarK, std::set<BoundsKey> &PotK,
                              const AVarGraph &BKGraph,
                              bool CheckImmediate = false);
 
   // Check if bounds specified by Bnds are declared bounds of K.
   bool areDeclaredBounds(
       BoundsKey K,
-      const std::pair<ABounds::BoundsKind, BoundsWithCauses> &Bnds);
+      const std::pair<ABounds::BoundsKind, std::set<BoundsKey>> &Bnds);
 
   // Get all the bounds of the given array i.e., BK
   void getRelevantBounds(BoundsKey BK, BndsKindMap &ResBounds);
@@ -137,7 +136,7 @@ private:
   bool predictBounds(BoundsKey DstArrK, const std::set<BoundsKey> &Neighbours,
                      const AVarGraph &BKGraph);
 
-  void mergeReachableProgramVars(BoundsKey TarBK, BoundsWithCauses &AllVars);
+  void mergeReachableProgramVars(BoundsKey TarBK, std::set<BoundsKey> &AllVars);
 
   // Check if the pointer variable has impossible bounds.
   bool hasImpossibleBounds(BoundsKey BK);
@@ -153,7 +152,7 @@ private:
   // BoundsKey that failed the flow inference.
   std::set<BoundsKey> BKsFailedFlowInference;
 
-  std::pair<ABounds *, std::set<BoundsKey>> getPreferredBound(BoundsKey BK);
+  ABounds *getPreferredBound(BoundsKey BK);
 };
 
 // Class that maintains information about potential bounds for
@@ -205,15 +204,11 @@ public:
   void insertDeclaredBounds(clang::Decl *D, ABounds *B);
   void insertDeclaredBounds(BoundsKey BK, ABounds *B);
 
-  bool mergeBounds(BoundsKey L, BoundsPriority P, ABounds *B,
-                   const std::set<BoundsKey> &Reason);
+  bool mergeBounds(BoundsKey L, BoundsPriority P, ABounds *B);
   bool removeBounds(BoundsKey L, BoundsPriority P = Invalid);
-  bool replaceBounds(BoundsKey L, BoundsPriority P, ABounds *B,
-                     const std::set<BoundsKey> &Reason);
+  bool replaceBounds(BoundsKey L, BoundsPriority P, ABounds *B);
   ABounds *getBounds(BoundsKey L, BoundsPriority ReqP = Invalid,
                      BoundsPriority *RetP = nullptr);
-  std::set<BoundsKey>
-  getBoundsReason(BoundsKey L, BoundsPriority ReqP = Invalid);
   void updatePotentialCountBounds(BoundsKey BK,
                                   const std::set<BoundsKey> &CntBK);
   void updatePotentialCountPOneBounds(BoundsKey BK,
@@ -342,7 +337,7 @@ private:
   // Map of BoundsKey and corresponding prioritized bounds information.
   // Note that although each PSL could have multiple ConstraintKeys Ex: **p.
   // Only the outer most pointer can have bounds.
-  std::map<BoundsKey, std::map<BoundsPriority, std::pair<ABounds *, std::set<BoundsKey>>>> BInfo;
+  std::map<BoundsKey, std::map<BoundsPriority, ABounds *>> BInfo;
   // Set that contains BoundsKeys of variables which have invalid bounds.
   std::set<BoundsKey> InvalidBounds;
   // These are the bounds key of the pointers that has arithmetic operations
