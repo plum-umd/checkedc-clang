@@ -266,6 +266,9 @@ AvarBoundsInference::getPreferredBound(BoundsKey BK) {
   if (NeedsBasePointer && BI->LowerBounds.find(BK) != BI->LowerBounds.end())
     BaseVar = BI->LowerBounds[BK];
 
+  if (NeedsBasePointer && BaseVar == 0)
+    llvm::errs() << "Lower bound pointer required for " << BK
+                 << " but not available.\n";
 
   auto &BKindMap = CurrIterInferBounds[BK];
   // Utility to check if the map contains a non-empty set of bounds for a
@@ -611,10 +614,10 @@ AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
     BaseWorkList = NextIterArrs;
   }
 
-  LowerBounds = convergeLowerBounds(InfLowerBounds);
+  convergeLowerBounds(InfLowerBounds);
 }
 
-std::map<BoundsKey, BoundsKey> AVarBoundsInfo::convergeLowerBounds(
+void AVarBoundsInfo::convergeLowerBounds(
   const std::map<BoundsKey, std::set<BoundsKey>> &InfLowerBounds) {
   std::map<BoundsKey, BoundsKey> ConvergedBounds;
   std::set<BoundsKey> NeedLowerBounds;
@@ -688,8 +691,6 @@ std::map<BoundsKey, BoundsKey> AVarBoundsInfo::convergeLowerBounds(
     else {
       // We couldn't find an existing pointer to use as a lower bound. We'll
       // create a temporary variable to use later.
-      llvm::errs() << "Lower bound pointer required for " << Ptr
-                   << " but not available.\n";
       NeedLowerBounds.insert(Ptr);
     }
   }
@@ -736,7 +737,8 @@ std::map<BoundsKey, BoundsKey> AVarBoundsInfo::convergeLowerBounds(
      }
   }
 
-  return ConvergedBounds;
+  NeedFreshLowerBounds = MinimalPtrs;
+  LowerBounds = ConvergedBounds;
 }
 
 bool AvarBoundsInference::inferFromPotentialBounds(BoundsKey BK,
@@ -1082,7 +1084,7 @@ BoundsKey AVarBoundsInfo::getVariable(clang::VarDecl *VD) {
       //       dynamic bounds casts are constant expressions, which doesn't
       //       sound too hard.
       if (!VD->isLocalVarDeclOrParm())
-        markIneligibleForRangeBounds(NK);
+        markIneligibleForFreshLowerBound(NK);
     }
   }
   return getVarKey(PSL);
@@ -1117,7 +1119,7 @@ BoundsKey AVarBoundsInfo::getVariable(clang::ParmVarDecl *PVD) {
       // TODO: Follow up issue: Can we add some special logic in rewriting to
       //       emit the duplicate definition with an _Array_pointer type?
       if (isArrayType(PVD->getType()))
-        markIneligibleForRangeBounds(NK);
+        markIneligibleForFreshLowerBound(NK);
     }
   }
   return ParamDeclVarMap.left().at(ParamKey);
@@ -1162,7 +1164,7 @@ BoundsKey AVarBoundsInfo::getVariable(clang::FieldDecl *FD) {
       // TODO: Followup issue: Add the duplicate declaration as a new field in
       //       the struct and then also update all struct initializer to include
       //       the new field.
-      markIneligibleForRangeBounds(NK);
+      markIneligibleForFreshLowerBound(NK);
     }
   }
   return getVarKey(PSL);
@@ -1225,13 +1227,13 @@ bool AVarBoundsInfo::addAssignment(BoundsKey L, BoundsKey R) {
     // arithmetic. Pointer arithmetic invalidates the bounds on the pointer, so
     // bounds should not propagate through it.
     // TODO: Followup issue
-    bool FromValid = true;//!hasPointerArithmetic(From);
+    //bool FromValid = true;//!hasPointerArithmetic(From);
     // The destination BoundsKey may be computed by pointer arithmetic as long
     // 3C can emit range bounds on the pointer. If 3C cannot emit range bounds,
     // then the incoming edge is not added so that no bounds will be inferred.
-    bool ToValid = !hasPointerArithmetic(To) || isEligibleForRangeBounds(To);
-    if (FromValid && ToValid)
-      ProgVarGraph.addUniqueEdge(From, To);
+    //bool ToValid = !hasPointerArithmetic(To) || isEligibleForRangeBounds(To);
+    //if (FromValid && ToValid)
+    ProgVarGraph.addUniqueEdge(From, To);
   };
 
   // If we are adding to function return, do not add bi-directional edges.
@@ -1284,19 +1286,19 @@ void AVarBoundsInfo::recordArithmeticOperation(clang::Expr *E,
   }
 }
 
-bool AVarBoundsInfo::hasPointerArithmetic(BoundsKey BK) {
-  return ArrPointersWithArithmetic.find(BK) != ArrPointersWithArithmetic.end();
+bool AVarBoundsInfo::needsFreshLowerBound(BoundsKey BK) {
+  return NeedFreshLowerBounds.find(BK) != NeedFreshLowerBounds.end();
 }
 
-bool AVarBoundsInfo::isEligibleForRangeBounds(BoundsKey BK) {
+bool AVarBoundsInfo::isEligibleForFreshLowerBound(BoundsKey BK) {
   return IneligibleForRangeBounds.find(BK) == IneligibleForRangeBounds.end();
 }
 
-void AVarBoundsInfo::markIneligibleForRangeBounds(BoundsKey BK) {
+void AVarBoundsInfo::markIneligibleForFreshLowerBound(BoundsKey BK) {
   IneligibleForRangeBounds.insert(BK);
 }
 
-bool AVarBoundsInfo::needsRangeBound(ConstraintVariable *CV) {
+bool AVarBoundsInfo::needsFreshLowerBound(ConstraintVariable *CV) {
   if (!CV->hasBoundsKey())
     return false;
   BoundsKey BK = CV->getBoundsKey();
@@ -1304,7 +1306,7 @@ bool AVarBoundsInfo::needsRangeBound(ConstraintVariable *CV) {
   // and would otherwise need bounds. Some pointers (global variables and struct
   // fields) can't be rewritten to use range bounds (by 3C; Checked C does
   // permit it), so we return false on these.
-  return hasPointerArithmetic(BK) && isEligibleForRangeBounds(BK) &&
+  return needsFreshLowerBound(BK) && isEligibleForFreshLowerBound(BK) &&
          getBounds(BK) != nullptr;
 }
 

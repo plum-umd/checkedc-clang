@@ -564,7 +564,8 @@ std::string ArrayBoundsRewriter::getBoundsString(const PVConstraint *PV,
     // If we have pointer arithmetic and cannot add range bounds, then do not
     // emit any bounds string.
     if (ArrB != nullptr &&
-        (!ABInfo.hasPointerArithmetic(DK) || ABInfo.isEligibleForRangeBounds(DK))) {
+        (!ABInfo.needsFreshLowerBound(DK) ||
+          ABInfo.isEligibleForFreshLowerBound(DK))) {
       if (OmitLowerBound) {
         ABounds *WithoutLB = ArrB->makeCopy(ArrB->getLengthKey());
         BString = WithoutLB->mkString(&ABInfo, D, DK);

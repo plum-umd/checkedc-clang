@@ -261,22 +261,22 @@ public:
   void recordArithmeticOperation(clang::Expr *E, ConstraintResolver *CR);
 
   // Check if the given bounds key has a pointer arithmetic done on it.
-  bool hasPointerArithmetic(BoundsKey BK);
+  bool needsFreshLowerBound(BoundsKey BK);
+
+  // Check if the bounds keys will need to be rewritten with range bounds. This
+  // is true for bounds keys that are subject to pointer arithmetic, otherwise
+  // have inferred bounds, and are eligible for range bounds.
+  bool needsFreshLowerBound(ConstraintVariable *CV);
 
   // Check if range bounds can be inferred by 3C for the pointer corresponding
   // to the bounds key.
-  bool isEligibleForRangeBounds(BoundsKey BK);
+  bool isEligibleForFreshLowerBound(BoundsKey BK);
 
   // Record that a pointer cannot be rewritten to use range bounds. This might
   // be due to 3C rewriting limitations (assignments appearing inside macros),
   // or it might be a Checked C limitation (the current style of range bounds
   // can't properly initialized on global variables without error).
-  void markIneligibleForRangeBounds(BoundsKey BK);
-
-  // Check if the bounds keys will need to be rewritten with range bounds. This
-  // is true for bounds keys that are subject to pointer arithmetic, otherwise
-  // have inferred bounds, and are eligible for range bounds.
-  bool needsRangeBound(ConstraintVariable *CV);
+  void markIneligibleForFreshLowerBound(BoundsKey BK);
 
   // Get the ProgramVar for the provided VarKey.
   ProgramVar *getProgramVar(BoundsKey VK);
@@ -323,8 +323,7 @@ public:
   void addConstantArrayBounds(ProgramInfo &I);
 
   void inferLowerBounds(ProgramInfo *PI);
-  std::map<BoundsKey, BoundsKey>
-  convergeLowerBounds(const std::map<BoundsKey, std::set<BoundsKey>> &LBs);
+  void convergeLowerBounds(const std::map<BoundsKey, std::set<BoundsKey>> &LBs);
 
 private:
   friend class AvarBoundsInference;
@@ -400,6 +399,7 @@ private:
   // FIXME: The name InvalidBounds is already used. Find better names.
   std::set<BoundsKey> InvalidatedBounds;
   std::map<BoundsKey, BoundsKey> LowerBounds;
+  std::set<BoundsKey> NeedFreshLowerBounds;
 
   // BoundsKey helper function: These functions help in getting bounds key from
   // various artifacts.

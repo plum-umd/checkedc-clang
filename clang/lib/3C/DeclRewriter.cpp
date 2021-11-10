@@ -36,15 +36,15 @@ RewrittenDecl
 DeclRewriter::buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
                              ProgramInfo &Info, ArrayBoundsRewriter &ABR,
                              bool GenerateSDecls) {
-  bool NeedsRangeBound =
-    GenerateSDecls && Info.getABoundsInfo().needsRangeBound(Defn);
+  bool NeedsFreshLowerBound =
+    GenerateSDecls && Info.getABoundsInfo().needsFreshLowerBound(Defn);
 
   std::string DeclName = Decl ? Decl->getNameAsString() : "";
   // The idea here is that the name should only be empty if this is an unnamed
   // parameter in a function pre-declaration, or the pre-declaration is not a
   // prototype so Decl is null.
   assert(!DeclName.empty() || Decl == nullptr || isa<ParmVarDecl>(Decl));
-  if (NeedsRangeBound)
+  if (NeedsFreshLowerBound)
     DeclName = get3CTmpVar(DeclName);
 
   const EnvironmentMap &Env = Info.getConstraints().getVariables();
@@ -98,7 +98,7 @@ DeclRewriter::buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
     else {
       // FIXME: This assert will probably fail. Need to handle field and global
       //        decls, function returns and param decls without names.
-      assert(!NeedsRangeBound);
+      assert(!NeedsFreshLowerBound);
       Type = Defn->getOriginalTypeWithName();
     }
   }
@@ -107,10 +107,10 @@ DeclRewriter::buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
     Defn->mkString(Info.getConstraints(),
                    MKSTRING_OPTS(EmitName = false, ForItype = true,
                                  UnmaskTypedef = IsUncheckedTypedef)) + ")";
-  IType += ABR.getBoundsString(Defn, Decl, true, NeedsRangeBound);
+  IType += ABR.getBoundsString(Defn, Decl, true, NeedsFreshLowerBound);
 
   std::string SDecl;
-  if (NeedsRangeBound) {
+  if (NeedsFreshLowerBound) {
     // For itypes, the copy of the array cannot use a checked type because we
     // know it will be used unsafely somewhere in the body of the function.
     // Giving it a checked type would result in Checked C type errors at the
@@ -126,23 +126,25 @@ RewrittenDecl
 DeclRewriter::buildCheckedDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
                                std::string UseName, ProgramInfo &Info,
                                ArrayBoundsRewriter &ABR, bool GenerateSDecls) {
-  bool NeedsRangeBound =
-    GenerateSDecls && Info.getABoundsInfo().needsRangeBound(Defn);
+  bool NeedsFreshLowerBound =
+    GenerateSDecls && Info.getABoundsInfo().needsFreshLowerBound(Defn);
   assert("Adding range bounds on return, global variable, or field!" &&
-         (!NeedsRangeBound || (isa_and_nonnull<VarDecl>(Decl) &&
-                               cast<VarDecl>(Decl)->isLocalVarDeclOrParm())));
+         (!NeedsFreshLowerBound || (isa_and_nonnull<VarDecl>(Decl) &&
+                                    cast<VarDecl>(
+                                      Decl)->isLocalVarDeclOrParm())));
 
   std::string DeclName = UseName;
-  if (NeedsRangeBound) {
+  if (NeedsFreshLowerBound) {
     assert(!DeclName.empty());
     DeclName = get3CTmpVar(DeclName);
   }
 
   std::string Type =
     Defn->mkString(Info.getConstraints(), MKSTRING_OPTS(UseName = DeclName));
-  std::string IType = ABR.getBoundsString(Defn, Decl, false, NeedsRangeBound);
+  std::string IType = ABR.getBoundsString(Defn, Decl, false,
+                                          NeedsFreshLowerBound);
   std::string SDecl;
-  if (NeedsRangeBound) {
+  if (NeedsFreshLowerBound) {
     SDecl =
       Defn->mkString(Info.getConstraints(), MKSTRING_OPTS(UseName = UseName)) +
       ABR.getBoundsString(Defn, Decl) + " = " +
