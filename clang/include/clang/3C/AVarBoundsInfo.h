@@ -267,6 +267,8 @@ public:
   // to the bounds key.
   bool isEligibleForFreshLowerBound(BoundsKey BK);
 
+  bool hasLowerBound(BoundsKey BK);
+
   // Record that a pointer cannot be rewritten to use range bounds. This might
   // be due to 3C rewriting limitations (assignments appearing inside macros),
   // or it might be a Checked C limitation (the current style of range bounds
@@ -275,6 +277,10 @@ public:
 
   // Get the ProgramVar for the provided VarKey.
   ProgramVar *getProgramVar(BoundsKey VK);
+
+  const ProgramVarScope *getProgramVarScope(BoundsKey BK);
+
+  bool isInAccessibleScope(BoundsKey From, BoundsKey To);
 
   // Check if the provided bounds key corresponds to function return.
   bool isFunctionReturn(BoundsKey BK);

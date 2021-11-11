@@ -522,12 +522,8 @@ bool AvarBoundsInference::inferBounds(BoundsKey K, const AVarGraph &BKGraph,
                                       bool FromPB) {
   bool IsChanged = false;
 
-  bool HasLowerBound =
-    BI->InvalidatedBounds.find(K) == BI->InvalidatedBounds.end() ||
-    (BI->LowerBounds.find(K) != BI->LowerBounds.end() &&
-     BI->LowerBounds[K] != 0);
-
-  if (HasLowerBound && BI->InvalidBounds.find(K) == BI->InvalidBounds.end()) {
+  if (BI->hasLowerBound(K) &&
+      BI->InvalidBounds.find(K) == BI->InvalidBounds.end()) {
     // Infer from potential bounds?
     if (FromPB) {
       IsChanged = inferFromPotentialBounds(K, BKGraph);
@@ -602,10 +598,7 @@ void AVarBoundsInfo::convergeLowerBounds(
     // Get all valid, in scope lower bounds.
     std::set<BoundsKey> ValidLBs;
     for (BoundsKey LB : LBs) {
-      auto *LBVar = getProgramVar(LB);
-      auto *LBScope = LBVar ? LBVar->getScope() : nullptr;
-      if (LBScope &&
-          (*LBScope == *PVarScope || PVarScope->isInInnerScope(*LBScope)) &&
+      if (isInAccessibleScope(Ptr, LB) &&
           InvalidatedBounds.find(LB) == InvalidatedBounds.end())
         ValidLBs.insert(LB);
     }
@@ -642,7 +635,7 @@ void AVarBoundsInfo::convergeLowerBounds(
       auto *LBVar = getProgramVar(LB);
       auto *LBScope = LBVar->getScope();
       if (MergeLB == nullptr) {
-        if (*LBScope == *PVarScope || PVarScope->isInInnerScope(*LBScope))
+        if (isInAccessibleScope(Ptr, LB))
           MergeLB = LBVar;
       } else {
         auto *MergeScope = MergeLB->getScope();
@@ -675,9 +668,10 @@ void AVarBoundsInfo::convergeLowerBounds(
     InvalidationGraph.getPredecessors(BK, PredKeys, true);
 
     bool AnyPreds = false;
-    for (BoundsKey Pred: PredKeys)
+    for (BoundsKey Pred: PredKeys) {
       if (Pred != BK && NeedLowerBounds.find(Pred) != NeedLowerBounds.end())
         AnyPreds = true;
+    }
 
     ProgramVar *PtrVar = getProgramVar(BK);
     const ProgramVarScope *PtrScope = PtrVar->getScope();
@@ -706,17 +700,9 @@ void AVarBoundsInfo::convergeLowerBounds(
          if (ConvergedBounds.find(BK) != ConvergedBounds.end())
            llvm::errs() << "Multiple possible lower bound pointers for " << BK
                         << "\n";
-         else {
-           // TODO: This should use most the same merging logic from the top of
-           //       this method.
-           ProgramVar *LBVar = getProgramVar(MinK);
-           const ProgramVarScope *LBScope = LBVar->getScope();
-           ProgramVar *BKVar = getProgramVar(BK);
-           const ProgramVarScope *BKScope = BKVar->getScope();
-           if (*LBScope == *BKScope || BKScope->isInInnerScope(*LBScope)) {
-             ConvergedBounds[BK] = ConvergedBounds[MinK];
-             FoundLB = true;
-           }
+         else if (isInAccessibleScope(BK, MinK)) {
+           ConvergedBounds[BK] = ConvergedBounds[MinK];
+           FoundLB = true;
          }
        }
      }
@@ -726,7 +712,11 @@ void AVarBoundsInfo::convergeLowerBounds(
 
   NeedFreshLowerBounds = MinimalPtrs;
   LowerBounds = ConvergedBounds;
-  //FailedLowerBoundInference = FailedLBInf;
+}
+
+bool AVarBoundsInfo::hasLowerBound(BoundsKey K)  {
+  return InvalidatedBounds.find(K) == InvalidatedBounds.end() ||
+         (LowerBounds.find(K) != LowerBounds.end() && LowerBounds[K] != 0);
 }
 
 bool AvarBoundsInference::inferFromPotentialBounds(BoundsKey BK,
@@ -1274,6 +1264,18 @@ ProgramVar *AVarBoundsInfo::getProgramVar(BoundsKey VK) {
     Ret = PVarInfo[VK];
   }
   return Ret;
+}
+
+const ProgramVarScope *AVarBoundsInfo::getProgramVarScope(BoundsKey BK) {
+  ProgramVar *Var = getProgramVar(BK);
+  return Var == nullptr ? nullptr : Var->getScope();
+}
+
+bool AVarBoundsInfo::isInAccessibleScope(BoundsKey From, BoundsKey To) {
+  const ProgramVarScope *FromScope = getProgramVarScope(From);
+  const ProgramVarScope *ToScope = getProgramVarScope(To);
+  return FromScope != nullptr && ToScope != nullptr &&
+         (*FromScope == *ToScope || FromScope->isInInnerScope(*ToScope));
 }
 
 bool AVarBoundsInfo::hasVarKey(PersistentSourceLoc &PSL) {
