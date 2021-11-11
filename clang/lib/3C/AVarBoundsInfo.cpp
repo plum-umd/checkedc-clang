@@ -706,8 +706,30 @@ void AVarBoundsInfo::convergeLowerBounds(
          }
        }
      }
-     if (!FoundLB)
+     if (!FoundLB) {
+       for (BoundsKey LB : PossibleLBs) {
+         ProgramVar *PtrVar = getProgramVar(BK);
+         const ProgramVarScope *PtrScope = PtrVar->getScope();
+         bool IsCtxSen =
+           isa<CtxFunctionArgScope>(PtrScope) || isa<CtxStructScope>(PtrScope);
+         if (!IsCtxSen && isEligibleForFreshLowerBound(LB) && isInAccessibleScope(BK, LB)) {
+           BoundsKey FreshLBKey = getRandomBKey();
+           ProgramVar *FreshLBVar =
+             ProgramVar::createNewProgramVar(FreshLBKey,
+                                             "__3c_tmp_" + PtrVar->getVarName(),
+                                             PtrVar->getScope());
+
+           insertProgramVar(FreshLBKey, FreshLBVar);
+           ConvergedBounds[LB] = FreshLBKey;
+           MinimalPtrs.insert(LB);
+           ConvergedBounds[BK] = LB;
+           FoundLB = true;
+         }
+       }
+     }
+     if (!FoundLB) {
        FailedLBInf.insert(BK);
+     }
   }
 
   NeedFreshLowerBounds = MinimalPtrs;
