@@ -107,7 +107,8 @@ DeclRewriter::buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
     Defn->mkString(Info.getConstraints(),
                    MKSTRING_OPTS(EmitName = false, ForItype = true,
                                  UnmaskTypedef = IsUncheckedTypedef)) + ")";
-  IType += ABR.getBoundsString(Defn, Decl, true, NeedsFreshLowerBound);
+  IType += ABR.getBoundsString(Defn, Decl, true,
+                               !GenerateSDecls || NeedsFreshLowerBound);
 
   std::string SDecl;
   if (NeedsFreshLowerBound) {
@@ -141,8 +142,9 @@ DeclRewriter::buildCheckedDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
 
   std::string Type =
     Defn->mkString(Info.getConstraints(), MKSTRING_OPTS(UseName = DeclName));
-  std::string IType = ABR.getBoundsString(Defn, Decl, false,
-                                          NeedsFreshLowerBound);
+  std::string IType =
+    ABR.getBoundsString(Defn, Decl, false,
+                        !GenerateSDecls || NeedsFreshLowerBound);
   std::string SDecl;
   if (NeedsFreshLowerBound) {
     SDecl =

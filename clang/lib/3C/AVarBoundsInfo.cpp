@@ -260,16 +260,17 @@ ABounds * AvarBoundsInference::getPreferredBound(BoundsKey BK) {
     return BKindMap.find(Kind) != BKindMap.end() && !BKindMap.at(Kind).empty();
   };
 
-
   // Order of preference: Count, Byte, Count-plus-one
-  std::vector<ABounds::BoundsKind> BoundsPref = {ABounds::CountBoundKind,
-                                                 ABounds::ByteBoundKind,
-                                                 ABounds::CountPlusOneBoundKind};
-  for (ABounds::BoundsKind K : BoundsPref) {
-    if (HasBoundKind(K)) {
-      return new CountBound(*BKindMap.at(K).begin(), BaseVar);
-    }
-  }
+  if (HasBoundKind(ABounds::CountBoundKind))
+    return new CountBound(getOnly(BKindMap.at(ABounds::CountBoundKind)),
+                          BaseVar);
+
+  if (HasBoundKind(ABounds::ByteBoundKind))
+    return new ByteBound(getOnly(BKindMap.at(ABounds::ByteBoundKind)), BaseVar);
+
+  if (HasBoundKind(ABounds::CountPlusOneBoundKind))
+    return new CountPlusOneBound(
+      getOnly(BKindMap.at(ABounds::CountPlusOneBoundKind)), BaseVar);
 
   return nullptr;
 }
@@ -521,7 +522,12 @@ bool AvarBoundsInference::inferBounds(BoundsKey K, const AVarGraph &BKGraph,
                                       bool FromPB) {
   bool IsChanged = false;
 
-  if (BI->InvalidBounds.find(K) == BI->InvalidBounds.end()) {
+  bool HasLowerBound =
+    BI->InvalidatedBounds.find(K) == BI->InvalidatedBounds.end() ||
+    (BI->LowerBounds.find(K) != BI->LowerBounds.end() &&
+     BI->LowerBounds[K] != 0);
+
+  if (HasLowerBound && BI->InvalidBounds.find(K) == BI->InvalidBounds.end()) {
     // Infer from potential bounds?
     if (FromPB) {
       IsChanged = inferFromPotentialBounds(K, BKGraph);
@@ -541,8 +547,7 @@ AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
   std::map<BoundsKey, std::set<BoundsKey>> InfLowerBounds;
 
   computeArrPointers(PI);
-  std::set<BoundsKey> BaseWorkList;
-  getBoundsNeededArrPointers(BaseWorkList);
+  std::set<BoundsKey> BaseWorkList(ArrPointerBoundsKey);
 
   while (!BaseWorkList.empty()) {
     std::set<BoundsKey> NextIterArrs;
@@ -590,14 +595,17 @@ void AVarBoundsInfo::convergeLowerBounds(
     const std::set<BoundsKey> &LBs = LBEntry.second;
 
     auto *PVar = getProgramVar(Ptr);
+    if (PVar == nullptr)
+      continue;
     auto *PVarScope = PVar->getScope();
 
     // Get all valid, in scope lower bounds.
     std::set<BoundsKey> ValidLBs;
     for (BoundsKey LB : LBs) {
       auto *LBVar = getProgramVar(LB);
-      auto *LBScope = LBVar->getScope();
-      if ((*LBScope == *PVarScope || PVarScope->isInInnerScope(*LBScope)) &&
+      auto *LBScope = LBVar ? LBVar->getScope() : nullptr;
+      if (LBScope &&
+          (*LBScope == *PVarScope || PVarScope->isInInnerScope(*LBScope)) &&
           InvalidatedBounds.find(LB) == InvalidatedBounds.end())
         ValidLBs.insert(LB);
     }
@@ -665,15 +673,18 @@ void AVarBoundsInfo::convergeLowerBounds(
   for (BoundsKey BK : NeedLowerBounds) {
     std::set<BoundsKey> PredKeys;
     InvalidationGraph.getPredecessors(BK, PredKeys, true);
+
     bool AnyPreds = false;
     for (BoundsKey Pred: PredKeys)
-      if (NeedLowerBounds.find(Pred) != NeedLowerBounds.end())
+      if (Pred != BK && NeedLowerBounds.find(Pred) != NeedLowerBounds.end())
         AnyPreds = true;
+
     ProgramVar *PtrVar = getProgramVar(BK);
     const ProgramVarScope *PtrScope = PtrVar->getScope();
     bool IsCtxSen =
       isa<CtxFunctionArgScope>(PtrScope) || isa<CtxStructScope>(PtrScope);
-    if (!AnyPreds && !IsCtxSen) {
+
+    if (!AnyPreds && !IsCtxSen && isEligibleForFreshLowerBound(BK)) {
       BoundsKey FreshLBKey = getRandomBKey();
       ProgramVar *FreshLBVar =
         ProgramVar::createNewProgramVar(FreshLBKey,
@@ -686,21 +697,36 @@ void AVarBoundsInfo::convergeLowerBounds(
     }
   }
 
+  std::set<BoundsKey> FailedLBInf;
   for (BoundsKey BK : NeedLowerBounds) {
      const std::set<BoundsKey> &PossibleLBs = InfLowerBounds.at(BK);
+     bool FoundLB = false;
      for (BoundsKey MinK : MinimalPtrs)  {
        if (PossibleLBs.find(MinK) != PossibleLBs.end()) {
          if (ConvergedBounds.find(BK) != ConvergedBounds.end())
            llvm::errs() << "Multiple possible lower bound pointers for " << BK
                         << "\n";
-         else
-           ConvergedBounds[BK] = ConvergedBounds[MinK];
+         else {
+           // TODO: This should use most the same merging logic from the top of
+           //       this method.
+           ProgramVar *LBVar = getProgramVar(MinK);
+           const ProgramVarScope *LBScope = LBVar->getScope();
+           ProgramVar *BKVar = getProgramVar(BK);
+           const ProgramVarScope *BKScope = BKVar->getScope();
+           if (*LBScope == *BKScope || BKScope->isInInnerScope(*LBScope)) {
+             ConvergedBounds[BK] = ConvergedBounds[MinK];
+             FoundLB = true;
+           }
+         }
        }
      }
+     if (!FoundLB)
+       FailedLBInf.insert(BK);
   }
 
   NeedFreshLowerBounds = MinimalPtrs;
   LowerBounds = ConvergedBounds;
+  //FailedLowerBoundInference = FailedLBInf;
 }
 
 bool AvarBoundsInference::inferFromPotentialBounds(BoundsKey BK,
@@ -896,6 +922,8 @@ bool AVarBoundsInfo::tryGetVariable(clang::Expr *E, const ASTContext &C,
 // Merging bounds B with the present bounds of key L at the same priority P
 // Returns true if we update the bounds for L (with B)
 bool AVarBoundsInfo::mergeBounds(BoundsKey L, BoundsPriority P, ABounds *B) {
+  if (B->getLowerBoundKey() == 0 && LowerBounds.find(L) != LowerBounds.end())
+    B->setLowerBoundKey(LowerBounds[L]);
   bool RetVal = false;
   if (BInfo.find(L) != BInfo.end() && BInfo[L].find(P) != BInfo[L].end()) {
     // If previous computed bounds are not same? Then release the old bounds.
@@ -1068,8 +1096,10 @@ BoundsKey AVarBoundsInfo::getVariable(clang::FunctionDecl *FD) {
         ProgramVar::createNewProgramVar(NK, FD->getNameAsString(), FPS);
     insertProgramVar(NK, PVar);
     FuncDeclVarMap.insert(FuncKey, NK);
-    if (isPtrOrArrayType(FD->getReturnType()))
+    if (isPtrOrArrayType(FD->getReturnType())) {
       PointerBoundsKey.insert(NK);
+      markIneligibleForFreshLowerBound(NK);
+    }
   }
   return FuncDeclVarMap.left().at(FuncKey);
 }
@@ -1557,11 +1587,6 @@ void AVarBoundsInfo::findInvalidatedBounds() {
       }
     }
   }
-
-  llvm::errs() << "Invalidated Bounds: {";
-  for (BoundsKey BK : InvalidatedBounds)
-    llvm::errs() << BK << ", ";
-  llvm::errs() << "}\n";
 }
 
 bool AVarBoundsInfo::keepHighestPriorityBounds() {

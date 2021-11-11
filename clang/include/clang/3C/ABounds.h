@@ -39,7 +39,7 @@ public:
 
 protected:
   ABounds(BoundsKind K, BoundsKey L, BoundsKey B) : Kind(K), LenVar(L),
-                                                    BaseVar(B) {}
+                                                    LowerBoundVar(B) {}
   ABounds(BoundsKind K, BoundsKey L) : ABounds(K, L, 0) {}
 
   BoundsKind Kind;
@@ -50,7 +50,7 @@ protected:
 
   // The base pointer representing the start of the range of the bounds. May be
   // and invalid bounds key if this bound cannot be expressed as a range.
-  BoundsKey BaseVar;
+  BoundsKey LowerBoundVar;
 
   // Get the variable name of the the given bounds key that corresponds
   // to the given declaration.
@@ -60,16 +60,19 @@ protected:
 public:
   virtual ~ABounds() {}
 
+  std::string
+  mkString(AVarBoundsInfo *ABI, clang::Decl *D = nullptr, BoundsKey BK = 0);
   virtual std::string
-  mkString(AVarBoundsInfo *, clang::Decl *D = nullptr, BoundsKey BK = 0) = 0;
+  mkStringWithLowerBound(AVarBoundsInfo *ABI, clang::Decl *D, BoundsKey BK) = 0;
+  virtual std::string
+  mkStringWithoutLowerBound(AVarBoundsInfo *ABI, clang::Decl *D) = 0;
 
-  virtual std::string mkRangeString(AVarBoundsInfo *, clang::Decl *D,
-                                    std::string BasePtr) = 0;
   virtual bool areSame(ABounds *, AVarBoundsInfo *) = 0;
   virtual ABounds *makeCopy(BoundsKey NK) = 0;
 
   BoundsKey getLengthKey() const { return LenVar; }
-  BoundsKey getBaseKey() const { return BaseVar; }
+  BoundsKey getLowerBoundKey() const { return LowerBoundVar; }
+  void setLowerBoundKey(BoundsKey LB) { LowerBoundVar = LB; }
 
   static ABounds *getBoundsInfo(AVarBoundsInfo *AVBInfo, BoundsExpr *BExpr,
                                 const ASTContext &C);
@@ -80,13 +83,13 @@ public:
   CountBound(BoundsKey L, BoundsKey B) : ABounds(CountBoundKind, L, B) {}
   CountBound(BoundsKey L) : ABounds(CountBoundKind, L) {}
 
-  std::string mkString(AVarBoundsInfo *ABI, clang::Decl *D = nullptr,
-                       BoundsKey BK = 0) override;
-
-  std::string mkRangeString(AVarBoundsInfo *, clang::Decl *D,
-                            std::string BasePtr) override;
+  std::string mkStringWithLowerBound(AVarBoundsInfo *ABI, clang::Decl *D,
+                                     BoundsKey BK) override;
+  std::string
+  mkStringWithoutLowerBound(AVarBoundsInfo *ABI, clang::Decl *D) override;
 
   bool areSame(ABounds *O, AVarBoundsInfo *ABI) override;
+
   ABounds *makeCopy(BoundsKey NK) override;
 
   static bool classof(const ABounds *S) {
@@ -99,15 +102,16 @@ public:
   CountPlusOneBound(BoundsKey L, BoundsKey B) : CountBound(L, B) {
     this->Kind = CountPlusOneBoundKind;
   }
+
   CountPlusOneBound(BoundsKey L) : CountBound(L) {
     this->Kind = CountPlusOneBoundKind;
   }
 
-  std::string mkString(AVarBoundsInfo *ABI, clang::Decl *D = nullptr,
-                       BoundsKey BK = 0) override;
+  std::string mkStringWithLowerBound(AVarBoundsInfo *ABI, clang::Decl *D,
+                                     BoundsKey BK) override;
+  std::string
+  mkStringWithoutLowerBound(AVarBoundsInfo *ABI, clang::Decl *D) override;
 
-  std::string mkRangeString(AVarBoundsInfo *, clang::Decl *D,
-                            std::string BasePtr) override;
   bool areSame(ABounds *O, AVarBoundsInfo *ABI) override;
 
   static bool classof(const ABounds *S) {
@@ -120,11 +124,11 @@ public:
   ByteBound(BoundsKey L, BoundsKey B) : ABounds(ByteBoundKind, L, B) {}
   ByteBound(BoundsKey L) : ABounds(ByteBoundKind, L) {}
 
-  std::string mkString(AVarBoundsInfo *ABI, clang::Decl *D = nullptr,
-                       BoundsKey BK = 0) override;
+  std::string mkStringWithLowerBound(AVarBoundsInfo *ABI, clang::Decl *D,
+                                     BoundsKey BK) override;
+  std::string
+  mkStringWithoutLowerBound(AVarBoundsInfo *ABI, clang::Decl *D) override;
 
-  std::string mkRangeString(AVarBoundsInfo *, clang::Decl *D,
-                            std::string BasePtr) override;
   bool areSame(ABounds *O, AVarBoundsInfo *ABI) override;
   ABounds *makeCopy(BoundsKey NK) override;
 

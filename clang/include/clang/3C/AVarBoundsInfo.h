@@ -391,9 +391,22 @@ private:
   CtxSensitiveBoundsKeyHandler CSBKeyHandler;
 
   AVarGraph InvalidationGraph;
+
+  // BoundsKeys that that cannot be used as a lower bound. These are used in an
+  // update such as `a = a + 1`.
   // FIXME: The name InvalidBounds is already used. Find better names.
   std::set<BoundsKey> InvalidatedBounds;
+
+  // Mapping from pointers to their inferred lower bounds. A pointer maps to
+  // itself if it can use a simple count bound. Missing pointers have no valid
+  // lower bound, so no length should be inferred during bounds inference.
+  // TODO: I think mapping to 0 can also mean no lower bound. Make this
+  //       consistent.
   std::map<BoundsKey, BoundsKey> LowerBounds;
+
+  // Some variables have to valid lower bound in the original source code, but
+  // we are able to insert a temporary pointer variable to be the lower bound.
+  // Keep track of these for special handling during rewriting.
   std::set<BoundsKey> NeedFreshLowerBounds;
 
   // BoundsKey helper function: These functions help in getting bounds key from

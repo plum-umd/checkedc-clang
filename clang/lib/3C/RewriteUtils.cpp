@@ -566,13 +566,10 @@ std::string ArrayBoundsRewriter::getBoundsString(const PVConstraint *PV,
     if (ArrB != nullptr &&
         (!ABInfo.needsFreshLowerBound(DK) ||
           ABInfo.isEligibleForFreshLowerBound(DK))) {
-      if (OmitLowerBound) {
-        ABounds *WithoutLB = ArrB->makeCopy(ArrB->getLengthKey());
-        BString = WithoutLB->mkString(&ABInfo, D, DK);
-        delete WithoutLB;
-      } else {
+      if (OmitLowerBound)
+        BString = ArrB->mkStringWithoutLowerBound(&ABInfo, D);
+      else
         BString = ArrB->mkString(&ABInfo, D, DK);
-      }
       if (!BString.empty())
         BString = Pfix + BString;
     }
