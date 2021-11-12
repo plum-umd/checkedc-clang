@@ -85,10 +85,10 @@ void test4() {
 }
 
 // Test that bounds don't propagate through pointers with assigned to from
-// pointer arithmetic. In this example, `b` can *not* have bounds `count(2)`.
-// TODO: `b` could get `bounds(__3c_tmp_a, __3c_tmp_a + 2)`.
-// The same restriction also applies to bounds on the return, but it is is not
-// clear how range bounds could be assigned to the return.
+// pointer arithmetic. In this example, `b` can *not* have bounds `count(2)`,
+// but it can get `bounds(__3c_tmp_a, __3c_tmp_a + 2)`.  The same restriction
+// also applies to bounds on the return, but, for the return, `a` can't be used
+// as a lower bound, so no bound is given.
 int *test5() {
   // CHECK_ALL: _Array_ptr<int> test5(void) {
   int *a = malloc(2 * sizeof(int));
@@ -96,9 +96,7 @@ int *test5() {
   // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + 2) = __3c_tmp_a;
   a++;
   int *b = a;
-  // CHECK_ALL: _Array_ptr<int> b : count(0 + 1) = a;
-  // expected-error@-2 {{it is not possible to prove that the inferred bounds of 'b' imply the declared bounds of 'b' after initialization}}
-  // expected-note@-3 4 {{}}
+  // CHECK_ALL: _Array_ptr<int> b : bounds(__3c_tmp_a, __3c_tmp_a + 2) = a;
   b[0];
 
   return a;
