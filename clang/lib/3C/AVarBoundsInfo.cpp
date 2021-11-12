@@ -1072,10 +1072,29 @@ BoundsKey AVarBoundsInfo::getVariable(clang::ParmVarDecl *PVD) {
     const FunctionParamScope *FPS = FunctionParamScope::getFunctionParamScope(
         FD->getNameAsString(), FD->isStatic());
     std::string ParamName = PVD->getNameAsString();
-    // If this is a parameter without name!?
-    // Just get the name from argument number.
-    if (ParamName.empty())
-      ParamName = "NONAMEPARAM_" + std::to_string(ParamIdx);
+
+    if (ParamName.empty()) {
+      // The parameter declaration doesn't have a name. Try to get the
+      // corresponding function definition, and then the parameter declaration
+      // in that function. Use the name of that parameter.
+      // TODO: I think the declaration merging code written by kyle does a good
+      //       job of handling missing/inconsistent parameter names. Can I just
+      //       use that?
+      if (auto *FnDef = FD->getDefinition()) {
+        if (FnDef->getNumParams() >= ParamIdx) {
+          if (auto *DefPVD = FnDef->getParamDecl(ParamIdx)) {
+            ParamName = DefPVD->getNameAsString();
+          }
+        }
+      }
+      // If we still couldn't find a name, then we make one up using the
+      // parameter index.
+      // TODO: Is this better than leaving the name string empty? There are
+      //       situations where an identifier can be omitted without error, but
+      //       using an undeclared identifier is an error.
+      if (ParamName.empty())
+        ParamName = "NONAMEPARAM_" + std::to_string(ParamIdx);
+    }
 
     auto *PVar = ProgramVar::createNewProgramVar(NK, ParamName, FPS);
     insertProgramVar(NK, PVar);
@@ -1111,6 +1130,8 @@ BoundsKey AVarBoundsInfo::getVariable(clang::FunctionDecl *FD) {
     FuncDeclVarMap.insert(FuncKey, NK);
     if (isPtrOrArrayType(FD->getReturnType())) {
       PointerBoundsKey.insert(NK);
+      // Fresh lower bounds are not inserted for function returns. I don't see a
+      // way around this limitation.
       markIneligibleForFreshLowerBound(NK);
     }
   }
