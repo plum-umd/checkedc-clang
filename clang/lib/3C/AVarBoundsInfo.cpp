@@ -98,8 +98,8 @@ public:
   void visitBoundsKey(BoundsKey V) {
     // TODO: Ad-hoc removal of function returns. Function returns shouldn't be
     //       considered in scope for locals.
-    if (!BI->isFunctionReturn(V)) {
-      ProgramVar *S = BI->getProgramVar(V);
+    ProgramVar *S = BI->getProgramVar(V);
+    if (S != nullptr && !BI->isFunctionReturn(V)) {
       // If the variable is constant or in the same scope?
       if (S->isNumConstant() || (*Scope == *(S->getScope()))) {
         InScopeKeys.insert(V);
