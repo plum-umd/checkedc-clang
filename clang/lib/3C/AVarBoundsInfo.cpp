@@ -642,10 +642,13 @@ void AVarBoundsInfo::convergeLowerBounds(
         if (*MergeScope != *LBScope) {
           if (LBScope->isInInnerScope(*MergeScope))
             MergeLB = LBVar;
-        } else if (MergeLB->getKey() != LBVar->getKey()) {
+        }
+#if 0
+        else if (MergeLB->getKey() != LBVar->getKey()) {
           llvm::errs() << "Multiple possible lower bound pointers for " << Ptr
                        << "\n";
         }
+#endif
       }
     }
 
@@ -697,10 +700,13 @@ void AVarBoundsInfo::convergeLowerBounds(
      bool FoundLB = false;
      for (BoundsKey MinK : MinimalPtrs)  {
        if (PossibleLBs.find(MinK) != PossibleLBs.end()) {
+#if 0
          if (ConvergedBounds.find(BK) != ConvergedBounds.end())
            llvm::errs() << "Multiple possible lower bound pointers for " << BK
                         << "\n";
-         else if (isInAccessibleScope(BK, MinK)) {
+         else
+#endif
+         if (isInAccessibleScope(BK, MinK)) {
            ConvergedBounds[BK] = ConvergedBounds[MinK];
            FoundLB = true;
          }
