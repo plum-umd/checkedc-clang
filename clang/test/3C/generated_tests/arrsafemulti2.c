@@ -117,11 +117,10 @@ int *sus(int *x, int *y) {
   int i, fac;
   int *p;
   //CHECK_NOALL: int *p;
-  //CHECK_ALL: _Array_ptr<int> __3c_tmp_p : count(5) = ((void *)0);
-  //CHECK_ALL: _Array_ptr<int> p : bounds(__3c_tmp_p, __3c_tmp_p + 5) = __3c_tmp_p;
+  //CHECK_ALL: _Array_ptr<int> p : bounds(z, z + 5) = ((void *)0);
   for (i = 0, p = z, fac = 1; i < 5; ++i, p++, fac *= i) {
     //CHECK_NOALL: for (i = 0, p = z, fac = 1; i < 5; ++i, p++, fac *= i) {
-    //CHECK_ALL: for (i = 0, __3c_tmp_p = z, p = __3c_tmp_p, fac = 1; i < 5; ++i, p++, fac *= i) _Checked {
+    //CHECK_ALL: for (i = 0, p = z, fac = 1; i < 5; ++i, p++, fac *= i) _Checked {
     *p = fac;
   }
   return z;
