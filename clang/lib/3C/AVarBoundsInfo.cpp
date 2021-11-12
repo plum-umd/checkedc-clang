@@ -722,13 +722,14 @@ void AVarBoundsInfo::convergeLowerBounds(
            insertProgramVar(FreshLBKey, FreshLBVar);
            ConvergedBounds[LB] = FreshLBKey;
            MinimalPtrs.insert(LB);
-           ConvergedBounds[BK] = LB;
+           ConvergedBounds[BK] = FreshLBKey;
            FoundLB = true;
+           break;
          }
        }
-     }
-     if (!FoundLB) {
-       FailedLBInf.insert(BK);
+       if (!FoundLB) {
+         FailedLBInf.insert(BK);
+       }
      }
   }
 
