@@ -92,13 +92,14 @@ void CtxSensitiveBoundsKeyHandler::createCtxSensBoundsKey(
     BoundsPriority TP = Invalid;
     ABounds *CKBounds = ABI->getBounds(OK, Invalid, &TP);
     if (CKBounds != nullptr) {
-      BoundsKey NBK = CKBounds->getLengthKey();
-      if (CBMap.find(NBK) == CBMap.end()) {
+      BoundsKey LenBK = CKBounds->getLengthKey();
+      if (CBMap.find(LenBK) == CBMap.end()) {
         BoundsKey TmpBK = ++(ABI->BCount);
-        CBMap[NBK] = TmpBK;
-        insertCtxSensBoundsKey(CKVar, TmpBK, NPS);
+        CBMap[LenBK] = TmpBK;
+        ProgramVar *LenVar = ABI->getProgramVar(LenBK);
+        insertCtxSensBoundsKey(LenVar, TmpBK, NPS);
       }
-      CKBounds = CKBounds->makeCopy(CBMap[NBK]);
+      CKBounds = CKBounds->makeCopy(CBMap[LenBK]);
       ABI->replaceBounds(NK, TP, CKBounds);
     }
   }
