@@ -557,8 +557,6 @@ AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
       if (InvalidBounds.find(CurrArrKey) == InvalidBounds.end()) {
         std::set<BoundsKey> PredKeys;
         ProgVarGraph.getPredecessors(CurrArrKey, PredKeys, true);
-        CtxSensProgVarGraph.getPredecessors(CurrArrKey, PredKeys, true);
-        RevCtxSensProgVarGraph.getPredecessors(CurrArrKey, PredKeys, true);
 
         InsertLB(CurrArrKey);
         for (BoundsKey P: PredKeys) {
@@ -568,11 +566,8 @@ AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
         }
       }
 
-      if (FoundNewLB) {
+      if (FoundNewLB)
         ProgVarGraph.getSuccessors(CurrArrKey, NextIterArrs, true);
-        CtxSensProgVarGraph.getSuccessors(CurrArrKey, NextIterArrs, true);
-        RevCtxSensProgVarGraph.getSuccessors(CurrArrKey, NextIterArrs, true);
-      }
     }
     BaseWorkList = NextIterArrs;
   }
