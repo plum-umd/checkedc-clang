@@ -304,6 +304,7 @@ void DeclRewriter::denestTagDecls() {
       InsertLoc = TopTagDecl->getBeginLoc();
     // TODO: Use a wrapper like rewriteSourceRange that tries harder with
     // macros, reports failure, etc.
+    // (https://github.com/correctcomputation/checkedc-clang/issues/739)
     R.InsertText(InsertLoc, DefinitionStr);
   }
 }
