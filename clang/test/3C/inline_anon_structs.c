@@ -323,3 +323,34 @@ typedef const struct { int *x; } SFOO_CONST, *PSFOO_CONST;
 //CHECK:      struct SFOO_CONST_struct_1 { _Ptr<int> x; };
 //CHECK-NEXT: typedef const struct SFOO_CONST_struct_1 SFOO_CONST;
 //CHECK-NEXT: typedef _Ptr<const struct SFOO_CONST_struct_1> PSFOO_CONST;
+
+// Test that when the outer struct is preceded by a qualifier, de-nesting
+// inserts inner structs before the qualifier, not between the qualifier and the
+// outer `struct` keyword. This is moot if the outer struct is split as part of
+// multi-decl rewriting because multi-decl rewriting will delete the qualifier
+// and add it before the first member, but the problem can happen if the
+// multi-decl isn't rewritten or the outer struct isn't split because we have a
+// typedef for it.
+
+typedef struct { struct q_not_rewritten_inner {} *x; } *q_not_rewritten_outer;
+q_not_rewritten_outer onr = (q_not_rewritten_outer)1;
+//CHECK:      struct q_not_rewritten_inner {};
+//CHECK-NEXT: typedef struct { _Ptr<struct q_not_rewritten_inner> x; } *q_not_rewritten_outer;
+
+typedef struct {
+  struct q_typedef_inner {} *x;
+} q_typedef_outer, *q_typedef_outer_trigger_rewrite;
+//CHECK:      struct q_typedef_inner {};
+//CHECK-NEXT: typedef struct {
+//CHECK-NEXT:   _Ptr<struct q_typedef_inner> x;
+//CHECK-NEXT: } q_typedef_outer;
+//CHECK-NEXT: typedef _Ptr<q_typedef_outer> q_typedef_outer_trigger_rewrite;
+
+// As noted in the comment in DeclRewriter::denestTagDecls, when the outer
+// struct isn't part of a multi-decl, we don't have an easy way to find the
+// location before the (useless) qualifier, so the output is a bit weird but
+// still has only a compiler warning, though in a different place than it
+// should.
+typedef struct { struct q_pointless_inner {} *x; };
+//CHECK:      typedef struct q_pointless_inner {};
+//CHECK-NEXT: struct { _Ptr<struct q_pointless_inner> x; };
