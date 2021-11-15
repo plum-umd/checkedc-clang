@@ -122,6 +122,13 @@ struct {
 //CHECK_ALL:      };
 //CHECK_ALL-NEXT: _Ptr<struct be_struct_1> be _Checked[4] = {((void *)0)};
 
+// The following is explained in second_tu_fn in inline_anon_structs_cross_tu.c.
+struct { int x; } *cross_tu_numbering_test;
+//CHECK_AB:      struct cross_tu_numbering_test_struct_1 { int x; };
+//CHECK_AB-NEXT: _Ptr<struct cross_tu_numbering_test_struct_1> cross_tu_numbering_test = ((void *)0);
+//CHECK_BA:      struct cross_tu_numbering_test_struct_2 { int x; };
+//CHECK_BA-NEXT: _Ptr<struct cross_tu_numbering_test_struct_2> cross_tu_numbering_test = ((void *)0);
+
 /*this code checks inline structs withiin functions*/
 void foo2(int *x) {
   //CHECK: void foo2(_Ptr<int> x) _Checked {
