@@ -282,6 +282,8 @@ public:
 
   bool isInAccessibleScope(BoundsKey From, BoundsKey To);
 
+  bool isInContextSensitiveScope(BoundsKey BK);
+
   // Check if the provided bounds key corresponds to function return.
   bool isFunctionReturn(BoundsKey BK);
 
@@ -325,6 +327,7 @@ public:
 
   void inferLowerBounds(ProgramInfo *PI);
   void convergeLowerBounds(const std::map<BoundsKey, std::set<BoundsKey>> &LBs);
+  BoundsKey getFreshLowerBound(BoundsKey Arr);
 
 private:
   friend class AvarBoundsInference;

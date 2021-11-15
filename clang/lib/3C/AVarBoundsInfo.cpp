@@ -582,77 +582,62 @@ void AVarBoundsInfo::convergeLowerBounds(
 
   // Merge sets of possible lower bounds down to a single lower bound.
   for (auto LBEntry : InfLowerBounds) {
-    BoundsKey Ptr = LBEntry.first;
-    const std::set<BoundsKey> &LBs = LBEntry.second;
+    BoundsKey Arr = LBEntry.first;
+    const std::set<BoundsKey> &PossibleLBs = LBEntry.second;
 
-    auto *PVar = getProgramVar(Ptr);
-    if (PVar == nullptr)
-      continue;
-    auto *PVarScope = PVar->getScope();
 
-    // Get all valid, in scope lower bounds.
-    std::set<BoundsKey> ValidLBs;
-    for (BoundsKey LB : LBs) {
-      if (isInAccessibleScope(Ptr, LB) &&
-          InvalidatedBounds.find(LB) == InvalidatedBounds.end())
-        ValidLBs.insert(LB);
-    }
-
-    // If size 1, then there's no need to merge anything
-    if (ValidLBs.size() == 1) {
-      ConvergedBounds[Ptr] = getOnly(ValidLBs);
-      continue;
-    }
+    auto IsValidLowerBound = [Arr, this](BoundsKey LB) {
+      return isInAccessibleScope(Arr, LB) &&
+             ArrPointerBoundsKey.find(LB) != ArrPointerBoundsKey.end() &&
+             InvalidatedBounds.find(LB) == InvalidatedBounds.end();
+    };
 
     // If the pointer can be it's own lower bound, do that.
-    bool LBSelf = false;
-    for (auto LB : ValidLBs)
-      LBSelf = LBSelf || LB == Ptr;
-    if (LBSelf) {
-      ConvergedBounds[Ptr] = Ptr;
+    if (IsValidLowerBound(Arr)) {
+      assert(PossibleLBs.find(Arr) != PossibleLBs.end());
+      ConvergedBounds[Arr] = Arr;
       continue;
     }
 
-    // If there is a single pointer in the same scope, use that.
-    std::set<BoundsKey> SameScopeVars;
-    for (auto LB : ValidLBs)
-      if (*(getProgramVar(LB)->getScope()) == *PVarScope)
-        SameScopeVars.insert(LB);
+    BoundsKey MergeLB = 0;
+    for (auto LB : PossibleLBs) {
+      if (IsValidLowerBound(LB)) {
+        if (MergeLB == 0) {
+          MergeLB = LB;
+        } else {
+          bool LBGeq = false;
+          InvalidationGraph.visitBreadthFirst(MergeLB, [LB, &LBGeq](BoundsKey BK){
+            if (LB == BK)
+              LBGeq = true;
+          });
 
-    if (SameScopeVars.size() == 1) {
-      ConvergedBounds[Ptr] = getOnly(SameScopeVars);
-      continue;
-    }
+          bool MergeGeq = false;
+          InvalidationGraph.visitBreadthFirst(LB, [MergeLB, &MergeGeq](BoundsKey BK){
+            if (MergeLB == BK)
+              MergeGeq = true;
+          });
 
-    ProgramVar *MergeLB = nullptr;
-    for (auto LB : ValidLBs) {
-      // Convert the bounds key to corresponding program var.
-      auto *LBVar = getProgramVar(LB);
-      auto *LBScope = LBVar->getScope();
-      if (MergeLB == nullptr) {
-        if (isInAccessibleScope(Ptr, LB))
-          MergeLB = LBVar;
-      } else {
-        auto *MergeScope = MergeLB->getScope();
-        if (*MergeScope != *LBScope) {
-          if (LBScope->isInInnerScope(*MergeScope))
-            MergeLB = LBVar;
+          if (LBGeq && !MergeGeq) {
+            MergeLB = LB;
+          } else if (!LBGeq && MergeGeq) {
+            // Keep the current merge
+          } else if (LBGeq && MergeGeq) {
+            // Cycle. Doesn't matter?
+          } else if (!LBGeq && !MergeGeq) {
+            // No path between them. That's a problem.
+            MergeLB = 0;
+            break;
+          }
         }
-#if 0
-        else if (MergeLB->getKey() != LBVar->getKey()) {
-          llvm::errs() << "Multiple possible lower bound pointers for " << Ptr
-                       << "\n";
-        }
-#endif
       }
     }
 
-    if (MergeLB)
-      ConvergedBounds[Ptr] = MergeLB->getKey();
-    else {
-      // We couldn't find an existing pointer to use as a lower bound. We'll
-      // create a temporary variable to use later.
-      NeedLowerBounds.insert(Ptr);
+    if (MergeLB != 0) {
+      ConvergedBounds[Arr] = MergeLB;
+    } else {
+      // We couldn't find an existing pointer to use as a lower bound. In the
+      // next step we'll try to create a fresh lower bound pointer to use.
+      NeedLowerBounds.insert(Arr);
     }
   }
 
@@ -660,7 +645,7 @@ void AVarBoundsInfo::convergeLowerBounds(
   // least in the partial ordering (i.e., they have no predecessors in the
   // graph). These will be used as the basis for the temporary lower bounds
   // pointers.
-  std::set<BoundsKey> MinimalPtrs;
+  std::set<BoundsKey> NeedFreshLB;
   for (BoundsKey BK : NeedLowerBounds) {
     std::set<BoundsKey> PredKeys;
     InvalidationGraph.getPredecessors(BK, PredKeys, true);
@@ -671,36 +656,22 @@ void AVarBoundsInfo::convergeLowerBounds(
         AnyPreds = true;
     }
 
-    ProgramVar *PtrVar = getProgramVar(BK);
-    const ProgramVarScope *PtrScope = PtrVar->getScope();
-    bool IsCtxSen =
-      isa<CtxFunctionArgScope>(PtrScope) || isa<CtxStructScope>(PtrScope);
-
-    if (!AnyPreds && !IsCtxSen && isEligibleForFreshLowerBound(BK)) {
-      BoundsKey FreshLBKey = getRandomBKey();
-      ProgramVar *FreshLBVar =
-        ProgramVar::createNewProgramVar(FreshLBKey,
-                                        "__3c_tmp_" + PtrVar->getVarName(),
-                                        PtrVar->getScope());
-
-      insertProgramVar(FreshLBKey, FreshLBVar);
+    if (!AnyPreds && !isInContextSensitiveScope(BK) &&
+        isEligibleForFreshLowerBound(BK)) {
+      BoundsKey FreshLBKey = getFreshLowerBound(BK);
       ConvergedBounds[BK] = FreshLBKey;
-      MinimalPtrs.insert(BK);
+      NeedFreshLB.insert(BK);
     }
   }
 
+  // Now see if any of those are suitable lower bounds for the other array
+  // pointers still missing lower bounds.
   std::set<BoundsKey> FailedLBInf;
   for (BoundsKey BK : NeedLowerBounds) {
      const std::set<BoundsKey> &PossibleLBs = InfLowerBounds.at(BK);
      bool FoundLB = false;
-     for (BoundsKey MinK : MinimalPtrs)  {
+     for (BoundsKey MinK : NeedFreshLB)  {
        if (PossibleLBs.find(MinK) != PossibleLBs.end()) {
-#if 0
-         if (ConvergedBounds.find(BK) != ConvergedBounds.end())
-           llvm::errs() << "Multiple possible lower bound pointers for " << BK
-                        << "\n";
-         else
-#endif
          if (isInAccessibleScope(BK, MinK)) {
            ConvergedBounds[BK] = ConvergedBounds[MinK];
            FoundLB = true;
@@ -708,34 +679,42 @@ void AVarBoundsInfo::convergeLowerBounds(
        }
      }
      if (!FoundLB) {
+       // If not, there's another ugly fall back. See if there's some other
+       // pointer (including possibly this one) that can be given a new lower
+       // bound. The new lower bound is used as the lower bound for this
+       // pointer.
+       // TODO: Do I need this fallback at all? Or maybe I might need to iterate
+       //       it in a loop until reaching a fixed point.
        for (BoundsKey LB : PossibleLBs) {
-         ProgramVar *PtrVar = getProgramVar(BK);
-         const ProgramVarScope *PtrScope = PtrVar->getScope();
-         bool IsCtxSen =
-           isa<CtxFunctionArgScope>(PtrScope) || isa<CtxStructScope>(PtrScope);
-         if (!IsCtxSen && isEligibleForFreshLowerBound(LB) && isInAccessibleScope(BK, LB)) {
-           BoundsKey FreshLBKey = getRandomBKey();
-           ProgramVar *FreshLBVar =
-             ProgramVar::createNewProgramVar(FreshLBKey,
-                                             "__3c_tmp_" + PtrVar->getVarName(),
-                                             PtrVar->getScope());
-
-           insertProgramVar(FreshLBKey, FreshLBVar);
+         if (!isInContextSensitiveScope(BK) &&
+             isEligibleForFreshLowerBound(LB) && isInAccessibleScope(BK, LB)) {
+           BoundsKey FreshLBKey = getFreshLowerBound(BK);
            ConvergedBounds[LB] = FreshLBKey;
-           MinimalPtrs.insert(LB);
+           NeedFreshLB.insert(LB);
            ConvergedBounds[BK] = FreshLBKey;
            FoundLB = true;
            break;
          }
        }
-       if (!FoundLB) {
+       // We've actually failed to find a lower bound. The pointer won't be
+       // given any bounds.
+       if (!FoundLB)
          FailedLBInf.insert(BK);
-       }
      }
   }
 
-  NeedFreshLowerBounds = MinimalPtrs;
+  NeedFreshLowerBounds = NeedFreshLB;
   LowerBounds = ConvergedBounds;
+}
+
+BoundsKey AVarBoundsInfo::getFreshLowerBound(BoundsKey Arr) {
+  ProgramVar *ArrVar = getProgramVar(Arr);
+  BoundsKey FreshLB = getRandomBKey();
+  ProgramVar *FreshLBVar =
+    ProgramVar::createNewProgramVar(FreshLB, "__3c_tmp_" + ArrVar->getVarName(),
+                                    ArrVar->getScope());
+  insertProgramVar(FreshLB, FreshLBVar);
+  return FreshLB;
 }
 
 bool AVarBoundsInfo::hasLowerBound(BoundsKey K)  {
@@ -1321,6 +1300,11 @@ bool AVarBoundsInfo::isInAccessibleScope(BoundsKey From, BoundsKey To) {
   const ProgramVarScope *ToScope = getProgramVarScope(To);
   return FromScope != nullptr && ToScope != nullptr &&
          (*FromScope == *ToScope || FromScope->isInInnerScope(*ToScope));
+}
+
+bool AVarBoundsInfo::isInContextSensitiveScope(BoundsKey BK) {
+  const ProgramVarScope *BKScope = getProgramVarScope(BK);
+  return isa<CtxFunctionArgScope>(BKScope) || isa<CtxStructScope>(BKScope);
 }
 
 bool AVarBoundsInfo::hasVarKey(PersistentSourceLoc &PSL) {

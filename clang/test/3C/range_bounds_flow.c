@@ -38,6 +38,43 @@ void test2() {
   c[0];
 }
 
+int *test3(int *a, int l) {
+  int *b = a;
+// CHECK_ALL: _Array_ptr<int> test3(_Array_ptr<int> a : count(l), int l) : bounds(a, a + l) _Checked {
+// CHECK_ALL: _Array_ptr<int> b : bounds(a, a + l) = a;
+  b++;
+  return b;
+}
+
+int *test4(int *a, int l) {
+  a++;
+// CHECK_ALL: _Array_ptr<int> test4(_Array_ptr<int> __3c_tmp_a : count(l), int l) : bounds(__3c_tmp_a, __3c_tmp_a + l) _Checked {
+// CHECK_ALL: _Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + l) = __3c_tmp_a;
+  return a;
+}
+
+// There are multiple possible lower bounds for `c`. The current implementation
+// arbitrarily picks `b`, but further work should use a better principal.
+void test5(int *a, int l) {
+  int *b = a;
+  int *c = b;
+  // CHECK_ALL: void test5(_Array_ptr<int> a : count(l), int l) _Checked {
+  // CHECK_ALL: _Array_ptr<int> b : count(l) = a;
+  // CHECK_ALL: _Array_ptr<int> c : bounds(b, b + l) = b;
+  c++;
+}
+
+void test6() {
+  int *a;
+  int *b;
+
+  int *c;
+  c = a;
+  c = b;
+  c++;
+  c[0];
+}
+
 // Context sensitive edges should not cause `c` to be a lower bound for `b`.
 void test(int *a){ a[0]; }
 void other(){

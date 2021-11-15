@@ -16,7 +16,7 @@ void test0(size_t l) {
 
   // No bounds are inferred, but pointer arithemtic is used; don't split
   int *q = 0;
-  // CHECK_ALL :_Array_ptr<int> q;
+  // CHECK_ALL: _Array_ptr<int> q = 0;
   q++;
 }
 
@@ -55,9 +55,8 @@ void test2(int *a, int l) {
 
 // Something more complex with multiple parameters.
 void test3(int *a, int *b, int *c, int *d) {
-  // CHECK_ALL: void test3(_Array_ptr<int> __3c_tmp_a : count(10), int *__3c_tmp_b : itype(_Array_ptr<int>) count(10), _Array_ptr<int> __3c_tmp_c : count(10), int *__3c_tmp_d : itype(_Array_ptr<int>) count(10)) {
+  // CHECK_ALL: void test3(_Array_ptr<int> __3c_tmp_a : count(10), int *b : itype(_Array_ptr<int>) bounds(__3c_tmp_d, __3c_tmp_d + 10), _Array_ptr<int> __3c_tmp_c : count(10), int *__3c_tmp_d : itype(_Array_ptr<int>) count(10)) {
   // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + 10) = __3c_tmp_a;
-  // CHECK_ALL: int *b = __3c_tmp_b;
   // CHECK_ALL: _Array_ptr<int> c : bounds(__3c_tmp_c, __3c_tmp_c + 10) = __3c_tmp_c;
   // CHECK_ALL: int *d = __3c_tmp_d;
   a += 1, b += 2, c--, d -= 1;
@@ -119,10 +118,8 @@ void test6() {
   // CHECK_ALL: __3c_tmp_p = 0, p = __3c_tmp_p;
 
   // A slightly more complex update to a different pointer value.
-  int *q = malloc(10 * sizeof(int));
-  p = q;
-  // CHECK_ALL: _Array_ptr<int> q : count(10) = malloc<int>(10 * sizeof(int));
-  // CHECK_ALL: __3c_tmp_p = q, p = __3c_tmp_p;
+  p = malloc(10 * sizeof(int));
+  // CHECK_ALL: __3c_tmp_p = malloc<int>(10 * sizeof(int)), p = __3c_tmp_p;
 
   // Don't treat a call to realloc as pointer arithmetic. Freeing `p` after
   // `p++` is highly questionable, but that's not the point here.
@@ -131,8 +128,8 @@ void test6() {
 
   // Assignment rewriting should work in more complex expression and around
   // other 3C rewriting without breaking anything.
-  int *v = 1 + (p = (int*) q, p = p + 1) + 1;
-  // CHECK_ALL: _Ptr<int> v = 1 + (__3c_tmp_p = (_Array_ptr<int>) q, p = __3c_tmp_p, p = p + 1) + 1;
+  int *v = 1 + (p = (int*) 0, p = p + 1) + 1;
+  // CHECK_ALL: _Ptr<int> v = 1 + (__3c_tmp_p = (_Array_ptr<int>) 0, p = __3c_tmp_p, p = p + 1) + 1;
 }
 
 
