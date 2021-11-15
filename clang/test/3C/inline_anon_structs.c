@@ -182,7 +182,6 @@ void foo2(int *x) {
 
 // Tests of new functionality from
 // https://github.com/correctcomputation/checkedc-clang/pull/657.
-// TODO: Do we want to put this in a separate file?
 
 // Test that 3C doesn't mangle the code by attempting to split a forward
 // declaration of a struct out of a multi-decl as if it were a definition

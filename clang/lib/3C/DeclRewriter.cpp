@@ -404,10 +404,10 @@ void DeclRewriter::rewriteMultiDecl(MultiDeclInfo &MDI, RSet &ToRewrite) {
       // thinking that they can replace a different source range that way, we
       // want to fail fast.
       //
-      // REVIEW: This is awkward and makes me wonder if we should just remove
+      // This is awkward and makes me wonder if we should just remove
       // DeclReplacement::getSourceRange since 3C currently only calls
       // getSourceRange on an object already known to be a
-      // FunctionDeclReplacement. But after drafting this, I wasn't convinced
+      // FunctionDeclReplacement. But after drafting that, I wasn't convinced
       // that it was better than the status quo.
       assert(Replacement->getSourceRange(SM) == ReplaceSR);
     }

@@ -10,7 +10,7 @@
 #include "clang/3C/Utils.h"
 
 MultiDeclMemberDecl *getAsMultiDeclMember(Decl *D) {
-  // REVIEW: Is this the best place for this check?
+  // XXX: Is this the best place for this check?
   if (D->getLocation().isInvalid())
     return nullptr;
 

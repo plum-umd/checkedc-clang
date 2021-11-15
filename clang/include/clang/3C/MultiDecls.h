@@ -153,8 +153,6 @@ struct MultiDeclInfo {
   // Set by DeclRewriter::rewriteMultiDecl after it rewrites the entire
   // multi-decl to ensure that it doesn't try to do so more than once if
   // multiple members needed changes.
-  // REVIEW: A design argument could be made that this flag doesn't belong here
-  // and the rewriter should instead keep a visited set or something like that.
   bool AlreadyRewritten = false;
 };
 
@@ -179,7 +177,7 @@ private:
   // Set of TagDecl names already used at least once in the program, so we can
   // avoid colliding with them.
   std::set<std::string> UsedTagNames;
-  
+
   // Information about an originally unnamed tag definition in a multi-decl for
   // which we're using a new name.
   struct RenamedTagDefInfo {

@@ -267,7 +267,6 @@ _Array_ptr<int> p1 : bounds((0, lo), hi), p2 : bounds(lo, (0, hi)), *p3;
 // https://github.com/correctcomputation/checkedc-clang/issues/651.
 // inline_anon_structs.c has a few additional tests of typedef multi-decls
 // involving inline structs.
-// TODO: Are there other cases we should test?
 
 typedef int *A, *B;
 // CHECK: typedef _Ptr<int> A;
