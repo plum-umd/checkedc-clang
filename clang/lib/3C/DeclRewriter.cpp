@@ -468,6 +468,8 @@ void DeclRewriter::doDeclRewrite(SourceRange &SR, DeclReplacement *N) {
       // stdlib_checked.h is included
       // TODO: Centralize initialization logic for all types:
       // https://github.com/correctcomputation/checkedc-clang/issues/645#issuecomment-876474200
+      // TODO: Don't add unnecessary initializers to global variables:
+      // https://github.com/correctcomputation/checkedc-clang/issues/741
       if (VD->getStorageClass() != StorageClass::SC_Extern) {
         const std::string NullPtrStr = "((void *)0)";
         if (isPointerType(VD)) {
