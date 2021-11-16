@@ -282,7 +282,7 @@ public:
 
   bool isInAccessibleScope(BoundsKey From, BoundsKey To);
 
-  bool isInContextSensitiveScope(BoundsKey BK);
+  bool scopeCanHaveLowerBound(BoundsKey BK);
 
   // Check if the provided bounds key corresponds to function return.
   bool isFunctionReturn(BoundsKey BK);

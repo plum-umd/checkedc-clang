@@ -657,7 +657,7 @@ void AVarBoundsInfo::convergeLowerBounds(
         AnyPreds = true;
     }
 
-    if (!AnyPreds && !isInContextSensitiveScope(BK) &&
+    if (!AnyPreds && scopeCanHaveLowerBound(BK) &&
         isEligibleForFreshLowerBound(BK)) {
       BoundsKey FreshLBKey = getFreshLowerBound(BK);
       ConvergedBounds[BK] = FreshLBKey;
@@ -687,7 +687,7 @@ void AVarBoundsInfo::convergeLowerBounds(
        // TODO: Do I need this fallback at all? Or maybe I might need to iterate
        //       it in a loop until reaching a fixed point.
        for (BoundsKey LB : PossibleLBs) {
-         if (!isInContextSensitiveScope(BK) &&
+         if (scopeCanHaveLowerBound(BK) &&
              isEligibleForFreshLowerBound(LB) && isInAccessibleScope(BK, LB)) {
            BoundsKey FreshLBKey = getFreshLowerBound(BK);
            ConvergedBounds[LB] = FreshLBKey;
@@ -1303,9 +1303,10 @@ bool AVarBoundsInfo::isInAccessibleScope(BoundsKey From, BoundsKey To) {
          (*FromScope == *ToScope || FromScope->isInInnerScope(*ToScope));
 }
 
-bool AVarBoundsInfo::isInContextSensitiveScope(BoundsKey BK) {
+bool AVarBoundsInfo::scopeCanHaveLowerBound(BoundsKey BK) {
   const ProgramVarScope *BKScope = getProgramVarScope(BK);
-  return isa<CtxFunctionArgScope>(BKScope) || isa<CtxStructScope>(BKScope);
+  return BKScope != nullptr && !isa<CtxFunctionArgScope>(BKScope) &&
+         !isa<CtxStructScope>(BKScope);
 }
 
 bool AVarBoundsInfo::hasVarKey(PersistentSourceLoc &PSL) {
