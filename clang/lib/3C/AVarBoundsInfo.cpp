@@ -589,6 +589,7 @@ void AVarBoundsInfo::convergeLowerBounds(
     auto IsValidLowerBound = [Arr, this](BoundsKey LB) {
       return isInAccessibleScope(Arr, LB) &&
              ArrPointerBoundsKey.find(LB) != ArrPointerBoundsKey.end() &&
+             InvalidBounds.find(LB) == InvalidBounds.end() &&
              InvalidatedBounds.find(LB) == InvalidatedBounds.end();
     };
 
