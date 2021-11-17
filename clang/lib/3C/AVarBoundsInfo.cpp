@@ -540,172 +540,78 @@ bool AvarBoundsInference::inferBounds(BoundsKey K, const AVarGraph &BKGraph,
 
 void
 AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
-  std::map<BoundsKey, std::set<BoundsKey>> InfLowerBounds;
 
-  computeArrPointers(PI);
-  std::set<BoundsKey> BaseWorkList(ArrPointerBoundsKey);
-
-  while (!BaseWorkList.empty()) {
-    std::set<BoundsKey> NextIterArrs;
-    for (BoundsKey CurrArrKey : BaseWorkList) {
-      bool FoundNewLB  = false;
-      auto InsertLB = [&FoundNewLB, &InfLowerBounds, CurrArrKey](BoundsKey LB) {
-        if (InfLowerBounds[CurrArrKey].insert(LB).second)
-          FoundNewLB = true;
-      };
-
-      if (InvalidBounds.find(CurrArrKey) == InvalidBounds.end()) {
-        std::set<BoundsKey> PredKeys;
-        ProgVarGraph.getPredecessors(CurrArrKey, PredKeys, true);
-
-        InsertLB(CurrArrKey);
-        for (BoundsKey P: PredKeys) {
-          InsertLB(P);
-          for (BoundsKey BK: InfLowerBounds[P])
-            InsertLB(BK);
-        }
+  std::map<BoundsKey, BoundsKey> InfLBs;
+  std::deque<BoundsKey> WorkList;
+  for (BoundsKey BK : InvalidatedBounds) {
+    std::set<BoundsKey> Pred;
+    InvalidationGraph.getPredecessors(BK, Pred);
+    for (BoundsKey Seed : Pred) {
+      if (Seed != 0 &&
+          InvalidatedBounds.find(Seed) == InvalidatedBounds.end()) {
+        InfLBs[Seed] = Seed;
+        WorkList.push_back(Seed);
       }
-
-      if (FoundNewLB)
-        ProgVarGraph.getSuccessors(CurrArrKey, NextIterArrs, true);
-    }
-    BaseWorkList = NextIterArrs;
-  }
-
-  convergeLowerBounds(InfLowerBounds);
-}
-
-void AVarBoundsInfo::convergeLowerBounds(
-  const std::map<BoundsKey, std::set<BoundsKey>> &InfLowerBounds) {
-  std::map<BoundsKey, BoundsKey> ConvergedBounds;
-  std::set<BoundsKey> NeedLowerBounds;
-
-  // Merge sets of possible lower bounds down to a single lower bound.
-  for (auto LBEntry : InfLowerBounds) {
-    BoundsKey Arr = LBEntry.first;
-    const std::set<BoundsKey> &PossibleLBs = LBEntry.second;
-
-
-    auto IsValidLowerBound = [Arr, this](BoundsKey LB) {
-      return isInAccessibleScope(Arr, LB) &&
-             ArrPointerBoundsKey.find(LB) != ArrPointerBoundsKey.end() &&
-             InvalidBounds.find(LB) == InvalidBounds.end() &&
-             InvalidatedBounds.find(LB) == InvalidatedBounds.end();
-    };
-
-    // If the pointer can be it's own lower bound, do that.
-    if (IsValidLowerBound(Arr)) {
-      assert(PossibleLBs.find(Arr) != PossibleLBs.end());
-      ConvergedBounds[Arr] = Arr;
-      continue;
-    }
-
-    BoundsKey MergeLB = 0;
-    for (auto LB : PossibleLBs) {
-      if (IsValidLowerBound(LB)) {
-        if (MergeLB == 0) {
-          MergeLB = LB;
-        } else {
-          bool LBGeq = false;
-          InvalidationGraph.visitBreadthFirst(MergeLB, [LB, &LBGeq](BoundsKey BK){
-            if (LB == BK)
-              LBGeq = true;
-          });
-
-          bool MergeGeq = false;
-          InvalidationGraph.visitBreadthFirst(LB, [MergeLB, &MergeGeq](BoundsKey BK){
-            if (MergeLB == BK)
-              MergeGeq = true;
-          });
-
-          if (LBGeq && !MergeGeq) {
-            MergeLB = LB;
-          } else if (!LBGeq && MergeGeq) {
-            // Keep the current merge
-          } else if (LBGeq && MergeGeq) {
-            // Cycle. Doesn't matter?
-          } else if (!LBGeq && !MergeGeq) {
-            // No path between them. That's a problem.
-            MergeLB = 0;
-            break;
-          }
-        }
-      }
-    }
-
-    if (MergeLB != 0) {
-      ConvergedBounds[Arr] = MergeLB;
-    } else {
-      // We couldn't find an existing pointer to use as a lower bound. In the
-      // next step we'll try to create a fresh lower bound pointer to use.
-      NeedLowerBounds.insert(Arr);
     }
   }
 
-  // From the pointers that still need a lower bound, select those that are the
-  // least in the partial ordering (i.e., they have no predecessors in the
-  // graph). These will be used as the basis for the temporary lower bounds
-  // pointers.
+  // These must come after the valid Lower Bounds in the worklist, so this loop
+  // needs to be separate.
+  for (BoundsKey InvLB : InvalidatedBounds)
+    WorkList.push_back(InvLB);
+
   std::set<BoundsKey> NeedFreshLB;
-  for (BoundsKey BK : NeedLowerBounds) {
-    std::set<BoundsKey> PredKeys;
-    InvalidationGraph.getPredecessors(BK, PredKeys, true);
+  std::set<BoundsKey> HasConflictingBounds;
+  while (!WorkList.empty()) {
+    BoundsKey BK = WorkList.front();
+    WorkList.pop_front();
 
-    bool AnyPreds = false;
-    for (BoundsKey Pred: PredKeys) {
-      if (Pred != BK && NeedLowerBounds.find(Pred) != NeedLowerBounds.end())
-        AnyPreds = true;
-    }
-
-    if (!AnyPreds && scopeCanHaveLowerBound(BK) &&
-        isEligibleForFreshLowerBound(BK)) {
-      BoundsKey FreshLBKey = getFreshLowerBound(BK);
-      ConvergedBounds[BK] = FreshLBKey;
+    if (isEligibleForFreshLowerBound(BK) &&
+        (InfLBs.find(BK) == InfLBs.end() || InfLBs[BK] == 0)) {
+      // We've reached an array pointer in the work list that either has not been assigned a lower bound, or
+      assert(InvalidatedBounds.find(BK) != InvalidatedBounds.end());
+      InfLBs[BK] = getFreshLowerBound(BK);
       NeedFreshLB.insert(BK);
     }
-  }
 
-  // Now see if any of those are suitable lower bounds for the other array
-  // pointers still missing lower bounds.
-  std::set<BoundsKey> FailedLBInf;
-  for (BoundsKey BK : NeedLowerBounds) {
-     const std::set<BoundsKey> &PossibleLBs = InfLowerBounds.at(BK);
-     bool FoundLB = false;
-     for (BoundsKey MinK : NeedFreshLB)  {
-       if (PossibleLBs.find(MinK) != PossibleLBs.end()) {
-         if (isInAccessibleScope(BK, MinK)) {
-           ConvergedBounds[BK] = ConvergedBounds[MinK];
-           FoundLB = true;
-         }
-       }
-     }
-     if (!FoundLB) {
-       // If not, there's another ugly fall back. See if there's some other
-       // pointer (including possibly this one) that can be given a new lower
-       // bound. The new lower bound is used as the lower bound for this
-       // pointer.
-       // TODO: Do I need this fallback at all? Or maybe I might need to iterate
-       //       it in a loop until reaching a fixed point.
-       for (BoundsKey LB : PossibleLBs) {
-         if (scopeCanHaveLowerBound(BK) &&
-             isEligibleForFreshLowerBound(LB) && isInAccessibleScope(BK, LB)) {
-           BoundsKey FreshLBKey = getFreshLowerBound(BK);
-           ConvergedBounds[LB] = FreshLBKey;
-           NeedFreshLB.insert(LB);
-           ConvergedBounds[BK] = FreshLBKey;
-           FoundLB = true;
-           break;
-         }
-       }
-       // We've actually failed to find a lower bound. The pointer won't be
-       // given any bounds.
-       if (!FoundLB)
-         FailedLBInf.insert(BK);
-     }
+    std::set<BoundsKey> Succ;
+    InvalidationGraph.getSuccessors(BK, Succ);
+    for (BoundsKey S : Succ) {
+      if (InvalidatedBounds.find(S) != InvalidatedBounds.end()) {
+        if (InfLBs.find(S) == InfLBs.end()) {
+          // No prior lower bound known for `S`. Initialize it to use the same
+          // lower bound as `BK`.
+          if (isInAccessibleScope(S, InfLBs[BK])) {
+            InfLBs[S] = InfLBs[BK];
+          } else {
+            InfLBs[S] = 0;
+          }
+          WorkList.push_front(S);
+        } else if (InfLBs[BK] != InfLBs[S]) {
+          if (HasConflictingBounds.find(S) == HasConflictingBounds.end() &&
+              NeedFreshLB.find(S) != NeedFreshLB.end() &&
+              isInAccessibleScope(S, InfLBs[BK])) {
+            NeedFreshLB.erase(S);
+            InfLBs[S] = InfLBs[BK];
+            WorkList.push_front(S);
+          } else {
+            // If there is and existing lower bounds, it must be the same lower
+            // bound as `BK`. If it's not, invalidate the lower bound for `S`.
+            HasConflictingBounds.insert(S);
+            if (InfLBs[S] != 0) {
+              InfLBs[S] = 0;
+              WorkList.push_front(S);
+            }
+          }
+        }
+        // Otherwise, the a lower bound exists for `S`, and it's the same lower
+        // bounds as `BK`. Nothing changes, so don't enqueue `S`.
+      }
+    }
   }
 
   NeedFreshLowerBounds = NeedFreshLB;
-  LowerBounds = ConvergedBounds;
+  LowerBounds = InfLBs;
 }
 
 BoundsKey AVarBoundsInfo::getFreshLowerBound(BoundsKey Arr) {

@@ -326,7 +326,6 @@ public:
   void addConstantArrayBounds(ProgramInfo &I);
 
   void inferLowerBounds(ProgramInfo *PI);
-  void convergeLowerBounds(const std::map<BoundsKey, std::set<BoundsKey>> &LBs);
   BoundsKey getFreshLowerBound(BoundsKey Arr);
 
 private:
