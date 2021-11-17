@@ -40,21 +40,28 @@ void test2() {
 
 int *test3(int *a, int l) {
   int *b = a;
-// CHECK_ALL: _Array_ptr<int> test3(_Array_ptr<int> a : count(l), int l) : bounds(a, a + l) _Checked {
-// CHECK_ALL: _Array_ptr<int> b : bounds(a, a + l) = a;
+  // CHECK_ALL: _Array_ptr<int> test3(_Array_ptr<int> a : count(l), int l) : bounds(a, a + l) _Checked {
+  // CHECK_ALL: _Array_ptr<int> b : bounds(a, a + l) = a;
   b++;
   return b;
 }
 
+int *test4(int *, int);
+int *test4(int *x, int l);
+int *test4();
+// CHECK_ALL: _Array_ptr<int> test4(_Array_ptr<int> __3c_tmp_a : count(l), int l) : bounds(__3c_tmp_a, __3c_tmp_a + l);
+// CHECK_ALL: _Array_ptr<int> test4(_Array_ptr<int> __3c_tmp_a : count(l), int l) : bounds(__3c_tmp_a, __3c_tmp_a + l);
+// CHECK_ALL: _Array_ptr<int> test4(_Array_ptr<int> __3c_tmp_a : count(l), int l) : bounds(__3c_tmp_a, __3c_tmp_a + l);
+
 int *test4(int *a, int l) {
+  // CHECK_ALL: _Array_ptr<int> test4(_Array_ptr<int> __3c_tmp_a : count(l), int l) : bounds(__3c_tmp_a, __3c_tmp_a + l) _Checked {
+  // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + l) = __3c_tmp_a;
   a++;
-// CHECK_ALL: _Array_ptr<int> test4(_Array_ptr<int> __3c_tmp_a : count(l), int l) : bounds(__3c_tmp_a, __3c_tmp_a + l) _Checked {
-// CHECK_ALL: _Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + l) = __3c_tmp_a;
   return a;
 }
 
-// There are multiple possible lower bounds for `c`. The current implementation
-// arbitrarily picks `b`, but further work should use a better principal.
+// There are multiple possible lower bounds for `c`, but they are consistent
+// with each other.
 void test5(int *a, int l) {
   int *b = a;
   int *c = b;
@@ -64,13 +71,22 @@ void test5(int *a, int l) {
   c++;
 }
 
+// Lower bounds aren't consistent. We can't use `a` or `b`, so a fresh lower
+// bound is created  g.
 void test6() {
   int *a;
   int *b;
+  // CHECK_ALL: _Array_ptr<int> a : count(0 + 1) = ((void *)0);
+  // CHECK_ALL: _Array_ptr<int> b : count(0 + 1) = ((void *)0);
 
   int *c;
   c = a;
   c = b;
+  // CHECK_ALL: _Array_ptr<int> __3c_tmp_c : count(0 + 1) = ((void *)0);
+  // CHECK_ALL: _Array_ptr<int> c : bounds(__3c_tmp_c, __3c_tmp_c + 0 + 1) = __3c_tmp_c;
+  // CHECK_ALL: __3c_tmp_c = a, c = __3c_tmp_c;
+  // CHECK_ALL: __3c_tmp_c = b, c = __3c_tmp_c;
+
   c++;
   c[0];
 }

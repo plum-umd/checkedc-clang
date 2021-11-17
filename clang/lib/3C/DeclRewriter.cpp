@@ -34,18 +34,18 @@ using namespace clang;
 // to the string reference Itype.
 RewrittenDecl
 DeclRewriter::buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
-                             ProgramInfo &Info, ArrayBoundsRewriter &ABR,
-                             bool GenerateSDecls) {
-  bool NeedsFreshLowerBound =
-    GenerateSDecls && Info.getABoundsInfo().needsFreshLowerBound(Defn);
+                             std::string UseName, ProgramInfo &Info,
+                             ArrayBoundsRewriter &ABR, bool GenerateSDecls) {
+  bool NeedsFreshLowerBound = Info.getABoundsInfo().needsFreshLowerBound(Defn);
 
-  std::string DeclName = Decl ? Decl->getNameAsString() : "";
-  // The idea here is that the name should only be empty if this is an unnamed
-  // parameter in a function pre-declaration, or the pre-declaration is not a
-  // prototype so Decl is null.
-  assert(!DeclName.empty() || Decl == nullptr || isa<ParmVarDecl>(Decl));
-  if (NeedsFreshLowerBound)
-    DeclName = get3CTmpVar(DeclName);
+  std::string DeclName;
+  if (NeedsFreshLowerBound) {
+    BoundsKey FreshLB = Info.getABoundsInfo().getBounds(
+      Defn->getBoundsKey())->getLowerBoundKey();
+    DeclName = Info.getABoundsInfo().getProgramVar(FreshLB)->getVarName();
+  } else {
+    DeclName = UseName;
+  }
 
   const EnvironmentMap &Env = Info.getConstraints().getVariables();
   // True when the type of this variable is defined by a typedef, and the
@@ -107,11 +107,10 @@ DeclRewriter::buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
     Defn->mkString(Info.getConstraints(),
                    MKSTRING_OPTS(EmitName = false, ForItype = true,
                                  UnmaskTypedef = IsUncheckedTypedef)) + ")";
-  IType += ABR.getBoundsString(Defn, Decl, true,
-                               !GenerateSDecls || NeedsFreshLowerBound);
+  IType += ABR.getBoundsString(Defn, Decl, true, NeedsFreshLowerBound);
 
   std::string SDecl;
-  if (NeedsFreshLowerBound) {
+  if (GenerateSDecls && NeedsFreshLowerBound) {
     // For itypes, the copy of the array cannot use a checked type because we
     // know it will be used unsafely somewhere in the body of the function.
     // Giving it a checked type would result in Checked C type errors at the
@@ -127,26 +126,23 @@ RewrittenDecl
 DeclRewriter::buildCheckedDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
                                std::string UseName, ProgramInfo &Info,
                                ArrayBoundsRewriter &ABR, bool GenerateSDecls) {
-  bool NeedsFreshLowerBound =
-    GenerateSDecls && Info.getABoundsInfo().needsFreshLowerBound(Defn);
-  assert("Adding range bounds on return, global variable, or field!" &&
-         (!NeedsFreshLowerBound || (isa_and_nonnull<VarDecl>(Decl) &&
-                                    cast<VarDecl>(
-                                      Decl)->isLocalVarDeclOrParm())));
+  bool NeedsFreshLowerBound = Info.getABoundsInfo().needsFreshLowerBound(Defn);
 
-  std::string DeclName = UseName;
+  std::string DeclName;
   if (NeedsFreshLowerBound) {
-    assert(!DeclName.empty());
-    DeclName = get3CTmpVar(DeclName);
+    BoundsKey FreshLB = Info.getABoundsInfo().getBounds(
+      Defn->getBoundsKey())->getLowerBoundKey();
+    DeclName = Info.getABoundsInfo().getProgramVar(FreshLB)->getVarName();
+  } else {
+    DeclName = UseName;
   }
 
   std::string Type =
     Defn->mkString(Info.getConstraints(), MKSTRING_OPTS(UseName = DeclName));
   std::string IType =
-    ABR.getBoundsString(Defn, Decl, false,
-                        !GenerateSDecls || NeedsFreshLowerBound);
+    ABR.getBoundsString(Defn, Decl, false, NeedsFreshLowerBound);
   std::string SDecl;
-  if (NeedsFreshLowerBound) {
+  if (GenerateSDecls && NeedsFreshLowerBound) {
     SDecl =
       Defn->mkString(Info.getConstraints(), MKSTRING_OPTS(UseName = UseName)) +
       ABR.getBoundsString(Defn, Decl) + " = " +
@@ -266,8 +262,9 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
           // is updated to handle structure/global itypes.
           // VarDecl and FieldDecl subclass DeclaratorDecl, so the cast will
           // always succeed.
-          RD = DeclRewriter::buildItypeDecl(PV, cast<DeclaratorDecl>(D), Info,
-                                            ABRewriter, true);
+          RD = DeclRewriter::buildItypeDecl(PV, cast<DeclaratorDecl>(D),
+                                            PV->getName(), Info, ABRewriter,
+                                            true);
         } else {
           RD = DeclRewriter::buildCheckedDecl(PV, cast<DeclaratorDecl>(D),
                                               PV->getName(), Info, ABRewriter,
@@ -902,11 +899,11 @@ FunctionDeclBuilder::buildCheckedDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
 
 RewrittenDecl
 FunctionDeclBuilder::buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
-                                    bool &RewriteParm, bool &RewriteRet,
-                                    bool GenerateSDecls) {
+                                    std::string UseName, bool &RewriteParm,
+                                    bool &RewriteRet, bool GenerateSDecls) {
   Info.getPerfStats().incrementNumITypes();
-  RewrittenDecl RD = DeclRewriter::buildItypeDecl(Defn, Decl, Info, ABRewriter,
-                                                  GenerateSDecls);
+  RewrittenDecl RD = DeclRewriter::buildItypeDecl(Defn, Decl, UseName, Info,
+                                                  ABRewriter, GenerateSDecls);
   RewriteParm = true;
   RewriteRet |= isa_and_nonnull<FunctionDecl>(Decl);
   return RD;
@@ -927,8 +924,8 @@ FunctionDeclBuilder::buildDeclVar(const FVComponentVariable *CV,
   bool ItypeSolution = CV->hasItypeSolution(Info.getConstraints());
   if (ItypeSolution ||
       (CheckedSolution && _3COpts.ItypesForExtern && !StaticFunc)) {
-    return buildItypeDecl(CV->getExternal(), Decl, RewriteParm, RewriteRet,
-                          GenerateSDecls);
+    return buildItypeDecl(CV->getExternal(), Decl, UseName, RewriteParm,
+                          RewriteRet, GenerateSDecls);
   }
   if (CheckedSolution) {
     return buildCheckedDecl(CV->getExternal(), Decl, UseName, RewriteParm,

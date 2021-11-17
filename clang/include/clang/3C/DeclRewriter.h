@@ -59,7 +59,8 @@ public:
   static void rewriteDecls(ASTContext &Context, ProgramInfo &Info, Rewriter &R);
 
   static RewrittenDecl
-  buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl, ProgramInfo &Info,
+  buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
+                 std::string UseName, ProgramInfo &Info,
                  ArrayBoundsRewriter &ABR, bool GenerateSDecls);
 
   static RewrittenDecl
@@ -143,8 +144,8 @@ protected:
                    bool GenerateSDecls);
 
   RewrittenDecl
-  buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl, bool &RewriteParm,
-                 bool &RewriteRet, bool GenerateSDecls);
+  buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl, std::string UseName,
+                 bool &RewriteParm, bool &RewriteRet, bool GenerateSDecls);
 
   bool inParamMultiDecl(const ParmVarDecl *PVD);
 };

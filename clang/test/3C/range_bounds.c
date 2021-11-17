@@ -22,9 +22,11 @@ void test0(size_t l) {
 
 // Parameters must be inserted inside function body. This also also checks
 // that a pre-declarations gets the correct bounds and does not generate a
-// second alias.
+// second alias. In this case, the predeclaraiton doesn't need to use the new
+// variable, name, but it doesn't hurt, and is required in some more complex
+// cases.
 void test1(int *a, int l);
-// CHECK_ALL: void test1(_Array_ptr<int> a : count(l), int l);
+// CHECK_ALL: void test1(_Array_ptr<int> __3c_tmp_a : count(l), int l);
 void test1(int *a, int l) {
   // CHECK_ALL: void test1(_Array_ptr<int> __3c_tmp_a : count(l), int l) _Checked {
   // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + l) = __3c_tmp_a;
@@ -42,7 +44,7 @@ void test1(int *a, int l) {
 
 // Also check for itypes. They're interesting because the alias isn't checked.
 void test2(int *a, int l);
-// CHECK_ALL: void test2(int *a : itype(_Array_ptr<int>) count(l), int l);
+// CHECK_ALL: void test2(int *__3c_tmp_a : itype(_Array_ptr<int>) count(l), int l);
 void test2(int *a, int l) {
   // CHECK_ALL: void test2(int *__3c_tmp_a : itype(_Array_ptr<int>) count(l), int l) {
   // CHECK_ALL: int *a  = __3c_tmp_a;
@@ -138,9 +140,9 @@ void test6() {
 void test7(int *);
 void test7();
 void test7(int *a);
-// CHECK_ALL: void test7(_Array_ptr<int> s : count(5));
-// CHECK_ALL: void test7(_Array_ptr<int> s : count(5));
-// CHECK_ALL: void test7(_Array_ptr<int> a : count(5));
+// CHECK_ALL: void test7(_Array_ptr<int> __3c_tmp_s : count(5));
+// CHECK_ALL: void test7(_Array_ptr<int> __3c_tmp_s : count(5));
+// CHECK_ALL: void test7(_Array_ptr<int> __3c_tmp_s : count(5));
 void test7(int *s) {
 // CHECK_ALL: void test7(_Array_ptr<int> __3c_tmp_s : count(5)) _Checked {
 // CHECK_ALL: _Array_ptr<int> s : bounds(__3c_tmp_s, __3c_tmp_s + 5) = __3c_tmp_s;
