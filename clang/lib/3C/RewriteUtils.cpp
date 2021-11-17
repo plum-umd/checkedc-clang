@@ -123,10 +123,6 @@ void insertText(Rewriter &R, SourceLocation S, const std::string &NewText,
   rewriteSourceRange(R, SR, NewText, ErrFail);
 }
 
-std::string get3CTmpVar(std::string VarName) {
-  return "__3c_tmp_" + VarName;
-}
-
 static void emit(Rewriter &R, ASTContext &C, bool &StdoutModeEmittedMainFile) {
   if (_3COpts.Verbose)
     errs() << "Writing files out\n";

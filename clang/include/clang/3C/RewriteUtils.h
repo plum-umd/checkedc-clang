@@ -195,6 +195,4 @@ void rewriteSourceRange(Rewriter &R, const SourceRange &Range,
 void insertText(Rewriter &R, SourceLocation S, const std::string &NewText,
                 bool ErrFail = true);
 
-std::string get3CTmpVar(std::string VarName);
-
 #endif // LLVM_CLANG_3C_REWRITEUTILS_H

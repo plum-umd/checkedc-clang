@@ -120,10 +120,11 @@ void BasePointerAssignmentUpdater::visitBasePointerAssignment(Expr *LHS,
     ConstraintVariable *CV) { return ABInfo.needsFreshLowerBound(CV); }) == 0);
   for (ConstraintVariable *CV: LHSCVs) {
     if (ABInfo.needsFreshLowerBound(CV)) {
-      std::string TmpVarName = get3CTmpVar(CV->getName());
-      rewriteSourceRange(R, LHS->getSourceRange(), TmpVarName);
+      std::string LBName = ABInfo.getProgramVar(
+        ABInfo.getBounds(CV->getBoundsKey())->getLowerBoundKey())->getVarName();
+      rewriteSourceRange(R, LHS->getSourceRange(), LBName);
       insertText(R, RHS->getEndLoc(),
-                 ", " + CV->getName() + " = " + TmpVarName);
+                 ", " + CV->getName() + " = " + LBName);
     }
   }
 }
