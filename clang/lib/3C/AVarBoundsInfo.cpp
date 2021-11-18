@@ -541,7 +541,43 @@ bool AvarBoundsInference::inferBounds(BoundsKey K, const AVarGraph &BKGraph,
 void
 AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
 
-  std::map<BoundsKey, BoundsKey> InfLBs;
+
+  computeArrPointers(PI);
+  std::set<BoundsKey> BaseWorkList(ArrPointerBoundsKey);
+  std::map<BoundsKey, std::set<BoundsKey>> InitLBs;
+  while (!BaseWorkList.empty()) {
+    BoundsKey CurrArrKey = *BaseWorkList.begin();
+    BaseWorkList.erase(BaseWorkList.begin());
+
+    bool FoundNewLB  = false;
+    auto InsertLB = [this, &FoundNewLB, &InitLBs, CurrArrKey](BoundsKey LB) {
+      bool IsValidLowerBound =
+        ArrPointerBoundsKey.find(LB) != ArrPointerBoundsKey.end() &&
+        InvalidBounds.find(LB) == InvalidBounds.end() &&
+        InvalidatedBounds.find(LB) == InvalidatedBounds.end();
+      if (IsValidLowerBound)
+        if (InitLBs[CurrArrKey].insert(LB).second)
+          FoundNewLB = true;
+    };
+
+    if (InvalidatedBounds.find(CurrArrKey) == InvalidatedBounds.end() &&
+        InvalidBounds.find(CurrArrKey) == InvalidBounds.end()) {
+      std::set<BoundsKey> PredKeys;
+      InvalidationGraph.getPredecessors(CurrArrKey, PredKeys, true);
+
+      InsertLB(CurrArrKey);
+      for (BoundsKey P: PredKeys) {
+        InsertLB(P);
+        for (BoundsKey BK: InitLBs[P])
+          InsertLB(BK);
+      }
+    }
+
+    if (FoundNewLB)
+      InvalidationGraph.getSuccessors(CurrArrKey, BaseWorkList, true);
+  }
+
+  std::map<BoundsKey, std::set<BoundsKey>> InfLBs;
   std::deque<BoundsKey> WorkList;
   for (BoundsKey BK : InvalidatedBounds) {
     std::set<BoundsKey> Pred;
@@ -549,7 +585,8 @@ AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
     for (BoundsKey Seed : Pred) {
       if (Seed != 0 &&
           InvalidatedBounds.find(Seed) == InvalidatedBounds.end()) {
-        InfLBs[Seed] = Seed;
+        InfLBs[Seed] = InitLBs[Seed];
+        assert(InfLBs[Seed].find(Seed) != InfLBs[Seed].end());
         WorkList.push_back(Seed);
       }
     }
@@ -560,17 +597,32 @@ AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
   for (BoundsKey InvLB : InvalidatedBounds)
     WorkList.push_back(InvLB);
 
+  auto ChooseLowerBound = [this](BoundsKey Arr, const std::set<BoundsKey> &LBs) {
+    // If the pointer can be it's own lower bound, do that.
+    for (auto LB : LBs)
+      if (LB == Arr)
+        return Arr;
+
+    BoundsKey MergeLB = 0;
+    for (auto LB : LBs) {
+      const ProgramVarScope *LBScope = getProgramVarScope(LB);
+      const ProgramVarScope *MergeLBScope = getProgramVarScope(MergeLB);
+      if (isInAccessibleScope(Arr, LB) &&
+          (MergeLB == 0 || LBScope->isInInnerScope(*MergeLBScope)))
+        MergeLB = LB;
+    }
+    return MergeLB;
+  };
+
   std::set<BoundsKey> NeedFreshLB;
   std::set<BoundsKey> HasConflictingBounds;
   while (!WorkList.empty()) {
     BoundsKey BK = WorkList.front();
     WorkList.pop_front();
 
-    if (isEligibleForFreshLowerBound(BK) &&
-        (InfLBs.find(BK) == InfLBs.end() || InfLBs[BK] == 0)) {
-      // We've reached an array pointer in the work list that either has not been assigned a lower bound, or
+    if (isEligibleForFreshLowerBound(BK) && (InfLBs.find(BK) == InfLBs.end() || ChooseLowerBound(BK, InfLBs[BK]) == 0)) {
       assert(InvalidatedBounds.find(BK) != InvalidatedBounds.end());
-      InfLBs[BK] = getFreshLowerBound(BK);
+      InfLBs[BK].insert(getFreshLowerBound(BK));
       NeedFreshLB.insert(BK);
     }
 
@@ -581,25 +633,21 @@ AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
         if (InfLBs.find(S) == InfLBs.end()) {
           // No prior lower bound known for `S`. Initialize it to use the same
           // lower bound as `BK`.
-          if (isInAccessibleScope(S, InfLBs[BK])) {
-            InfLBs[S] = InfLBs[BK];
-          } else {
-            InfLBs[S] = 0;
-          }
+          InfLBs[S] = InfLBs[BK];
           WorkList.push_front(S);
         } else if (InfLBs[BK] != InfLBs[S]) {
           if (HasConflictingBounds.find(S) == HasConflictingBounds.end() &&
-              NeedFreshLB.find(S) != NeedFreshLB.end() &&
-              isInAccessibleScope(S, InfLBs[BK])) {
+              NeedFreshLB.find(S) != NeedFreshLB.end()) {
             NeedFreshLB.erase(S);
             InfLBs[S] = InfLBs[BK];
             WorkList.push_front(S);
           } else {
-            // If there is and existing lower bounds, it must be the same lower
-            // bound as `BK`. If it's not, invalidate the lower bound for `S`.
-            HasConflictingBounds.insert(S);
-            if (InfLBs[S] != 0) {
-              InfLBs[S] = 0;
+            std::set<BoundsKey> LBIntersection;
+            findIntersection(InfLBs[S], InfLBs[BK], LBIntersection);
+            if (LBIntersection.empty())
+              HasConflictingBounds.insert(S);
+            if (LBIntersection != InfLBs[S]) {
+              InfLBs[S] = LBIntersection;
               WorkList.push_front(S);
             }
           }
@@ -611,7 +659,11 @@ AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
   }
 
   NeedFreshLowerBounds = NeedFreshLB;
-  LowerBounds = InfLBs;
+  for (auto LBEntry : InfLBs) {
+    BoundsKey MergeLB = ChooseLowerBound(LBEntry.first, LBEntry.second);
+    if (MergeLB != 0)
+      LowerBounds[LBEntry.first] = MergeLB;
+  }
 }
 
 BoundsKey AVarBoundsInfo::getFreshLowerBound(BoundsKey Arr) {
