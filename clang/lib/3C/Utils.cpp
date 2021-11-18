@@ -624,8 +624,12 @@ SourceRange getDeclSourceRangeWithAnnotations(
 
   // Partial workaround for a compiler bug where if D has certain checked
   // pointer types such as `_Ptr<int *(void)>` (seen in the partial_checked.c
-  // regression test), D->getSourceRange() returns only the _Ptr token (TODO:
-  // file an issue). Always extend the range at least through the name (given by
+  // regression test), D->getSourceRange() returns only the _Ptr token. (As of
+  // this writing on 2021-11-18, no bug report has been filed against the
+  // compiler, but https://github.com/correctcomputation/checkedc-clang/pull/723
+  // tracks our work on the bug.)
+  //
+  // Always extend the range at least through the name (given by
   // D->getLocation()). That fixes the `_Ptr<int *(void)> x` case but not cases
   // with additional syntax after the name, such as `_Ptr<int *(void)> x[10]`.
   SourceLocation DeclLoc = D->getLocation();
