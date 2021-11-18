@@ -521,6 +521,23 @@ SourceLocation FunctionDeclReplacement::getDeclEnd(SourceManager &SM) const {
       (!End.isValid() || SM.isBeforeInTranslationUnit(End, AnnotationsEnd)))
     End = AnnotationsEnd;
 
+  // Functions attributes can appear after the the closing paren for the
+  // parameter list.
+  forEachAttribute(Decl, [&End, &SM, this](const clang::Attr *A) {
+    SourceLocation AttrEnd = A->getRange().getEnd();
+
+    llvm::Optional<Token> NextTok = Lexer::findNextToken(AttrEnd, SM,
+                                                         Decl->getLangOpts());
+
+    SourceLocation NewEnd = NextTok.hasValue() ? NextTok->getEndLoc()
+                                               : A->getRange().getEnd();
+    NewEnd = SM.getExpansionLoc(NewEnd);
+
+    if (!End.isValid() ||
+        (NewEnd.isValid() && SM.isBeforeInTranslationUnit(End, NewEnd)))
+      End = NewEnd;
+  });
+
   // SourceLocations are weird and turn up invalid for reasons I don't
   // understand. Fallback to extracting r paren location from source
   // character buffer.

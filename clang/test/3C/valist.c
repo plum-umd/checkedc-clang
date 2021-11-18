@@ -51,3 +51,16 @@ typedef void fuz(va_list, int *);
 /*force output*/
 int *p;
 //CHECK: _Ptr<int> p = ((void *)0);
+
+// This tests va_list correctness using windows builtins
+void ms_test_foo( const char *fmt, __builtin_ms_va_list argp);
+__attribute__((ms_abi)) int *ms_test_bar(const char *fmt, ...)  {
+//CHECK: __attribute__((ms_abi)) _Ptr<int> ms_test_bar(const char *fmt : itype(_Ptr<const char>), ...)  {
+  __builtin_ms_va_list argp;
+  __builtin_ms_va_start(argp, fmt);
+  //CHECK: __builtin_ms_va_start(argp, fmt);
+  ms_test_foo(fmt, argp);
+  __builtin_ms_va_end(argp);
+  //CHECK: __builtin_ms_va_end(argp);
+  return 0;
+}

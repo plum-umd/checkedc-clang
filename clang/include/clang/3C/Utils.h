@@ -103,6 +103,11 @@ getCheckedPointerKind(clang::InteropTypeExpr *ItypeExpr);
 
 std::string getStorageQualifierString(clang::Decl *D);
 
+void forEachAttribute(clang::Decl *D,
+                      llvm::function_ref<void(const clang::Attr *A)> F);
+
+std::string getAttributeString(clang::Decl *D);
+
 std::error_code tryGetCanonicalFilePath(const std::string &FileName,
                                         std::string &AbsoluteFp);
 

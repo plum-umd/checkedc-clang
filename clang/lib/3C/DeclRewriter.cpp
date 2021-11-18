@@ -188,7 +188,8 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
         if (VDLToStmtMap.find(D) != VDLToStmtMap.end())
           DS = VDLToStmtMap[D];
 
-        std::string NewTy = getStorageQualifierString(D);
+        std::string NewTy =
+          getAttributeString(D) + getStorageQualifierString(D);
         bool IsExternGlobalVar =
           isa<VarDecl>(D) &&
           cast<VarDecl>(D)->getFormalLinkage() == Linkage::ExternalLinkage;
@@ -625,7 +626,8 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
       this->buildDeclVar(CV, PVDecl, Type, IType,
                          PVDecl->getQualifiedNameAsString(), RewriteGeneric,
                          RewriteParams, RewriteReturn, FD->isStatic());
-      ParmStrs.push_back(Type + IType);
+      std::string AttrStr = getAttributeString(PVDecl);
+      ParmStrs.push_back(AttrStr + Type + IType);
       ProtoHasItype |= !IType.empty();
     }
   } else if (FDConstraint->numParams() != 0) {
@@ -700,6 +702,14 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
   //        corresponding definition.
   //        https://github.com/correctcomputation/checkedc-clang/issues/437
   if ((RewriteReturn || RewriteParams) && DeclIsTypedef) {
+    RewriteParams = true;
+    RewriteReturn = true;
+  }
+
+
+  std::string AttrStr = getAttributeString(FD);
+  if ((RewriteReturn || RewriteParams) && !AttrStr.empty()) {
+    ReturnVar = AttrStr + ReturnVar;
     RewriteParams = true;
     RewriteReturn = true;
   }

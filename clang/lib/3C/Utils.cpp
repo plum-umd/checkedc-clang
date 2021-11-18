@@ -15,6 +15,7 @@
 #include "clang/Sema/Sema.h"
 #include "llvm/Support/Path.h"
 #include <errno.h>
+#include <sstream>
 
 using namespace llvm;
 using namespace clang;
@@ -129,6 +130,39 @@ std::string getStorageQualifierString(Decl *D) {
     return storageClassToString(VD->getStorageClass());
   }
   return "";
+}
+
+void forEachAttribute(Decl *D, llvm::function_ref<void(const Attr *)> F) {
+  std::ostringstream AttrStr;
+  if (D->hasAttrs())
+    for (auto *A : D->getAttrs())
+      F(A);
+  if (auto *FD = dyn_cast<DeclaratorDecl>(D)) {
+    if (auto *TSInfo = FD->getTypeSourceInfo()) {
+      auto ATLoc = getBaseTypeLoc(
+        TSInfo->getTypeLoc()).getAs<AttributedTypeLoc>();
+      if (!ATLoc.isNull())
+        F(ATLoc.getAttr());
+    }
+  }
+}
+
+std::string getAttributeString(Decl *D) {
+  std::string AttrStr;
+  llvm::raw_string_ostream AttrStream(AttrStr);
+  forEachAttribute(D, [&AttrStream, D](const clang::Attr *A) {
+    A->printPretty(AttrStream, PrintingPolicy(D->getLangOpts()));
+  });
+  AttrStream.flush();
+
+  // Attr::printPretty puts a space before each attribute resulting in a space
+  // appearing before any attributes, and no space following the attributes.
+  // I need this to be the other way around.
+  if (!AttrStr.empty()) {
+    assert(AttrStr[0] == ' ');
+    return AttrStr.substr(1) + ' ';
+  }
+  return AttrStr;
 }
 
 bool isNULLExpression(clang::Expr *E, ASTContext &C) {
@@ -331,7 +365,6 @@ static bool castCheck(clang::QualType DstType, clang::QualType SrcType) {
   if (SrcPtrTypePtr || DstPtrTypePtr)
     return false;
 
-  // Check function cast by comparing parameter and return types individually.
   const auto *SrcFnType = dyn_cast<clang::FunctionProtoType>(SrcTypePtr);
   const auto *DstFnType = dyn_cast<clang::FunctionProtoType>(DstTypePtr);
   if (SrcFnType && DstFnType) {
@@ -459,6 +492,7 @@ TypeLoc getBaseTypeLoc(TypeLoc T) {
   assert(!T.isNull() && "Can't get base location from Null.");
   while (!T.getNextTypeLoc().isNull() &&
          (!T.getAs<ParenTypeLoc>().isNull() ||
+          !T.getAs<MacroQualifiedTypeLoc>().isNull() ||
           T.getTypePtr()->isPointerType() || T.getTypePtr()->isArrayType()))
     T = T.getNextTypeLoc();
   return T;
