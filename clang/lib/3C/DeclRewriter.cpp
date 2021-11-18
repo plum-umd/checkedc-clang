@@ -353,13 +353,8 @@ void DeclRewriter::rewriteMultiDecl(MultiDeclInfo &MDI, RSet &ToRewrite) {
           *Info.TheMultiDeclsInfo.getTypeStrOverride(A.getTagDeclType(TD).getTypePtr(), A);
       // This token should be the tag kind, e.g., `struct`.
       std::string ExistingToken = getSourceText(SourceRange(TD->getBeginLoc()), A);
-      if (ExistingToken == TD->getKindName()) {
+      if (NONFATAL_ASSERT_PLACEHOLDER(ExistingToken == TD->getKindName())) {
         rewriteSourceRange(R, TD->getBeginLoc(), NewTypeStr);
-      } else {
-        // TODO: We should probably report this as a rewrite failure diagnostic,
-        // which requires factoring out the code to get the correct severity
-        // based on -allow-rewrite-failures, etc.
-        llvm_unreachable("Failed to find place to insert assigned TagDecl name.");
       }
     }
     // Make a note if the TagDecl needs to be de-nested later.

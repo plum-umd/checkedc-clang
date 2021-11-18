@@ -80,8 +80,8 @@ static const Type *unelaborateType(const Type *Ty) {
     QualType QT = ETy->getNamedType();
     Ty = QT.getTypePtr();
     // Can an ElaboratedType add qualifiers to its underlying type in C? I don't
-    // think so, but if it does, make sure we don't silently lose them.
-    assert(QualType(Ty, 0) == QT);
+    // think so, but if it does, we don't want to silently lose them.
+    NONFATAL_ASSERT_PLACEHOLDER_UNUSED(QualType(Ty, 0) == QT);
   }
   return Ty;
 }
@@ -129,7 +129,11 @@ void ProgramMultiDeclsInfo::findMultiDecls(DeclContext *DC, ASTContext &Context)
 
           // Do we need to automatically name the TagDefToSplit?
           if (LastTagDef->getName().empty()) {
-            // REVIEW: Assert that we don't get here with isAnonymousStructOrUnion true?
+            // A RecordDecl that is declared as the type of one or more
+            // variables shouldn't be "anonymous", but if it somehow is, we
+            // don't want to try to give it a name.
+            NONFATAL_ASSERT_PLACEHOLDER_UNUSED(!(isa<RecordDecl>(LastTagDef) &&
+                cast<RecordDecl>(LastTagDef)->isAnonymousStructOrUnion()));
             TagDefPSL = PersistentSourceLoc::mkPSL(LastTagDef, Context);
             auto Iter = RenamedTagDefs.find(TagDefPSL);
             if (Iter != RenamedTagDefs.end())
@@ -151,8 +155,7 @@ void ProgramMultiDeclsInfo::findMultiDecls(DeclContext *DC, ASTContext &Context)
 
       std::string MemberName;
       if (TagDefNeedsName &&
-          // REVIEW: Can the name be empty? Should we assert that it isn't?
-          !(MemberName = std::string(MMD->getName())).empty()) {
+          NONFATAL_ASSERT_PLACEHOLDER(!(MemberName = std::string(MMD->getName())).empty())) {
         // Special case: If the first member of the multi-decl is a typedef
         // whose type is exactly the TagDecl type (`typedef struct { ... } T`),
         // then we refer to the TagDecl via that typedef. (The typedef must be the
@@ -173,7 +176,7 @@ void ProgramMultiDeclsInfo::findMultiDecls(DeclContext *DC, ASTContext &Context)
         QualType Underlying;
         if (CurrentMultiDecl->Members.size() == 1 &&
             (TyD = dyn_cast<TypedefDecl>(MMD)) != nullptr &&
-            // FIXME: This is a terrible mess. Figure out how we should be
+            // XXX: This is a terrible mess. Figure out how we should be
             // handling the difference between Type and QualType.
             !(Underlying = TyD->getUnderlyingType()).hasLocalQualifiers() &&
             QualType(unelaborateType(Underlying.getTypePtr()), 0) ==
@@ -240,8 +243,8 @@ ProgramMultiDeclsInfo::getTypeStrOverride(const Type *Ty, const ASTContext &C) {
       auto Iter = RenamedTagDefs.find(PSL);
       if (Iter != RenamedTagDefs.end())
         return Iter->second.AssignedTypeStr;
-      // REVIEW: Assert that we don't get here in writable code? We should have
-      // named all unnamed TagDecls in writable code.
+      // We should have named all unnamed TagDecls in writable code.
+      NONFATAL_ASSERT_PLACEHOLDER_UNUSED(!canWrite(PSL.getFileName()));
     }
   }
   return llvm::None;
@@ -280,12 +283,9 @@ bool ProgramMultiDeclsInfo::wasBaseTypeRenamed(Decl *D) {
   if (!MMD)
     return false;
   MultiDeclInfo *MDI = findContainingMultiDecl(MMD);
-  // REVIEW: We expect to have a MultiDeclInfo for every MultiDeclMemberDecl in
-  // the program. If MDI is null, do we want to assert or at least log an error
-  // of some kind? This might be a good opportunity to add a new "non-fatal
-  // assertion" mechanism to 3C so that any unexpected conditions cause our
-  // tests to fail but end users can downgrade the failures to warnings to
-  // unblock themselves (at the risk of incorrect output that has to be fixed
-  // manually).
-  return (MDI && MDI->BaseTypeRenamed);
+  // We expect to have a MultiDeclInfo for every MultiDeclMemberDecl in the
+  // program.
+  if (!NONFATAL_ASSERT_PLACEHOLDER(MDI))
+    return false;
+  return MDI->BaseTypeRenamed;
 }

@@ -265,4 +265,20 @@ inline const clang::DiagnosticBuilder &operator<<(
   return DB;
 }
 
+// Marker for conditions that we might want to make into non-fatal assertions
+// once we have an API design for them
+// (https://github.com/correctcomputation/checkedc-clang/issues/745). An inline
+// function would work just as well, but macros have an LLVM naming convention
+// and syntax highlighting that make call sites easier to read, in Matt's
+// opinion.
+#define NONFATAL_ASSERT_PLACEHOLDER(_cond) (_cond)
+
+// Variant for conditions that the caller doesn't actually test because no
+// separate recovery path is currently implemented. We want to check that the
+// condition compiles but not evaluate it at runtime (until non-fatal assertions
+// are actually implemented, and then only when assertions are enabled in the
+// build configuration), and we don't want "unused code" compiler warnings.
+// TODO: Is there a better way to achieve this?
+#define NONFATAL_ASSERT_PLACEHOLDER_UNUSED(_cond) ((void)sizeof(_cond))
+
 #endif
