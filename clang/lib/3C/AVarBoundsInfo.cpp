@@ -553,15 +553,13 @@ AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
     auto InsertLB = [this, &FoundNewLB, &InitLBs, CurrArrKey](BoundsKey LB) {
       bool IsValidLowerBound =
         ArrPointerBoundsKey.find(LB) != ArrPointerBoundsKey.end() &&
-        InvalidBounds.find(LB) == InvalidBounds.end() &&
         InvalidatedBounds.find(LB) == InvalidatedBounds.end();
       if (IsValidLowerBound)
         if (InitLBs[CurrArrKey].insert(LB).second)
           FoundNewLB = true;
     };
 
-    if (InvalidatedBounds.find(CurrArrKey) == InvalidatedBounds.end() &&
-        InvalidBounds.find(CurrArrKey) == InvalidBounds.end()) {
+    if (InvalidatedBounds.find(CurrArrKey) == InvalidatedBounds.end()) {
       std::set<BoundsKey> PredKeys;
       InvalidationGraph.getPredecessors(CurrArrKey, PredKeys, true);
 
@@ -586,7 +584,6 @@ AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
       if (Seed != 0 &&
           InvalidatedBounds.find(Seed) == InvalidatedBounds.end()) {
         InfLBs[Seed] = InitLBs[Seed];
-        assert(InfLBs[Seed].find(Seed) != InfLBs[Seed].end());
         WorkList.push_back(Seed);
       }
     }
