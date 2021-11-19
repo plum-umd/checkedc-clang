@@ -265,13 +265,11 @@ void DeclRewriter::denestTagDecls() {
     std::string DefinitionStr = R.getRewrittenText(CSR);
     // Delete the definition from the old location.
     rewriteSourceRange(R, CSR, "");
-    // We want to find the nearest ancestor DeclContext of TD that is _not_ a
-    // TagDecl and make TD a child of that DeclContext (named `Parent` below),
-    // just before the child `TopTagDecl` of `Parent` of which TD was originally
-    // a descendant.
+    // We want to find the highest ancestor DeclContext of TD that is a TagDecl
+    // (call it TopTagDecl) and insert TD just before TopTagDecl.
     //
-    // As of this writing, it seems that if TD is named, we get
-    // `Parent == TD->getDeclContext()` due to the code at
+    // As of this writing, it seems that if TD is named, `TD->getDeclContext()`
+    // returns the parent of TopTagDecl due to the code at
     // https://github.com/correctcomputation/checkedc-clang/blob/fd4d8af4383d40af10ee8bc92b7bf88061a11035/clang/lib/Sema/SemaDecl.cpp#L16980-L16981,
     // But that code doesn't run if TD is unnamed (which makes some sense
     // because name visibility isn't an issue for TagDecls that have no name),
@@ -452,7 +450,8 @@ void DeclRewriter::rewriteMultiDecl(MultiDeclInfo &MDI, RSet &ToRewrite) {
           getDeclSourceRangeWithAnnotations(DL, /*IncludeInitializer=*/true);
       SourceRange Comma = getNextComma(SkipSR.getEnd());
       rewriteSourceRange(R, Comma, ";\n");
-      // Offset by one to skip past what we've just added so it isn't overwritten.
+      // Offset by one to skip past what we've just added so it isn't
+      // overwritten.
       PrevEnd = Comma.getEnd().getLocWithOffset(1);
     }
   }

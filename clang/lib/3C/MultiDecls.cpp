@@ -162,9 +162,9 @@ void ProgramMultiDeclsInfo::findMultiDecls(DeclContext *DC,
               !(MemberName = std::string(MMD->getName())).empty())) {
         // Special case: If the first member of the multi-decl is a typedef
         // whose type is exactly the TagDecl type (`typedef struct { ... } T`),
-        // then we refer to the TagDecl via that typedef. (The typedef must be the
-        // first member so that it is defined in time for other members to refer
-        // to it.)
+        // then we refer to the TagDecl via that typedef. (The typedef must be
+        // the first member so that it is defined in time for other members to
+        // refer to it.)
         //
         // An argument could be made for using the typedef name in the types of
         // other multi-decl members even if the TagDecl has a name:

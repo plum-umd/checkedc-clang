@@ -1,6 +1,3 @@
-// 3C no longer has incomplete handling of inline structs behind the -alltypes
-// flag, so we can test compilation with -alltypes as well as without it.
-
 // RUN: rm -rf %t*
 // RUN: 3c -base-dir=%S -alltypes -addcr %s -- | FileCheck -match-full-lines -check-prefixes="CHECK_ALL","CHECK" %s
 // RUN: 3c -base-dir=%S -alltypes -addcr %s -- | %clang -c -fcheckedc-extension -x c -o /dev/null -
@@ -112,8 +109,7 @@ struct alpha *al[4];
 //CHECK_NOALL: struct alpha *al[4];
 //CHECK_ALL: _Ptr<struct alpha> al _Checked[4] = {((void *)0)};
 
-// The anonymous struct no longer blocks `be` from being converted, but we
-// still need -alltypes for the array.
+// A similar test with an unnamed struct.
 struct {
   int *a;
   //CHECK: _Ptr<int> a;
@@ -140,10 +136,7 @@ void foo2(int *x) {
   //CHECK-NEXT: };
   //CHECK-NEXT: _Ptr<struct bar> y = 0;
 
-  // Now that the multi-decl rewriter supports struct splitting in all cases, we
-  // no longer constrain struct fields wild in an attempt to avoid needing to
-  // add an initializer to non-pointer variables of the struct type and thereby
-  // triggering rewriting.
+  // A similar test with an automatically added struct initializer.
   struct something {
     int *x;
   } z;

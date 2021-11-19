@@ -53,9 +53,6 @@ private:
   // to that Decl. ToRewrite is the set of all declarations to rewrite.
   void rewrite(RSet &ToRewrite);
 
-  // Rewrite a specific variable declaration using the replacement string in the
-  // DAndReplace structure. Each of these functions is specialized to handling
-  // one subclass of declarations.
   void rewriteMultiDecl(MultiDeclInfo &MDI, RSet &ToRewrite);
   void doDeclRewrite(SourceRange &SR, DeclReplacement *N);
   void rewriteFunctionDecl(FunctionDeclReplacement *N);

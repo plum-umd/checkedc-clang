@@ -25,10 +25,6 @@
 // demonstrating that unchanged multi-decl members whose base type wasn't
 // renamed use Decl::print (which doesn't have this bug).
 //
-// `m_force_rewrite` gets converted and forces the
-// multi-decl to be broken up even though nothing else changes when -alltypes is
-// off.
-//
 // `m_implicit_itype` and `m_change_with_bounds` together test that 3C includes
 // Checked C annotations in the range to be replaced (for both changed and
 // unchanged multi-decl members) rather than leaving them to duplicate the
@@ -39,6 +35,9 @@ int m_const_arr0[10], *m_const_arr1[10], (*m_p_const_arr_wild)[10] = 1,
 //CHECK_ALL:   int m_const_arr0 _Checked[10];
 //CHECK_NOALL: int m_const_arr0[10];
 //CHECK_ALL:   _Ptr<int> m_const_arr1 _Checked[10] = {((void *)0)};
+// The reason this isn't `_Ptr<int> m_const_arr1[10]` is probably the "outer
+// wild -> inner wild" constraint
+// (https://github.com/correctcomputation/checkedc-clang/issues/656).
 //CHECK_NOALL: int *m_const_arr1[10];
 //CHECK:       int (*m_p_const_arr_wild)[10] = 1;
 //CHECK_ALL:   _Ptr<int _Checked[10]> m_p_const_arr_chk = ((void *)0);
@@ -80,9 +79,6 @@ struct { int *x; } s, s_const_arr0[10], *s_const_arr1[10],
 //CHECK_ALL:   struct s_struct_1 s_const_arr0 _Checked[10];
 //CHECK_NOALL: struct s_struct_1 s_const_arr0[10];
 //CHECK_ALL:   _Ptr<struct s_struct_1> s_const_arr1 _Checked[10] = {((void *)0)};
-// The reason this isn't `_Ptr<struct s_struct_1>` is probably the "outer wild
-// -> inner wild" constraint
-// (https://github.com/correctcomputation/checkedc-clang/issues/656).
 //CHECK_NOALL: struct s_struct_1 *s_const_arr1[10];
 // Like with m_implicit_itype above, 3C treats s_implicit_itype as having type
 // _Array_ptr<struct s_struct_1>, but now 3C uses mkString and that type
