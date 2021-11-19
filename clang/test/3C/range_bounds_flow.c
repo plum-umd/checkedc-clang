@@ -91,6 +91,13 @@ void test6() {
   c[0];
 }
 
+// Lower bound is inferred from pointer with an declared count bound.
+void test7(int *a : count(l), int dummy, int l) {
+  int *b = a;
+  // CHECK_ALL: _Array_ptr<int> b : bounds(a, a + l) = a;
+  b++;
+}
+
 // Context sensitive edges should not cause `c` to be a lower bound for `b`.
 void test(int *a){ a[0]; }
 void other(){
