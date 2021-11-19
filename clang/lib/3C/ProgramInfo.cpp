@@ -1161,8 +1161,8 @@ bool ProgramInfo::seenTypedef(PersistentSourceLoc PSL) {
   return TypedefVars.count(PSL) != 0;
 }
 
-void ProgramInfo::addTypedef(PersistentSourceLoc PSL,
-                             TypedefDecl *TD, ASTContext &C) {
+void ProgramInfo::addTypedef(PersistentSourceLoc PSL, TypedefDecl *TD,
+                             ASTContext &C) {
   ConstraintVariable *V = nullptr;
   if (isa<clang::FunctionType>(TD->getUnderlyingType()))
     V = new FunctionVariableConstraint(TD, *this, C);

@@ -57,7 +57,8 @@ void DeclRewriter::buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
   // (https://github.com/correctcomputation/checkedc-clang/issues/705)?
   bool IsCheckedTypedef = Defn->isTypedef() && !IsUncheckedTypedef;
 
-  bool BaseTypeRenamed = Decl && Info.TheMultiDeclsInfo.wasBaseTypeRenamed(Decl);
+  bool BaseTypeRenamed =
+      Decl && Info.TheMultiDeclsInfo.wasBaseTypeRenamed(Decl);
 
   // It should in principle be possible to always generate the unchecked portion
   // of the itype by going through mkString. However, mkString has bugs that
@@ -143,8 +144,8 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
                 getStorageQualifierString(D) +
                 Var.mkString(Info.getConstraints(),
                              MKSTRING_OPTS(UnmaskTypedef = true));
-            RewriteThese.insert(std::make_pair(
-                TD, new MultiDeclMemberReplacement(TD, NewTy)));
+            RewriteThese.insert(
+                std::make_pair(TD, new MultiDeclMemberReplacement(TD, NewTy)));
           }
         }
       }
@@ -188,7 +189,8 @@ void DeclRewriter::rewriteDecls(ASTContext &Context, ProgramInfo &Info,
         MultiDeclMemberDecl *MMD = getAsMultiDeclMember(D);
         assert(MMD && "Unrecognized declaration type.");
         std::string ReplacementText = mkStringForPVDecl(MMD, PV, Info);
-        RewriteThese.insert(std::make_pair(MMD, new MultiDeclMemberReplacement(MMD, ReplacementText)));
+        RewriteThese.insert(std::make_pair(
+            MMD, new MultiDeclMemberReplacement(MMD, ReplacementText)));
       }
     }
   }
@@ -216,7 +218,8 @@ void DeclRewriter::rewrite(RSet &ToRewrite) {
 
     // Exact rewriting procedure depends on declaration type
     if (auto *MR = dyn_cast<MultiDeclMemberReplacement>(N)) {
-      MultiDeclInfo *MDI = Info.TheMultiDeclsInfo.findContainingMultiDecl(MR->getDecl());
+      MultiDeclInfo *MDI =
+          Info.TheMultiDeclsInfo.findContainingMultiDecl(MR->getDecl());
       assert("Missing MultiDeclInfo for multi-decl member" && MDI);
       // A multi-decl can only be rewritten as a unit. If at least one member
       // needs rewriting, then the first MultiDeclMemberReplacement in iteration
@@ -342,17 +345,20 @@ void DeclRewriter::rewriteMultiDecl(MultiDeclInfo &MDI, RSet &ToRewrite) {
     // We use `getCharRange` to get a range that excludes the first token of TD,
     // unlike the default conversion of a SourceRange to a "token range", which
     // would include it.
-    rewriteSourceRange(R, CharSourceRange::getCharRange(
-                          MDI.Members[0]->getBeginLoc(), TD->getBeginLoc()), "");
+    rewriteSourceRange(R,
+                       CharSourceRange::getCharRange(
+                           MDI.Members[0]->getBeginLoc(), TD->getBeginLoc()),
+                       "");
     if (TD->getName().empty()) {
       // If the record is unnamed, insert the name that we assigned it:
       // `struct {` -> `struct T {`
       PersistentSourceLoc PSL = PersistentSourceLoc::mkPSL(TD, A);
       // This will assert if we can't find the new name. Is that what we want?
-      std::string NewTypeStr =
-          *Info.TheMultiDeclsInfo.getTypeStrOverride(A.getTagDeclType(TD).getTypePtr(), A);
+      std::string NewTypeStr = *Info.TheMultiDeclsInfo.getTypeStrOverride(
+          A.getTagDeclType(TD).getTypePtr(), A);
       // This token should be the tag kind, e.g., `struct`.
-      std::string ExistingToken = getSourceText(SourceRange(TD->getBeginLoc()), A);
+      std::string ExistingToken =
+          getSourceText(SourceRange(TD->getBeginLoc()), A);
       if (NONFATAL_ASSERT_PLACEHOLDER(ExistingToken == TD->getKindName())) {
         rewriteSourceRange(R, TD->getBeginLoc(), NewTypeStr);
       }
@@ -385,7 +391,8 @@ void DeclRewriter::rewriteMultiDecl(MultiDeclInfo &MDI, RSet &ToRewrite) {
     // before the initializer to avoid interfering with any other rewrites
     // that 3C needs to make inside the initializer expression
     // (https://github.com/correctcomputation/checkedc-clang/issues/267).
-    SourceRange ReplaceSR = getDeclSourceRangeWithAnnotations(DL, /*IncludeInitializer=*/false);
+    SourceRange ReplaceSR =
+        getDeclSourceRangeWithAnnotations(DL, /*IncludeInitializer=*/false);
 
     // Look for a declaration replacement object for the current declaration.
     MultiDeclMemberReplacement *Replacement = nullptr;
@@ -441,7 +448,8 @@ void DeclRewriter::rewriteMultiDecl(MultiDeclInfo &MDI, RSet &ToRewrite) {
     if (!IsLast) {
       // This differs from ReplaceSR in that we want to advance past the entire
       // multi-decl member, _including_ any existing initializer.
-      SourceRange SkipSR = getDeclSourceRangeWithAnnotations(DL, /*IncludeInitializer=*/true);
+      SourceRange SkipSR =
+          getDeclSourceRangeWithAnnotations(DL, /*IncludeInitializer=*/true);
       SourceRange Comma = getNextComma(SkipSR.getEnd());
       rewriteSourceRange(R, Comma, ";\n");
       // Offset by one to skip past what we've just added so it isn't overwritten.

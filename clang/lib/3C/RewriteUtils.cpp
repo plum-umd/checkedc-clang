@@ -21,8 +21,7 @@
 using namespace llvm;
 using namespace clang;
 
-std::string mkStringForPVDecl(MultiDeclMemberDecl *MMD,
-                              PVConstraint *PVC,
+std::string mkStringForPVDecl(MultiDeclMemberDecl *MMD, PVConstraint *PVC,
                               ProgramInfo &Info) {
   // Currently, it's cheap to keep recreating the ArrayBoundsRewriter. If that
   // ceases to be true, we should pass it along as another argument.
@@ -31,8 +30,7 @@ std::string mkStringForPVDecl(MultiDeclMemberDecl *MMD,
   bool IsExternGlobalVar =
       isa<VarDecl>(MMD) &&
       cast<VarDecl>(MMD)->getFormalLinkage() == Linkage::ExternalLinkage;
-  if (_3COpts.ItypesForExtern &&
-      (isa<FieldDecl>(MMD) || IsExternGlobalVar) &&
+  if (_3COpts.ItypesForExtern && (isa<FieldDecl>(MMD) || IsExternGlobalVar) &&
       // isSolutionChecked can return false here when splitting out an unchanged
       // multi-decl member.
       PVC->isSolutionChecked(Info.getConstraints().getVariables())) {
@@ -484,7 +482,8 @@ private:
 };
 
 SourceRange DeclReplacement::getSourceRange(SourceManager &SM) const {
-  return getDeclSourceRangeWithAnnotations(getDecl(), /*IncludeInitializer=*/false);
+  return getDeclSourceRangeWithAnnotations(getDecl(),
+                                           /*IncludeInitializer=*/false);
 }
 
 SourceRange FunctionDeclReplacement::getSourceRange(SourceManager &SM) const {

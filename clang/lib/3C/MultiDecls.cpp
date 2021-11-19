@@ -86,7 +86,8 @@ static const Type *unelaborateType(const Type *Ty) {
   return Ty;
 }
 
-void ProgramMultiDeclsInfo::findMultiDecls(DeclContext *DC, ASTContext &Context) {
+void ProgramMultiDeclsInfo::findMultiDecls(DeclContext *DC,
+                                           ASTContext &Context) {
   // This will automatically create a new, empty map for the TU if needed.
   TUMultiDeclsInfo &TUInfo = TUInfos[&Context];
   TagDecl *LastTagDef = nullptr;
@@ -108,7 +109,8 @@ void ProgramMultiDeclsInfo::findMultiDecls(DeclContext *DC, ASTContext &Context)
       LastTagDef = TagD;
     }
     if (MultiDeclMemberDecl *MMD = getAsMultiDeclMember(D)) {
-      if (CurrentMultiDecl == nullptr || MMD->getBeginLoc() != CurrentBeginLoc) {
+      if (CurrentMultiDecl == nullptr ||
+          MMD->getBeginLoc() != CurrentBeginLoc) {
         // We are starting a new multi-decl.
         CurrentBeginLoc = MMD->getBeginLoc();
         CurrentMultiDecl = &TUInfo.MultiDeclsByBeginLoc[CurrentBeginLoc];
@@ -132,8 +134,9 @@ void ProgramMultiDeclsInfo::findMultiDecls(DeclContext *DC, ASTContext &Context)
             // A RecordDecl that is declared as the type of one or more
             // variables shouldn't be "anonymous", but if it somehow is, we
             // don't want to try to give it a name.
-            NONFATAL_ASSERT_PLACEHOLDER_UNUSED(!(isa<RecordDecl>(LastTagDef) &&
-                cast<RecordDecl>(LastTagDef)->isAnonymousStructOrUnion()));
+            NONFATAL_ASSERT_PLACEHOLDER_UNUSED(
+                !(isa<RecordDecl>(LastTagDef) &&
+                  cast<RecordDecl>(LastTagDef)->isAnonymousStructOrUnion()));
             TagDefPSL = PersistentSourceLoc::mkPSL(LastTagDef, Context);
             auto Iter = RenamedTagDefs.find(TagDefPSL);
             if (Iter != RenamedTagDefs.end())
@@ -155,7 +158,8 @@ void ProgramMultiDeclsInfo::findMultiDecls(DeclContext *DC, ASTContext &Context)
 
       std::string MemberName;
       if (TagDefNeedsName &&
-          NONFATAL_ASSERT_PLACEHOLDER(!(MemberName = std::string(MMD->getName())).empty())) {
+          NONFATAL_ASSERT_PLACEHOLDER(
+              !(MemberName = std::string(MMD->getName())).empty())) {
         // Special case: If the first member of the multi-decl is a typedef
         // whose type is exactly the TagDecl type (`typedef struct { ... } T`),
         // then we refer to the TagDecl via that typedef. (The typedef must be the
@@ -191,7 +195,7 @@ void ProgramMultiDeclsInfo::findMultiDecls(DeclContext *DC, ASTContext &Context)
           // If `foo_struct_1` is already taken, use `foo_struct_2`, etc.
           std::string KindName = std::string(LastTagDef->getKindName());
           std::string NewName;
-          for (int Num = 1; ; Num++) {
+          for (int Num = 1;; Num++) {
             NewName = MemberName + "_" + KindName + "_" + std::to_string(Num);
             if (UsedTagNames.find(NewName) == UsedTagNames.end())
               break;
@@ -261,7 +265,8 @@ ProgramMultiDeclsInfo::findContainingMultiDecl(MultiDeclMemberDecl *MMD) {
   MultiDeclInfo &MDI = It->second;
   // Hope we don't have multi-decls with so many members that this becomes a
   // performance problem.
-  if (std::find(MDI.Members.begin(), MDI.Members.end(), MMD) != MDI.Members.end())
+  if (std::find(MDI.Members.begin(), MDI.Members.end(), MMD) !=
+      MDI.Members.end())
     return &MDI;
   return nullptr;
 }

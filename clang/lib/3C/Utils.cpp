@@ -606,8 +606,8 @@ SourceLocation getCheckedCAnnotationsEnd(const Decl *D) {
   return End;
 }
 
-SourceRange getDeclSourceRangeWithAnnotations(
-    const clang::Decl *D, bool IncludeInitializer) {
+SourceRange getDeclSourceRangeWithAnnotations(const clang::Decl *D,
+                                              bool IncludeInitializer) {
   SourceManager &SM = D->getASTContext().getSourceManager();
   SourceRange SR;
   const VarDecl *VD;

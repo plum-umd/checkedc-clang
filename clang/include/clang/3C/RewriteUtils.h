@@ -39,8 +39,7 @@ public:
   virtual ~DeclReplacement() {}
 
 protected:
-  explicit DeclReplacement(std::string R, DRKind K)
-      : Replacement(R), Kind(K) {}
+  explicit DeclReplacement(std::string R, DRKind K) : Replacement(R), Kind(K) {}
 
   // The string to replace the declaration with.
   std::string Replacement;
@@ -101,8 +100,7 @@ typedef std::map<Decl *, DeclReplacement *> RSet;
 // ItypesForExtern. Does not include a trailing semicolon or an initializer, so
 // it can be used in combination with getDeclSourceRangeWithAnnotations with
 // IncludeInitializer = false to preserve an existing initializer.
-std::string mkStringForPVDecl(MultiDeclMemberDecl *MMD,
-                              PVConstraint *PVC,
+std::string mkStringForPVDecl(MultiDeclMemberDecl *MMD, PVConstraint *PVC,
                               ProgramInfo &Info);
 
 // Generate a string like mkStringForPVDecl, but for a declaration whose type is

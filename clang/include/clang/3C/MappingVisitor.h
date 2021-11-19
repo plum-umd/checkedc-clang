@@ -30,9 +30,7 @@ public:
 
   bool VisitDecl(clang::Decl *D);
 
-  const SourceToDeclMapType &getResults() {
-    return PSLtoSDT;
-  }
+  const SourceToDeclMapType &getResults() { return PSLtoSDT; }
 
 private:
   // A map from a PersistentSourceLoc to a Decl at that location.

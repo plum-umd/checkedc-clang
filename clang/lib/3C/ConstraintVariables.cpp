@@ -538,11 +538,9 @@ PointerVariableConstraint::PointerVariableConstraint(
   }
 }
 
-std::string PointerVariableConstraint::tryExtractBaseType(MultiDeclMemberDecl *D,
-                                                          TypeSourceInfo *TSI,
-                                                          QualType QT,
-                                                          const Type *Ty,
-                                                          const ASTContext &C) {
+std::string PointerVariableConstraint::tryExtractBaseType(
+    MultiDeclMemberDecl *D, TypeSourceInfo *TSI, QualType QT, const Type *Ty,
+    const ASTContext &C) {
   // Implicit parameters declarations from typedef function declarations will
   // still have valid and non-empty source ranges, but implicit declarations
   // aren't written in the source, so extracting the base type from this range
@@ -583,14 +581,11 @@ std::string PointerVariableConstraint::tryExtractBaseType(MultiDeclMemberDecl *D
   return "";
 }
 
-std::string PointerVariableConstraint::extractBaseType(MultiDeclMemberDecl *D,
-                                                       TypeSourceInfo *TSI,
-                                                       QualType QT,
-                                                       const Type *Ty,
-                                                       const ASTContext &C,
-                                                       ProgramInfo &Info) {
+std::string PointerVariableConstraint::extractBaseType(
+    MultiDeclMemberDecl *D, TypeSourceInfo *TSI, QualType QT, const Type *Ty,
+    const ASTContext &C, ProgramInfo &Info) {
   if (llvm::Optional<std::string> TypeStrOverride =
-      Info.TheMultiDeclsInfo.getTypeStrOverride(Ty, C))
+          Info.TheMultiDeclsInfo.getTypeStrOverride(Ty, C))
     return *TypeStrOverride;
 
   std::string BaseTypeStr = tryExtractBaseType(D, TSI, QT, Ty, C);

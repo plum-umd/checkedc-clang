@@ -235,8 +235,8 @@ clang::SourceLocation getCheckedCAnnotationsEnd(const clang::Decl *D);
 // interfering with other rewrites inside an existing initializer
 // (https://github.com/correctcomputation/checkedc-clang/issues/267). If the
 // declaration has no initializer, then IncludeInitializer has no effect.
-clang::SourceRange getDeclSourceRangeWithAnnotations(
-    const clang::Decl *D, bool IncludeInitializer);
+clang::SourceRange getDeclSourceRangeWithAnnotations(const clang::Decl *D,
+                                                     bool IncludeInitializer);
 
 // Shortcut for the getCustomDiagID + Report sequence to report a custom
 // diagnostic as we currently do in 3C.

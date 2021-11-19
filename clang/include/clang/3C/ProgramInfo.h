@@ -35,8 +35,8 @@ public:
 
   virtual bool seenTypedef(PersistentSourceLoc PSL) = 0;
 
-  virtual void addTypedef(PersistentSourceLoc PSL,
-                          TypedefDecl *TD, ASTContext &C) = 0;
+  virtual void addTypedef(PersistentSourceLoc PSL, TypedefDecl *TD,
+                          ASTContext &C) = 0;
 
 protected:
   virtual AVarBoundsInfo &getABoundsInfo() = 0;
