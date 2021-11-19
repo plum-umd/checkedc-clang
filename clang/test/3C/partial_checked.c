@@ -69,11 +69,11 @@ void test4() {
 // rewrite, which had the side effect of working around the bug for all
 // variables with an initializer (such as `m` above). Any variable with an
 // affected type and no initializer would trigger the bug; apparently we never
-// noticed because 3C unnecessarily adds initializers to global variables (TODO:
-// file an issue specifically about that). Now, for uniformity, 3C always uses
-// DeclaratorDecl::getSourceRange to get the range excluding any initializer, so
-// it needs a workaround specifically for the bug. See
-// getDeclSourceRangeWithAnnotations for more information.
+// noticed because 3C unnecessarily adds initializers to global variables
+// (https://github.com/correctcomputation/checkedc-clang/issues/741). Now, for
+// uniformity, 3C always uses DeclaratorDecl::getSourceRange to get the range
+// excluding any initializer, so it needs a workaround specifically for the bug.
+// See getDeclSourceRangeWithAnnotations for more information.
 _Ptr<int *(void)> gm;
 // CHECK: _Ptr<_Ptr<int> (void)> gm = ((void *)0);
 

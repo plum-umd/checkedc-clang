@@ -37,12 +37,13 @@ std::string mkStringForPVDecl(MultiDeclMemberDecl *MMD,
       // multi-decl member.
       PVC->isSolutionChecked(Info.getConstraints().getVariables())) {
     // Give record fields and global variables itypes when using
-    // -itypes-for-extern. Note that we haven't properly implemented
-    // itypes for structures and globals. This just rewrites to an itype
-    // instead of a fully checked type when a checked type could have been
-    // used. This does provide most of the rewriting infrastructure that
-    // would be required to support these itypes if constraint generation
-    // is updated to handle structure/global itypes.
+    // -itypes-for-extern. Note that we haven't properly implemented itypes for
+    // structures and globals
+    // (https://github.com/correctcomputation/checkedc-clang/issues/744). This
+    // just rewrites to an itype instead of a fully checked type when a checked
+    // type could have been used. This does provide most of the rewriting
+    // infrastructure that would be required to support these itypes if
+    // constraint generation is updated to handle structure/global itypes.
     std::string Type, IType;
     // VarDecl and FieldDecl subclass DeclaratorDecl, so the cast will
     // always succeed.
