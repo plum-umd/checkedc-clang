@@ -86,6 +86,7 @@ void CtxSensitiveBoundsKeyHandler::createCtxSensBoundsKey(
   ProgramVar *CKVar = ABI->getProgramVar(OK);
   if (CBMap.find(OK) == CBMap.end()) {
     BoundsKey NK = ++(ABI->BCount);
+    //ABI->IneligibleForRangeBounds.insert(NK);
     insertCtxSensBoundsKey(CKVar, NK, NPS);
     CBMap[OK] = NK;
     // Next duplicate the Bounds information.

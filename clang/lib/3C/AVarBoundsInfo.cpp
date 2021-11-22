@@ -561,12 +561,8 @@ AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
 
   std::set<BoundsKey> NeedFreshLB;
   std::set<BoundsKey> HasConflictingBounds;
-  int MinSize = WorkList.size();
   while (!WorkList.empty()) {
-    if (WorkList.size() < MinSize) {
-      llvm::errs() << WorkList.size() << "\n";
-      MinSize = WorkList.size();
-   }
+    llvm::errs() << WorkList.size() << "\n";
     BoundsKey BK = WorkList.front();
     WorkList.pop_front();
 
@@ -591,11 +587,11 @@ AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
             InfLBs[S] = 0;
           }
           WorkList.push_front(S);
-        } else if (InfLBs[BK] != InfLBs[S]) {
-          if (HasConflictingBounds.find(S) == HasConflictingBounds.end() &&
-              NeedFreshLB.find(S) != NeedFreshLB.end() &&
+        } else if (InfLBs[BK] != InfLBs[S] &&
+                   HasConflictingBounds.find(S) == HasConflictingBounds.end()) {
+          HasConflictingBounds.insert(S);
+          if (NeedFreshLB.find(S) != NeedFreshLB.end() &&
               isInAccessibleScope(S, InfLBs[BK])) {
-            HasConflictingBounds.insert(S);
             NeedFreshLB.erase(S);
             BoundsKey SLB = InfLBs[S];
             InvalidationGraph.visitBreadthFirst(S, [this, SLB, &InfLBs, &WorkList](BoundsKey BK) {
@@ -609,15 +605,11 @@ AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
                 }
               }
             });
-            //WorkList.push_back(S);
-          } else {
+          } else if (InfLBs[S] != 0) {
             // If there is and existing lower bounds, it must be the same lower
             // bound as `BK`. If it's not, invalidate the lower bound for `S`.
-            HasConflictingBounds.insert(S);
-            if (InfLBs[S] != 0) {
-              InfLBs[S] = 0;
-              WorkList.push_back(S);
-            }
+            InfLBs[S] = 0;
+            WorkList.push_back(S);
           }
         }
         // Otherwise, the a lower bound exists for `S`, and it's the same lower

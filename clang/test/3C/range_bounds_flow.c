@@ -4,8 +4,6 @@
 // RUN: 3c -base-dir=%S -alltypes -output-dir=%t.checked %s --
 // RUN: 3c -base-dir=%t.checked -alltypes %t.checked/range_bounds_flow.c -- | diff %t.checked/range_bounds_flow.c -
 
-// expected-no-diagnostics
-
 // `a` is inferred as the lower bound for `b` and `c`.
 void test1() {
   int *a;
@@ -99,17 +97,32 @@ void test7(int *a : count(l), int dummy, int l) {
 }
 
 // Context sensitive edges should not cause `c` to be a lower bound for `b`.
-void test(int *a){ a[0]; }
-void other(){
+void testx(int *a){ a[0]; }
+void otherxx(){
   int *b;
   int *c;
   //CHECK_ALL: _Array_ptr<int> __3c_tmp_b : count(0 + 1) = ((void *)0);
   //CHECK_ALL: _Array_ptr<int> b : bounds(__3c_tmp_b, __3c_tmp_b + 0 + 1) = __3c_tmp_b;
   //CHECK_ALL: _Array_ptr<int> c : count(0 + 1) = ((void *)0);
 
-  test(b);
-  test(c);
+  testx(b);
+  testx(c);
   b[0];
   c[0];
   b++;
+}
+
+struct structy { int *b; };
+// CHECK_ALL: struct structy { _Array_ptr<int> b; };
+void testy(struct structy d) {
+  // expected-error@+2 {{inferred bounds for '__3c_tmp_e' are unknown after initialization}}
+  // expected-note@+1 {{}}
+  int *e = d.b;
+  // CHECK_ALL: _Array_ptr<int> __3c_tmp_e : count(0 + 1) = d.b;
+  // CHECK_ALL: _Array_ptr<int> e : bounds(__3c_tmp_e, __3c_tmp_e + 0 + 1) = __3c_tmp_e;
+
+  d.b = e;
+  e++;
+
+  e[0];
 }
