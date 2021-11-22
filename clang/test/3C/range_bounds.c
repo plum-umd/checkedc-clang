@@ -120,8 +120,10 @@ void test6() {
   // CHECK_ALL: __3c_tmp_p = 0, p = __3c_tmp_p;
 
   // A slightly more complex update to a different pointer value.
-  p = malloc(10 * sizeof(int));
-  // CHECK_ALL: __3c_tmp_p = malloc<int>(10 * sizeof(int)), p = __3c_tmp_p;
+  int *q = malloc(10 * sizeof(int));
+  p = q;
+  //CHECK_ALL: _Array_ptr<int> q : count(10) = malloc<int>(10 * sizeof(int));
+  //CHECK_ALL: __3c_tmp_p = q, p = __3c_tmp_p;
 
   // Don't treat a call to realloc as pointer arithmetic. Freeing `p` after
   // `p++` is highly questionable, but that's not the point here.

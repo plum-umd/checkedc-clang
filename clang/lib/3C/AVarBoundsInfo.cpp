@@ -1528,7 +1528,9 @@ void AVarBoundsInfo::findInvalidatedBounds() {
     std::set<BoundsKey> Neighbors;
     InvalidationGraph.getSuccessors(Curr, Neighbors);
     for (BoundsKey NK : Neighbors) {
-      if (!IsInvalidated(NK)) {
+      bool HasDeclaredBounds =
+        getBounds(NK, BoundsPriority::Declared) != nullptr;
+      if (!HasDeclaredBounds && !IsInvalidated(NK)) {
         InvalidatedBounds.insert(NK);
         WorkList.push(NK);
       }

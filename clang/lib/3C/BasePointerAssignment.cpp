@@ -120,8 +120,12 @@ void BasePointerAssignmentUpdater::visitBasePointerAssignment(Expr *LHS,
     ConstraintVariable *CV) { return ABInfo.needsFreshLowerBound(CV); }) == 0);
   for (ConstraintVariable *CV: LHSCVs) {
     if (ABInfo.needsFreshLowerBound(CV)) {
-      std::string LBName = ABInfo.getProgramVar(
-        ABInfo.getBounds(CV->getBoundsKey())->getLowerBoundKey())->getVarName();
+      BoundsKey LBKey = ABInfo.getBounds(
+        CV->getBoundsKey())->getLowerBoundKey();
+      assert(
+        "Should not be rewriting assignments for pointer without lower bound!" &&
+        LBKey != 0);
+      std::string LBName = ABInfo.getProgramVar(LBKey)->getVarName();
       rewriteSourceRange(R, LHS->getSourceRange(), LBName);
       insertText(R, RHS->getEndLoc(),
                  ", " + CV->getName() + " = " + LBName);

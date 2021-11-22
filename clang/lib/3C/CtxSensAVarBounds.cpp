@@ -76,6 +76,7 @@ void CtxSensitiveBoundsKeyHandler::insertCtxSensBoundsKey(
   ProgramVar *NKVar = OldPV->makeCopy(NK);
   NKVar->setScope(NPS);
   ABI->insertProgramVar(NK, NKVar);
+  ABI->InvalidationGraph.addUniqueEdge(NKVar->getKey(), OldPV->getKey());
   ABI->RevCtxSensProgVarGraph.addUniqueEdge(OldPV->getKey(), NKVar->getKey());
   ABI->CtxSensProgVarGraph.addUniqueEdge(NKVar->getKey(), OldPV->getKey());
 }
@@ -86,7 +87,6 @@ void CtxSensitiveBoundsKeyHandler::createCtxSensBoundsKey(
   ProgramVar *CKVar = ABI->getProgramVar(OK);
   if (CBMap.find(OK) == CBMap.end()) {
     BoundsKey NK = ++(ABI->BCount);
-    //ABI->IneligibleForRangeBounds.insert(NK);
     insertCtxSensBoundsKey(CKVar, NK, NPS);
     CBMap[OK] = NK;
     // Next duplicate the Bounds information.
