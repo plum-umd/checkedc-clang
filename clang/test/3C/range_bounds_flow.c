@@ -96,6 +96,7 @@ void test7(int *a : count(l), int dummy, int l) {
   b++;
 }
 
+
 // Context sensitive edges should not cause `c` to be a lower bound for `b`.
 void testx(int *a){ a[0]; }
 void otherxx(){
@@ -125,4 +126,22 @@ void testy(struct structy d) {
   e++;
 
   e[0];
+}
+
+void foo(int *x, unsigned long s) {
+// CHECK_ALL: void foo(_Array_ptr<int> x : count(s), unsigned long s) _Checked {
+  for (int i = 0; i < s; i++)
+    x[i];
+}
+
+void foo_caller(unsigned long l) {
+  int *a;
+  a++;
+  // CHECK_ALL:_Array_ptr<int> __3c_tmp_a : count(l) = ((void *)0);
+  // CHECK_ALL:_Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + l) = __3c_tmp_a;
+
+  foo(a, l);
+  // expected-warning@-1 {{cannot prove argument meets declared bounds for 1st parameter}}
+  // expected-note@-2 {{}}
+  // expected-note@-3 {{}}
 }

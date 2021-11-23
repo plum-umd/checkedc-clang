@@ -76,9 +76,14 @@ void CtxSensitiveBoundsKeyHandler::insertCtxSensBoundsKey(
   ProgramVar *NKVar = OldPV->makeCopy(NK);
   NKVar->setScope(NPS);
   ABI->insertProgramVar(NK, NKVar);
-  ABI->InvalidationGraph.addUniqueEdge(NKVar->getKey(), OldPV->getKey());
   ABI->RevCtxSensProgVarGraph.addUniqueEdge(OldPV->getKey(), NKVar->getKey());
   ABI->CtxSensProgVarGraph.addUniqueEdge(NKVar->getKey(), OldPV->getKey());
+
+  // For context sensitive structure keys, I want the structure lower bound to
+  // be invalidated if any use is invalidated, but function parameter lower
+  // bounds should not be invalidated by invalidated arguments.
+  if (isa<CtxStructScope>(NPS))
+    ABI->InvalidationGraph.addUniqueEdge(NKVar->getKey(), OldPV->getKey());
 }
 
 void CtxSensitiveBoundsKeyHandler::createCtxSensBoundsKey(
