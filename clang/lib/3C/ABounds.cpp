@@ -33,18 +33,6 @@ ABounds *ABounds::getBoundsInfo(AVarBoundsInfo *ABInfo, BoundsExpr *BExpr,
       }
     }
   }
-  // Disabling Range bounds as they are not currently supported!
-  /*
-  RangeBoundsExpr *RBE = dyn_cast<RangeBoundsExpr>(BExpr->IgnoreParenCasts());
-  if (BExpr->isRange() && RBE) {
-    Expr *LHS = RBE->getLowerExpr()->IgnoreParenCasts();
-    Expr *RHS = RBE->getUpperExpr()->IgnoreParenImpCasts();
-    BoundsKey LV, RV;
-    if (ABInfo->tryGetVariable(LHS, C, LV) &&
-        ABInfo->tryGetVariable(RHS, C, RV)) {
-      Ret = new RangeBound(LV, RV);
-    }
-  }*/
   return Ret;
 }
 
@@ -75,13 +63,12 @@ std::string ABounds::getBoundsKeyStr(BoundsKey BK, AVarBoundsInfo *ABI,
 std::string
 ABounds::mkString(AVarBoundsInfo *ABI, clang::Decl *D, BoundsKey BK) {
   if (LowerBoundVar != 0 && LowerBoundVar != BK)
-    return mkStringWithLowerBound(ABI, D, BK);
+    return mkStringWithLowerBound(ABI, D);
   return mkStringWithoutLowerBound(ABI, D);
 }
 
 std::string
-CountBound::mkStringWithLowerBound(AVarBoundsInfo *ABI, clang::Decl *D,
-                                   BoundsKey BK) {
+CountBound::mkStringWithLowerBound(AVarBoundsInfo *ABI, clang::Decl *D) {
   std::string LowerBound = ABounds::getBoundsKeyStr(LowerBoundVar, ABI, D);
   // Assume that LowerBound is the same pointer type as this pointer this bound
   // acts on, so pointer arithmetic works as expected.
@@ -105,8 +92,7 @@ bool CountBound::areSame(ABounds *O, AVarBoundsInfo *ABI) {
 ABounds *CountBound::makeCopy(BoundsKey NK) { return new CountBound(NK); }
 
 std::string CountPlusOneBound::mkStringWithLowerBound(AVarBoundsInfo *ABI,
-                                                      clang::Decl *D,
-                                                      BoundsKey BK) {
+                                                      clang::Decl *D) {
 
   std::string LowerBound = ABounds::getBoundsKeyStr(LowerBoundVar, ABI, D);
   return "bounds(" + LowerBound + ", " + LowerBound + " + " +
@@ -125,7 +111,7 @@ bool CountPlusOneBound::areSame(ABounds *O, AVarBoundsInfo *ABI) {
 }
 
 std::string ByteBound::mkStringWithLowerBound(AVarBoundsInfo *ABI,
-                                              clang::Decl *D, BoundsKey BK) {
+                                              clang::Decl *D) {
   std::string LowerBound = ABounds::getBoundsKeyStr(LowerBoundVar, ABI, D);
   // LowerBound will be a pointer to some type that is not necessarily char, so
   // pointer arithmetic will not give the behavior needed for a byte count.
@@ -146,23 +132,3 @@ bool ByteBound::areSame(ABounds *O, AVarBoundsInfo *ABI) {
 }
 
 ABounds *ByteBound::makeCopy(BoundsKey NK) { return new ByteBound(NK); }
-
-#if OLD_RANGE_BOUNDS
-std::string RangeBound::mkString(AVarBoundsInfo *ABI, clang::Decl *D) {
-  std::string LBStr = ABounds::getBoundsKeyStr(LB, ABI, D);
-  std::string UBStr = ABounds::getBoundsKeyStr(UB, ABI, D);
-  return "bounds(" + LBStr + ", " + UBStr + ")";
-}
-
-std::string RangeBound::mkRangeString(AVarBoundsInfo *ABI, clang::Decl *D,
-                                      std::string BasePtr) {
-  return mkString(ABI, D);
-}
-
-bool RangeBound::areSame(ABounds *O, AVarBoundsInfo *ABI) {
-  if (RangeBound *RB = dyn_cast_or_null<RangeBound>(O))
-    return ABI->areSameProgramVar(this->LB, RB->LB) &&
-           ABI->areSameProgramVar(this->UB, RB->UB);
-  return false;
-}
-#endif
