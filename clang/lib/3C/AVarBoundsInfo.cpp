@@ -245,7 +245,7 @@ void AvarBoundsInference::convergeInferredBounds() {
 ABounds * AvarBoundsInference::getPreferredBound(BoundsKey BK) {
   BoundsKey BaseVar = 0;
   bool NeedsBasePointer =
-    BI->InvalidatedBounds.find(BK) != BI->InvalidatedBounds.end();
+    BI->InvalidLowerBounds.find(BK) != BI->InvalidLowerBounds.end();
   if (NeedsBasePointer && BI->LowerBounds.find(BK) != BI->LowerBounds.end())
     BaseVar = BI->LowerBounds[BK];
 
@@ -542,12 +542,12 @@ void
 AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
   std::map<BoundsKey, BoundsKey> InfLBs;
   std::deque<BoundsKey> WorkList;
-  for (BoundsKey BK : InvalidatedBounds) {
+  for (BoundsKey BK : InvalidLowerBounds) {
     std::set<BoundsKey> Pred;
-    InvalidationGraph.getPredecessors(BK, Pred);
+    LowerBoundGraph.getPredecessors(BK, Pred);
     for (BoundsKey Seed : Pred) {
       if (Seed != 0 &&
-          InvalidatedBounds.find(Seed) == InvalidatedBounds.end()) {
+          InvalidLowerBounds.find(Seed) == InvalidLowerBounds.end()) {
         InfLBs[Seed] = Seed;
         WorkList.push_back(Seed);
       }
@@ -556,28 +556,27 @@ AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
 
   // These must come after the valid Lower Bounds in the worklist, so this loop
   // needs to be separate.
-  for (BoundsKey InvLB : InvalidatedBounds)
+  for (BoundsKey InvLB : InvalidLowerBounds)
     WorkList.push_back(InvLB);
 
   std::set<BoundsKey> NeedFreshLB;
   std::set<BoundsKey> HasConflictingBounds;
   while (!WorkList.empty()) {
-    llvm::errs() << WorkList.size() << "\n";
     BoundsKey BK = WorkList.front();
     WorkList.pop_front();
 
     if (isEligibleForFreshLowerBound(BK) &&
         (InfLBs.find(BK) == InfLBs.end() || InfLBs[BK] == 0)) {
       // We've reached an array pointer in the work list that either has not been assigned a lower bound, or
-      assert(InvalidatedBounds.find(BK) != InvalidatedBounds.end());
+      assert(InvalidLowerBounds.find(BK) != InvalidLowerBounds.end());
       InfLBs[BK] = getFreshLowerBound(BK);
       NeedFreshLB.insert(BK);
     }
 
     std::set<BoundsKey> Succ;
-    InvalidationGraph.getSuccessors(BK, Succ);
+    LowerBoundGraph.getSuccessors(BK, Succ);
     for (BoundsKey S : Succ) {
-      if (InvalidatedBounds.find(S) != InvalidatedBounds.end()) {
+      if (InvalidLowerBounds.find(S) != InvalidLowerBounds.end()) {
         if (InfLBs.find(S) == InfLBs.end()) {
           // No prior lower bound known for `S`. Initialize it to use the same
           // lower bound as `BK`.
@@ -594,11 +593,11 @@ AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
               isInAccessibleScope(S, InfLBs[BK])) {
             NeedFreshLB.erase(S);
             BoundsKey SLB = InfLBs[S];
-            InvalidationGraph.visitBreadthFirst(S, [this, SLB, &InfLBs, &WorkList](BoundsKey BK) {
+            LowerBoundGraph.visitBreadthFirst(S, [this, SLB, &InfLBs, &WorkList](BoundsKey BK) {
               if (InfLBs.find(BK) != InfLBs.end() && InfLBs[BK] == SLB) {
                 InfLBs.erase(BK);
                 std::set<BoundsKey> Pred;
-                InvalidationGraph.getPredecessors(BK, Pred);
+                LowerBoundGraph.getPredecessors(BK, Pred);
                 for (BoundsKey P : Pred) {
                   if (P != 0 && InfLBs.find(P) != InfLBs.end())
                     WorkList.push_back(P);
@@ -633,7 +632,7 @@ BoundsKey AVarBoundsInfo::getFreshLowerBound(BoundsKey Arr) {
 }
 
 bool AVarBoundsInfo::hasLowerBound(BoundsKey K)  {
-  return InvalidatedBounds.find(K) == InvalidatedBounds.end() ||
+  return InvalidLowerBounds.find(K) == InvalidLowerBounds.end() ||
          (LowerBounds.find(K) != LowerBounds.end() && LowerBounds[K] != 0);
 }
 
@@ -1133,11 +1132,11 @@ bool AVarBoundsInfo::addAssignment(BoundsKey L, BoundsKey R) {
     // value.
     if (L != R) {
       AddEdgeUnlessPointerArithmetic(R, L);
-      InvalidationGraph.addUniqueEdge(R, L);
+      LowerBoundGraph.addUniqueEdge(R, L);
     }
   } else {
     AddEdgeUnlessPointerArithmetic(R, L);
-    InvalidationGraph.addUniqueEdge(R, L);
+    LowerBoundGraph.addUniqueEdge(R, L);
     ProgramVar *PV = getProgramVar(R);
     if (!(PV && PV->isNumConstant()))
       AddEdgeUnlessPointerArithmetic(L, R);
@@ -1168,7 +1167,7 @@ void AVarBoundsInfo::recordArithmeticOperation(clang::Expr *E,
     if (CV->hasBoundsKey()) {
       BoundsKey BK = CV->getBoundsKey();
       ArrPointersWithArithmetic.insert(BK);
-      InvalidationGraph.addUniqueEdge(0, BK);
+      LowerBoundGraph.addUniqueEdge(0, BK);
     }
   }
 }
@@ -1511,13 +1510,13 @@ void AVarBoundsInfo::performFlowAnalysis(ProgramInfo *PI) {
   PStats.endArrayBoundsInferenceTime();
 }
 
-void AVarBoundsInfo::findInvalidatedBounds() {
-  assert(InvalidatedBounds.empty());
+void AVarBoundsInfo::computeInvalidLowerBounds() {
+  assert(InvalidLowerBounds.empty());
   std::queue<BoundsKey> WorkList;
   WorkList.push(0);
 
   auto IsInvalidated = [this](BoundsKey BK) {
-    return BK == 0 || InvalidatedBounds.find(BK) != InvalidatedBounds.end();
+    return BK == 0 || InvalidLowerBounds.find(BK) != InvalidLowerBounds.end();
   };
 
   while (!WorkList.empty()) {
@@ -1526,12 +1525,12 @@ void AVarBoundsInfo::findInvalidatedBounds() {
     assert(IsInvalidated(Curr));
 
     std::set<BoundsKey> Neighbors;
-    InvalidationGraph.getSuccessors(Curr, Neighbors);
+    LowerBoundGraph.getSuccessors(Curr, Neighbors);
     for (BoundsKey NK : Neighbors) {
       bool HasDeclaredBounds =
         getBounds(NK, BoundsPriority::Declared) != nullptr;
       if (!HasDeclaredBounds && !IsInvalidated(NK)) {
-        InvalidatedBounds.insert(NK);
+        InvalidLowerBounds.insert(NK);
         WorkList.push(NK);
       }
     }
@@ -1576,7 +1575,7 @@ void AVarBoundsInfo::dumpAVarGraph(const std::string &DFPath) {
   DumpGraph(ProgVarGraph, "ProgVar");
   DumpGraph(CtxSensProgVarGraph, "CtxSen");
   DumpGraph(RevCtxSensProgVarGraph, "RevCtxSen");
-  DumpGraph(InvalidationGraph, "Invalid");
+  DumpGraph(LowerBoundGraph, "Invalid");
 }
 
 bool AVarBoundsInfo::isFunctionReturn(BoundsKey BK) {

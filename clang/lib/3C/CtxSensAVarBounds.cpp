@@ -83,7 +83,7 @@ void CtxSensitiveBoundsKeyHandler::insertCtxSensBoundsKey(
   // be invalidated if any use is invalidated, but function parameter lower
   // bounds should not be invalidated by invalidated arguments.
   if (isa<CtxStructScope>(NPS))
-    ABI->InvalidationGraph.addUniqueEdge(NKVar->getKey(), OldPV->getKey());
+    ABI->LowerBoundGraph.addUniqueEdge(NKVar->getKey(), OldPV->getKey());
 }
 
 void CtxSensitiveBoundsKeyHandler::createCtxSensBoundsKey(

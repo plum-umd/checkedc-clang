@@ -598,7 +598,7 @@ bool _3CInterface::solveConstraints() {
 
     // Propagate initial data-flow information for Array pointers from
     // bounds declarations.
-    GlobalProgramInfo.getABoundsInfo().findInvalidatedBounds();
+    GlobalProgramInfo.getABoundsInfo().computeInvalidLowerBounds();
     GlobalProgramInfo.getABoundsInfo().inferLowerBounds(&GlobalProgramInfo);
     GlobalProgramInfo.getABoundsInfo().performFlowAnalysis(&GlobalProgramInfo);
 

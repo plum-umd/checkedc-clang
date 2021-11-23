@@ -48,8 +48,10 @@ protected:
   // the range. The exact interpretation of this field varies by subclass.
   BoundsKey LenVar;
 
-  // The base pointer representing the start of the range of the bounds. May be
-  // and invalid bounds key if this bound cannot be expressed as a range.
+  // The base pointer representing the start of the range of the bounds. If this
+  // is not equal to 0, then this ABounds has a specific lower bound that should
+  // be used when emitting array pointer bounds. Otherwise, if it is 0, then the
+  // lower bound should implicitly be the pointer the bound is applied to.
   BoundsKey LowerBoundVar;
 
   // Get the variable name of the the given bounds key that corresponds

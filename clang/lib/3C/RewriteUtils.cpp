@@ -610,8 +610,6 @@ std::string ArrayBoundsRewriter::getBoundsString(const PVConstraint *PV,
     // If we have pointer arithmetic and cannot add range bounds, then do not
     // emit any bounds string.
     if (ArrB != nullptr && ABInfo.hasLowerBound(DK)) {
-        //(!ABInfo.needsFreshLowerBound(DK) ||
-        //  ABInfo.isEligibleForFreshLowerBound(DK))) {
       if (OmitLowerBound)
         BString = ArrB->mkStringWithoutLowerBound(&ABInfo, D);
       else

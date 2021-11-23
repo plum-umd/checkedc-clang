@@ -186,7 +186,7 @@ public:
   AVarBoundsInfo()
       : ProgVarGraph(this), CtxSensProgVarGraph(this),
         RevCtxSensProgVarGraph(this), CSBKeyHandler(this),
-        InvalidationGraph(this) {
+        LowerBoundGraph(this) {
     BCount = 1;
     PVarInfo.clear();
     InProgramArrPtrBoundsKeys.clear();
@@ -255,18 +255,24 @@ public:
   // for pointers that has pointer arithmetic performed on them.
   void recordArithmeticOperation(clang::Expr *E, ConstraintResolver *CR);
 
-  // Check if the given bounds key has a pointer arithmetic done on it.
+  // Check if the given bounds key will need to be duplicated during rewriting
+  // to generate a fresh lower bound. This happens when a pointer is not a valid
+  // lower bounds due to pointer arithmetic, and lower bounds inference fails to
+  // find a consistent lower bound among existing pointers in the source code.
   bool needsFreshLowerBound(BoundsKey BK);
-
-  // Check if the bounds keys will need to be rewritten with range bounds. This
-  // is true for bounds keys that are subject to pointer arithmetic, otherwise
-  // have inferred bounds, and are eligible for range bounds.
   bool needsFreshLowerBound(ConstraintVariable *CV);
 
-  // Check if range bounds can be inferred by 3C for the pointer corresponding
-  // to the bounds key.
+  // Check if a fresh lower bound can be be inserted by 3C for the pointer
+  // corresponding to the bounds key. When a pointer needs a fresh lower bound,
+  // it is possible that 3C will not support inserting the new declaration.
+  // No array bounds can be inferred for such pointers.
   bool isEligibleForFreshLowerBound(BoundsKey BK);
 
+  // Return true when a lower bound could be inferred for the array pointer
+  // corresponding to `BK`. This is the case either when `BK` was not
+  // invalidated as lower bound by pointer arithmetic meaning it is it's own
+  // lower bound, or when `BK` was invalidated, but a valid lower bound could be
+  // inferred.
   bool hasLowerBound(BoundsKey BK);
 
   // Record that a pointer cannot be rewritten to use range bounds. This might
@@ -289,8 +295,6 @@ public:
 
   // Propagate the array bounds information for all array ptrs.
   void performFlowAnalysis(ProgramInfo *PI);
-
-  void findInvalidatedBounds();
 
   // Get the context sensitive BoundsKey for the given key at CallSite
   // located at PSL.
@@ -324,6 +328,13 @@ public:
   bool isFuncParamBoundsKey(BoundsKey BK, unsigned &PIdx);
 
   void addConstantArrayBounds(ProgramInfo &I);
+
+  // Compute which array pointers are not valid lower bounds. This includes any
+  // pointers directly updated in pointer arithmetic expression, as well as any
+  // pointers transitively assigned to from these pointers. This is computed
+  // using essentially the same algorithm as is used for solving the checked
+  // type constraint graph.
+  void computeInvalidLowerBounds();
 
   void inferLowerBounds(ProgramInfo *PI);
   BoundsKey getFreshLowerBound(BoundsKey Arr);
@@ -398,12 +409,12 @@ private:
   // Context-sensitive bounds key handler
   CtxSensitiveBoundsKeyHandler CSBKeyHandler;
 
-  AVarGraph InvalidationGraph;
+  AVarGraph LowerBoundGraph;
 
   // BoundsKeys that that cannot be used as a lower bound. These are used in an
   // update such as `a = a + 1`.
   // FIXME: The name InvalidBounds is already used. Find better names.
-  std::set<BoundsKey> InvalidatedBounds;
+  std::set<BoundsKey> InvalidLowerBounds;
 
   // Mapping from pointers to their inferred lower bounds. A pointer maps to
   // itself if it can use a simple count bound. Missing pointers have no valid
