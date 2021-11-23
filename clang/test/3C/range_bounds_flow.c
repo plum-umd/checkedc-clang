@@ -96,6 +96,48 @@ void test7(int *a : count(l), int dummy, int l) {
   b++;
 }
 
+// There is no valid lower bound available, but the lower bound for `a` can
+// be the same as the lower bound for `b`. A fresh lower bound is created for
+// `b`, and then used for `a` as well.
+void test8(int *a, int *b) {
+// CHECK_ALL: void test8(_Array_ptr<int> a : bounds(__3c_tmp_b, __3c_tmp_b + 0 + 1), _Array_ptr<int> __3c_tmp_b : count(0 + 1)) _Checked {
+// CHECK_ALL: _Array_ptr<int> b : bounds(__3c_tmp_b, __3c_tmp_b + 0 + 1) = __3c_tmp_b;
+
+  a++;
+  b++;
+  a = b;
+  a[0];
+}
+
+// A cycle is formed by `a`,`b` and `c`. The lower bound `x` starts at `a`,
+// propagates through `b` and `c`, and then flows into `a` again. This is
+// consistent, so `x` is used as the lower bound.
+void test9(int *x, int l) {
+// CHECK_ALL: void test9(_Array_ptr<int> x : count(l), int l) _Checked {
+  int *a = x, *b, *c;
+// CHECK_ALL: _Array_ptr<int> a : bounds(x, x + l) = x;
+// CHECK_ALL: _Array_ptr<int> b : bounds(x, x + l) = ((void *)0);
+// CHECK_ALL: _Array_ptr<int> c : bounds(x, x + l) = ((void *)0);
+  a++;
+  b = a;
+  c = b;
+  a = c;
+}
+
+// Same as above, but now fresh lower bound needs to be created for `x`.
+void test10(int *x, int l) {
+// CHECK_ALL: void test10(_Array_ptr<int> __3c_tmp_x : count(l), int l) _Checked {
+// CHECK_ALL: _Array_ptr<int> x : bounds(__3c_tmp_x, __3c_tmp_x + l) = __3c_tmp_x;
+  x++;
+  int *a = x, *b, *c;
+  // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_tmp_x, __3c_tmp_x + l) = x;
+  // CHECK_ALL: _Array_ptr<int> b : bounds(__3c_tmp_x, __3c_tmp_x + l) = ((void *)0);
+  // CHECK_ALL: _Array_ptr<int> c : bounds(__3c_tmp_x, __3c_tmp_x + l) = ((void *)0);
+  a++;
+  b = a;
+  c = b;
+  a = c;
+}
 
 // Context sensitive edges should not cause `c` to be a lower bound for `b`.
 void testx(int *a){ a[0]; }
