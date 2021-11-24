@@ -122,7 +122,7 @@ private:
   // bounds keys from scopes where this scope is an inner scope.
   std::set<BoundsKey> VisibleKeys;
 
-  AVarBoundsInfo *BI;
+  const AVarBoundsInfo *BI;
 };
 
 void AvarBoundsInference::mergeReachableProgramVars(
@@ -246,7 +246,7 @@ ABounds *AvarBoundsInference::getPreferredBound(BoundsKey BK) {
     llvm::errs() << "Lower bound pointer required for " << BK
                  << " but not available.\n";
 
-  auto &BKindMap = CurrIterInferBounds[BK];
+  const auto &BKindMap = CurrIterInferBounds[BK];
   // Utility to check if the map contains a non-empty set of bounds for a
   // particular kind. This makes the following if statements much cleaner.
   auto HasBoundKind = [&BKindMap](ABounds::BoundsKind Kind) {
@@ -503,6 +503,10 @@ bool AvarBoundsInference::inferBounds(BoundsKey K, const AVarGraph &BKGraph,
                                       bool FromPB) {
   bool IsChanged = false;
 
+  // If a lower bound could not be inferred for a BoundsKey, then we refuse to
+  // infer an upper bound for it as well. This prevents inferring incorrect
+  // bounds when a bound would propagate through a pointer without a lower
+  // bound.
   if (BI->hasLowerBound(K) &&
       BI->InvalidBounds.find(K) == BI->InvalidBounds.end()) {
     // Infer from potential bounds?
@@ -1152,17 +1156,16 @@ bool AVarBoundsInfo::needsFreshLowerBound(ConstraintVariable *CV) {
          getBounds(BK) != nullptr;
 }
 
-ProgramVar *AVarBoundsInfo::getProgramVar(BoundsKey VK) {
-  ProgramVar *Ret = nullptr;
-  if (PVarInfo.find(VK) != PVarInfo.end()) {
-    Ret = PVarInfo[VK];
-  }
-  return Ret;
+ProgramVar *AVarBoundsInfo::getProgramVar(BoundsKey VK) const {
+  if (PVarInfo.find(VK) != PVarInfo.end())
+    return PVarInfo.at(VK);
+  return nullptr;
 }
 
-const ProgramVarScope *AVarBoundsInfo::getProgramVarScope(BoundsKey BK) {
-  ProgramVar *Var = getProgramVar(BK);
-  return Var == nullptr ? nullptr : Var->getScope();
+const ProgramVarScope *AVarBoundsInfo::getProgramVarScope(BoundsKey BK) const{
+  if (ProgramVar *Var = getProgramVar(BK))
+    return Var->getScope();
+  return nullptr;
 }
 
 bool AVarBoundsInfo::isInAccessibleScope(BoundsKey From, BoundsKey To) {

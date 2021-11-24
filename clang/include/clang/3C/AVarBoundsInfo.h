@@ -275,11 +275,11 @@ public:
   // This method can return `nullptr` if there is no corresponding ProgramVar.
   // It's not obvious when a BoundsKey can be expected to have a ProgramVar, so
   // callers should typically check for null.
-  ProgramVar *getProgramVar(BoundsKey VK);
+  ProgramVar *getProgramVar(BoundsKey VK) const;
 
   // Get the Scope of the provided BoundsKey.
   // This method returns nullptr if `getProgramVar(BK)` would return nullptr.
-  const ProgramVarScope *getProgramVarScope(BoundsKey BK);
+  const ProgramVarScope *getProgramVarScope(BoundsKey BK) const;
 
   // Return true when BoundsKey `To` can be accessed from the scope of `from`.
   // Note that this returns false if either BoundsKey cannot be mapped to a
