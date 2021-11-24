@@ -1,18 +1,18 @@
-//=--PointerArithmeticAssignment.cpp------------------------------*- C++-*-===//
+//=--LowerBoundAssignment.cpp-------------------------------------*- C++-*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
-// Implementation of methods in PointerArithmeticAssignment.h
+// Implementation of methods in LowerBoundAssignment.h
 //===----------------------------------------------------------------------===//
 
 #include "clang/3C/ProgramInfo.h"
 #include "clang/AST/ASTContext.h"
 
 #include "clang/Rewrite/Core/Rewriter.h"
-#include "clang/3C/BasePointerAssignment.h"
+#include "clang/3C/LowerBoundAssignment.h"
 #include "clang/3C/RewriteUtils.h"
 
 using namespace llvm;
@@ -78,7 +78,7 @@ private:
   std::set<StructAccess> ObservedStructAccesses;
 };
 
-bool isBasePointerAssignment(Expr *LHS, Expr *RHS) {
+bool isLowerBoundAssignment(Expr *LHS, Expr *RHS) {
   CollectDeclsVisitor LVarVis;
   LVarVis.TraverseStmt(LHS);
 
@@ -93,21 +93,21 @@ bool isBasePointerAssignment(Expr *LHS, Expr *RHS) {
                    RVarVis.getObservedStructAccesses(), CommonStVars);
 
   // If CommonVars is empty, then the same pointer does not appears on the LHS
-  // and RHS of the assignment. We say that the assignment is a base pointer
+  // and RHS of the assignment. We say that the assignment is a lower bound
   // update.
   return CommonVars.empty() && CommonStVars.empty();
 }
 
 bool
-BasePointerAssignmentVisitor::VisitBinaryOperator(BinaryOperator *O) {
+LowerBoundAssignmentVisitor::VisitBinaryOperator(BinaryOperator *O) {
   if (O->getOpcode() == clang::BO_Assign &&
-      isBasePointerAssignment(O->getLHS(), O->getRHS()))
-    visitBasePointerAssignment(O->getLHS(), O->getRHS());
+    isLowerBoundAssignment(O->getLHS(), O->getRHS()))
+    visitLowerBoundAssignment(O->getLHS(), O->getRHS());
   return true;
 }
 
-void BasePointerAssignmentUpdater::visitBasePointerAssignment(Expr *LHS,
-                                                              Expr *RHS) {
+void LowerBoundAssignmentUpdater::visitLowerBoundAssignment(Expr *LHS,
+                                                            Expr *RHS) {
   CVarSet LHSCVs = CR.getExprConstraintVarsSet(LHS);
   // It is possible for multiple ConstraintVariables to exist on the LHS
   // of an assignment expression; e.g., `*(0 ? a : b) = 0`. If this
@@ -134,8 +134,8 @@ void BasePointerAssignmentUpdater::visitBasePointerAssignment(Expr *LHS,
   }
 }
 
-void BasePointerAssignmentFinder::visitBasePointerAssignment(Expr *LHS,
-                                                             Expr *RHS) {
+void LowerBoundAssignmentFinder::visitLowerBoundAssignment(Expr *LHS,
+                                                           Expr *RHS) {
   SourceLocation RHSEnd =
     getLocationAfter(RHS->getEndLoc(), C->getSourceManager(), C->getLangOpts());
   SourceLocation LHSLoc = LHS->getExprLoc();

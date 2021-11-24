@@ -15,7 +15,7 @@
 #include "clang/3C/ProgramInfo.h"
 #include "clang/3C/3CGlobalOptions.h"
 #include <sstream>
-#include <clang/3C/BasePointerAssignment.h>
+#include <clang/3C/LowerBoundAssignment.h>
 
 std::vector<BoundsPriority> AVarBoundsInfo::PrioList{Declared, Allocator,
                                                      FlowInferred, Heuristics};
@@ -1197,7 +1197,7 @@ bool AVarBoundsInfo::addAssignment(BoundsKey L, BoundsKey R) {
 bool AVarBoundsInfo::handlePointerAssignment(clang::Expr *L, clang::Expr *R,
                                              ASTContext *C,
                                              ConstraintResolver *CR) {
-  if (!isBasePointerAssignment(L, R))
+  if (!isLowerBoundAssignment(L, R))
     recordArithmeticOperation(L, CR);
   return true;
 }

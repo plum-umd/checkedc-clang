@@ -14,7 +14,7 @@
 #include "clang/3C/CastPlacement.h"
 #include "clang/3C/CheckedRegions.h"
 #include "clang/3C/DeclRewriter.h"
-#include "clang/3C/BasePointerAssignment.h"
+#include "clang/3C/LowerBoundAssignment.h"
 #include "clang/3C/TypeVariableAnalysis.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Tooling/Transformer/SourceCode.h"
@@ -700,7 +700,7 @@ void RewriteConsumer::HandleTranslationUnit(ASTContext &Context) {
   CastPlacementVisitor ECPV(&Context, Info, R, CLV.getExprsWithCast());
   TypeExprRewriter TER(&Context, Info, R);
   TypeArgumentAdder TPA(&Context, Info, R);
-  BasePointerAssignmentUpdater AU(&Context, Info, R);
+  LowerBoundAssignmentUpdater AU(&Context, Info, R);
   TranslationUnitDecl *TUD = Context.getTranslationUnitDecl();
   for (const auto &D : TUD->decls()) {
     if (_3COpts.AddCheckedRegions) {
