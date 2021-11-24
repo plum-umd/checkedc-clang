@@ -526,6 +526,8 @@ bool AvarBoundsInference::inferBounds(BoundsKey K, const AVarGraph &BKGraph,
 
 void
 AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
+  computeInvalidLowerBounds();
+
   std::map<BoundsKey, BoundsKey> InfLBs;
   std::deque<BoundsKey> WorkList;
   for (BoundsKey BK : InvalidLowerBounds) {

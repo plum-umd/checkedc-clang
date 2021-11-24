@@ -258,12 +258,6 @@ public:
   bool needsFreshLowerBound(BoundsKey BK);
   bool needsFreshLowerBound(ConstraintVariable *CV);
 
-  // Check if a fresh lower bound can be be inserted by 3C for the pointer
-  // corresponding to the bounds key. When a pointer needs a fresh lower bound,
-  // it is possible that 3C will not support inserting the new declaration.
-  // No array bounds can be inferred for such pointers.
-  bool isEligibleForFreshLowerBound(BoundsKey BK);
-
   // Return true when a lower bound could be inferred for the array pointer
   // corresponding to `BK`. This is the case either when `BK` was not
   // invalidated as lower bound by pointer arithmetic meaning it is it's own
@@ -291,14 +285,6 @@ public:
   // Note that this returns false if either BoundsKey cannot be mapped to a
   // ProgramVar (and therefore can't be mapped to a scope).
   bool isInAccessibleScope(BoundsKey From, BoundsKey To);
-
-  // Return true if the scope of the BoundsKey is one in which lower bounds
-  // can be inserted. BoundsKeys in context sensitive scope should not get lower
-  // bounds. The corresponding non-context-sensitive BoundsKey should instead.
-  bool scopeCanHaveLowerBound(BoundsKey BK);
-
-  // Check if the provided bounds key corresponds to function return.
-  bool isFunctionReturn(BoundsKey BK);
 
   // Propagate the array bounds information for all array ptrs.
   void performFlowAnalysis(ProgramInfo *PI);
@@ -336,21 +322,7 @@ public:
 
   void addConstantArrayBounds(ProgramInfo &I);
 
-  // Compute which array pointers are not valid lower bounds. This includes any
-  // pointers directly updated in pointer arithmetic expression, as well as any
-  // pointers transitively assigned to from these pointers. This is computed
-  // using essentially the same algorithm as is used for solving the checked
-  // type constraint graph.
-  void computeInvalidLowerBounds();
-
   void inferLowerBounds(ProgramInfo *PI);
-
-  // During lower bound inference it may be necessary to generate temporary
-  // pointers to act as lower bounds for arrays that otherwise don't have a
-  // consistent lower bound. This method takes a bounds key for an array pointer
-  // and returns a fresh bounds key that can be used as the lower bound for the
-  // array bounds of that pointer.
-  BoundsKey getFreshLowerBound(BoundsKey Arr);
 
 private:
   friend class AvarBoundsInference;
@@ -452,6 +424,9 @@ private:
 
   void insertProgramVar(BoundsKey NK, ProgramVar *PV);
 
+  // Check if the provided bounds key corresponds to function return.
+  bool isFunctionReturn(BoundsKey BK);
+
   // Of all the pointer bounds key, find arr pointers.
   void computeArrPointers(const ProgramInfo *PI);
 
@@ -470,6 +445,31 @@ private:
   void insertParamKey(ParamDeclType ParamDecl, BoundsKey NK);
 
   void dumpBounds();
+
+  // Compute which array pointers are not valid lower bounds. This includes any
+  // pointers directly updated in pointer arithmetic expression, as well as any
+  // pointers transitively assigned to from these pointers. This is computed
+  // using essentially the same algorithm as is used for solving the checked
+  // type constraint graph.
+  void computeInvalidLowerBounds();
+
+  // During lower bound inference it may be necessary to generate temporary
+  // pointers to act as lower bounds for arrays that otherwise don't have a
+  // consistent lower bound. This method takes a bounds key for an array pointer
+  // and returns a fresh bounds key that can be used as the lower bound for the
+  // array bounds of that pointer.
+  BoundsKey getFreshLowerBound(BoundsKey Arr);
+
+  // Return true if the scope of the BoundsKey is one in which lower bounds
+  // can be inserted. BoundsKeys in context sensitive scope should not get lower
+  // bounds. The corresponding non-context-sensitive BoundsKey should instead.
+  bool scopeCanHaveLowerBound(BoundsKey BK);
+
+  // Check if a fresh lower bound can be be inserted by 3C for the pointer
+  // corresponding to the bounds key. When a pointer needs a fresh lower bound,
+  // it is possible that 3C will not support inserting the new declaration.
+  // No array bounds can be inferred for such pointers.
+  bool isEligibleForFreshLowerBound(BoundsKey BK);
 };
 
 #endif // LLVM_CLANG_3C_AVARBOUNDSINFO_H
