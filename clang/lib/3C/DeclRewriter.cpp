@@ -107,12 +107,8 @@ DeclRewriter::buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
     // translation units.
     if (isa_and_nonnull<ParmVarDecl>(Decl) && !DeclName.empty())
       Type = qtyToStr(Decl->getType(), DeclName);
-    else {
-      // FIXME: This assert will probably fail. Need to handle field and global
-      //        decls, function returns and param decls without names.
-      assert(!NeedsFreshLowerBound);
+    else
       Type = Defn->getOriginalTypeWithName();
-    }
   }
 
   std::string IType = " : itype(" +
@@ -482,7 +478,6 @@ void DeclRewriter::rewriteMultiDecl(MultiDeclInfo &MDI, RSet &ToRewrite) {
       // type does not to be rewritten.
       IsFirst = false;
       if (Replacement) {
-        SourceRange SR(DL->getBeginLoc(), DL->getEndLoc());
         doDeclRewrite(ReplaceSR, Replacement);
       }
     } else {
@@ -672,6 +667,9 @@ bool FunctionDeclBuilder::VisitFunctionDecl(FunctionDecl *FD) {
       && !FD->isGenericFunction() && !FD->isItypeGenericFunction())
     RewriteGeneric = true;
 
+  // This will keep track of the supplementary declarations that are required by
+  // function parameters. The new declarations will be emitted inside the
+  // function body in the order of function parameters that generated them.
   std::vector<std::string> SDecls;
   bool GenerateSDecls = FD->isThisDeclarationADefinition();
 
