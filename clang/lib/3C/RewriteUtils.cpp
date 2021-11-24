@@ -30,8 +30,8 @@ RewrittenDecl mkStringForPVDecl(MultiDeclMemberDecl *MMD, PVConstraint *PVC,
 
   RewrittenDecl RD;
   bool IsExternGlobalVar =
-    isa<VarDecl>(MMD) &&
-    cast<VarDecl>(MMD)->getFormalLinkage() == Linkage::ExternalLinkage;
+      isa<VarDecl>(MMD) &&
+      cast<VarDecl>(MMD)->getFormalLinkage() == Linkage::ExternalLinkage;
   if (_3COpts.ItypesForExtern && (isa<FieldDecl>(MMD) || IsExternGlobalVar) &&
       // isSolutionChecked can return false here when splitting out an unchanged
       // multi-decl member.
@@ -171,12 +171,6 @@ void rewriteSourceRange(Rewriter &R, const CharSourceRange &Range,
           SourceLocation());
     }
   }
-}
-
-void insertText(Rewriter &R, SourceLocation S, const std::string &NewText,
-                bool ErrFail) {
-  SourceRange SR(getLocationAfter(S, R.getSourceMgr(), R.getLangOpts()), S);
-  rewriteSourceRange(R, SR, NewText, ErrFail);
 }
 
 static void emit(Rewriter &R, ASTContext &C, bool &StdoutModeEmittedMainFile) {

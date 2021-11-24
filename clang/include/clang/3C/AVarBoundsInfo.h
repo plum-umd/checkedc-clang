@@ -108,12 +108,8 @@ public:
   // The flag FromPB requests the inference to use potential length variables.
   bool inferBounds(BoundsKey K, const AVarGraph &BKGraph, bool FromPB = false);
 
-
-
   // Get a consistent bound for all the arrays whose bounds have been inferred.
   void convergeInferredBounds();
-
-  void dumpCurrIterBounds();
 
 private:
   // Find all the reachable variables form FromVarK that are visible
@@ -282,12 +278,23 @@ public:
   void markIneligibleForFreshLowerBound(BoundsKey BK);
 
   // Get the ProgramVar for the provided VarKey.
+  // This method can return `nullptr` if there is no corresponding ProgramVar.
+  // It's not obvious when a BoundsKey can be expected to have a ProgramVar, so
+  // callers should typically check for null.
   ProgramVar *getProgramVar(BoundsKey VK);
 
+  // Get the Scope of the provided BoundsKey.
+  // This method returns nullptr if `getProgramVar(BK)` would return nullptr.
   const ProgramVarScope *getProgramVarScope(BoundsKey BK);
 
+  // Return true when BoundsKey `To` can be accessed from the scope of `from`.
+  // Note that this returns false if either BoundsKey cannot be mapped to a
+  // ProgramVar (and therefore can't be mapped to a scope).
   bool isInAccessibleScope(BoundsKey From, BoundsKey To);
 
+  // Return true if the scope of the BoundsKey is one in which lower bounds
+  // can be inserted. BoundsKeys in context sensitive scope should not get lower
+  // bounds. The corresponding non-context-sensitive BoundsKey should instead.
   bool scopeCanHaveLowerBound(BoundsKey BK);
 
   // Check if the provided bounds key corresponds to function return.
@@ -337,6 +344,12 @@ public:
   void computeInvalidLowerBounds();
 
   void inferLowerBounds(ProgramInfo *PI);
+
+  // During lower bound inference it may be necessary to generate temporary
+  // pointers to act as lower bounds for arrays that otherwise don't have a
+  // consistent lower bound. This method takes a bounds key for an array pointer
+  // and returns a fresh bounds key that can be used as the lower bound for the
+  // array bounds of that pointer.
   BoundsKey getFreshLowerBound(BoundsKey Arr);
 
 private:
@@ -410,17 +423,16 @@ private:
   CtxSensitiveBoundsKeyHandler CSBKeyHandler;
 
   AVarGraph LowerBoundGraph;
+  static const BoundsKey InvalidLowerBoundKey = 0;
 
   // BoundsKeys that that cannot be used as a lower bound. These are used in an
-  // update such as `a = a + 1`.
-  // FIXME: The name InvalidBounds is already used. Find better names.
+  // update such as `a = a + 1`, or are transitively assigned from such a
+  // pointer.
   std::set<BoundsKey> InvalidLowerBounds;
 
   // Mapping from pointers to their inferred lower bounds. A pointer maps to
   // itself if it can use a simple count bound. Missing pointers have no valid
   // lower bound, so no length should be inferred during bounds inference.
-  // TODO: I think mapping to 0 can also mean no lower bound. Make this
-  //       consistent.
   std::map<BoundsKey, BoundsKey> LowerBounds;
 
   // Some variables have to valid lower bound in the original source code, but

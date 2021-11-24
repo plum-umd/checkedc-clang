@@ -127,8 +127,9 @@ void BasePointerAssignmentUpdater::visitBasePointerAssignment(Expr *LHS,
         LBKey != 0);
       std::string LBName = ABInfo.getProgramVar(LBKey)->getVarName();
       rewriteSourceRange(R, LHS->getSourceRange(), LBName);
-      insertText(R, RHS->getEndLoc(),
-                 ", " + CV->getName() + " = " + LBName);
+      R.InsertTextAfter(
+        getLocationAfter(RHS->getEndLoc(), R.getSourceMgr(), R.getLangOpts()),
+        ", " + CV->getName() + " = " + LBName);
     }
   }
 }

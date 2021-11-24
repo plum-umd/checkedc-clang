@@ -50,6 +50,9 @@ protected:
   // The string to replace the declaration with.
   std::string Replacement;
 
+  // A declaration might need to be replaced with more than a singles new
+  // declaration. These extra declaration can be stored in this vector to be
+  // emitted after the original declaration.
   std::vector<std::string> SupplementaryDecls;
 private:
   const DRKind Kind;
@@ -208,7 +211,5 @@ void rewriteSourceRange(Rewriter &R, const CharSourceRange &Range,
 
 void rewriteSourceRange(Rewriter &R, const SourceRange &Range,
                         const std::string &NewText, bool ErrFail = true);
-void insertText(Rewriter &R, SourceLocation S, const std::string &NewText,
-                bool ErrFail = true);
 
 #endif // LLVM_CLANG_3C_REWRITEUTILS_H

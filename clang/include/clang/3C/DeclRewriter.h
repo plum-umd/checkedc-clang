@@ -24,8 +24,6 @@
 using namespace llvm;
 using namespace clang;
 
-
-
 class DeclRewriter {
 public:
   DeclRewriter(Rewriter &R, ProgramInfo &Info, ASTContext &A)

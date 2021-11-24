@@ -484,12 +484,6 @@ void DeclRewriter::rewriteMultiDecl(MultiDeclInfo &MDI, RSet &ToRewrite) {
       if (Replacement) {
         SourceRange SR(DL->getBeginLoc(), DL->getEndLoc());
         doDeclRewrite(ReplaceSR, Replacement);
-        // If the call to `doDeclRewrite` emitted a supplementary declaration,
-        // it also emitted a trailing new line after the declaration. We do not
-        // need to include it in the replacement text for the comma.
-        // FIXME: Handle this case again.
-        //if (!Replacement->getSupplementaryDecls().empty())
-        //  ReplaceText = ";";
       }
     } else {
       // ReplaceSR.getBegin() is the beginning of the whole multi-decl. We only
@@ -503,9 +497,6 @@ void DeclRewriter::rewriteMultiDecl(MultiDeclInfo &MDI, RSet &ToRewrite) {
         // If the type has changed, the DeclReplacement object has a replacement
         // string stored in it that should be used.
         doDeclRewrite(ReplaceSR, Replacement);
-        // FIXME: Handle this case again.
-        //if (!SameLineReplacement->getSupplementaryDecls().empty())
-        //  ReplaceText = ";";
       } else {
         // When the type hasn't changed, we still need to insert the original
         // type for the variable.
@@ -597,11 +588,11 @@ void DeclRewriter::emitSupplementaryDeclarations(
   for (std::string D : SDecls)
     AllDecls += "\n" + D;
   // FIXME: This adds an extra new line after the declaration(s), but is needed
-  //        for proper rewriting in multi-declarations. Maybe this will be
-  //        easier fix after merging with matt's changes.
+  //        for proper rewriting in multi-declarations.
   AllDecls += "\n";
 
-  insertText(R, Loc, AllDecls);
+  R.InsertTextAfter(getLocationAfter(Loc, R.getSourceMgr(), R.getLangOpts()),
+                    AllDecls);
 }
 
 // Uses clangs lexer to find the location of the next comma after

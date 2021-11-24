@@ -596,10 +596,12 @@ bool _3CInterface::solveConstraints() {
       GlobalProgramInfo.getABoundsInfo().dumpAVarGraph(
           "arr_bounds_initial.dot");
 
-    // Propagate initial data-flow information for Array pointers from
-    // bounds declarations.
+    // Infer lower bounds for pointers that are not valid lower bounds.
     GlobalProgramInfo.getABoundsInfo().computeInvalidLowerBounds();
     GlobalProgramInfo.getABoundsInfo().inferLowerBounds(&GlobalProgramInfo);
+
+    // Propagate initial data-flow information for Array pointers from
+    // bounds declarations.
     GlobalProgramInfo.getABoundsInfo().performFlowAnalysis(&GlobalProgramInfo);
 
     // 4. Infer the bounds based on calls to malloc and calloc
