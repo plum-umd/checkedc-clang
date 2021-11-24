@@ -108,8 +108,12 @@ public:
   // The flag FromPB requests the inference to use potential length variables.
   bool inferBounds(BoundsKey K, const AVarGraph &BKGraph, bool FromPB = false);
 
+
+
   // Get a consistent bound for all the arrays whose bounds have been inferred.
   void convergeInferredBounds();
+
+  void dumpCurrIterBounds();
 
 private:
   // Find all the reachable variables form FromVarK that are visible
@@ -148,7 +152,7 @@ private:
   // BoundsKey that failed the flow inference.
   std::set<BoundsKey> BKsFailedFlowInference;
 
-  static ABounds *getPreferredBound(const BndsKindMap &BKindMap);
+  ABounds *getPreferredBound(BoundsKey BK);
 };
 
 // Class that maintains information about potential bounds for
@@ -181,7 +185,8 @@ class AVarBoundsInfo {
 public:
   AVarBoundsInfo()
       : ProgVarGraph(this), CtxSensProgVarGraph(this),
-        RevCtxSensProgVarGraph(this), CSBKeyHandler(this) {
+        RevCtxSensProgVarGraph(this), CSBKeyHandler(this),
+        LowerBoundGraph(this) {
     BCount = 1;
     PVarInfo.clear();
     InProgramArrPtrBoundsKeys.clear();
@@ -231,8 +236,6 @@ public:
 
   // Add Assignments between variables. These methods will add edges between
   // corresponding BoundsKeys
-  bool addAssignment(clang::Decl *L, clang::Decl *R);
-  bool addAssignment(clang::DeclRefExpr *L, clang::DeclRefExpr *R);
   bool addAssignment(BoundsKey L, BoundsKey R);
   bool handlePointerAssignment(clang::Expr *L, clang::Expr *R, ASTContext *C,
                                ConstraintResolver *CR);
@@ -252,26 +255,43 @@ public:
   // for pointers that has pointer arithmetic performed on them.
   void recordArithmeticOperation(clang::Expr *E, ConstraintResolver *CR);
 
-  // Check if the given bounds key has a pointer arithmetic done on it.
-  bool hasPointerArithmetic(BoundsKey BK);
+  // Check if the given bounds key will need to be duplicated during rewriting
+  // to generate a fresh lower bound. This happens when a pointer is not a valid
+  // lower bounds due to pointer arithmetic, and lower bounds inference fails to
+  // find a consistent lower bound among existing pointers in the source code.
+  bool needsFreshLowerBound(BoundsKey BK);
+  bool needsFreshLowerBound(ConstraintVariable *CV);
 
-  // Check if range bounds can be inferred by 3C for the pointer corresponding
-  // to the bounds key.
-  bool isEligibleForRangeBounds(BoundsKey BK);
+  // Check if a fresh lower bound can be be inserted by 3C for the pointer
+  // corresponding to the bounds key. When a pointer needs a fresh lower bound,
+  // it is possible that 3C will not support inserting the new declaration.
+  // No array bounds can be inferred for such pointers.
+  bool isEligibleForFreshLowerBound(BoundsKey BK);
+
+  // Return true when a lower bound could be inferred for the array pointer
+  // corresponding to `BK`. This is the case either when `BK` was not
+  // invalidated as lower bound by pointer arithmetic meaning it is it's own
+  // lower bound, or when `BK` was invalidated, but a valid lower bound could be
+  // inferred.
+  bool hasLowerBound(BoundsKey BK);
 
   // Record that a pointer cannot be rewritten to use range bounds. This might
   // be due to 3C rewriting limitations (assignments appearing inside macros),
   // or it might be a Checked C limitation (the current style of range bounds
   // can't properly initialized on global variables without error).
-  void markIneligibleForRangeBounds(BoundsKey BK);
-
-  // Check if the bounds keys will need to be rewritten with range bounds. This
-  // is true for bounds keys that are subject to pointer arithmetic, otherwise
-  // have inferred bounds, and are eligible for range bounds.
-  bool needsRangeBound(ConstraintVariable *CV);
+  void markIneligibleForFreshLowerBound(BoundsKey BK);
 
   // Get the ProgramVar for the provided VarKey.
   ProgramVar *getProgramVar(BoundsKey VK);
+
+  const ProgramVarScope *getProgramVarScope(BoundsKey BK);
+
+  bool isInAccessibleScope(BoundsKey From, BoundsKey To);
+
+  bool scopeCanHaveLowerBound(BoundsKey BK);
+
+  // Check if the provided bounds key corresponds to function return.
+  bool isFunctionReturn(BoundsKey BK);
 
   // Propagate the array bounds information for all array ptrs.
   void performFlowAnalysis(ProgramInfo *PI);
@@ -308,6 +328,16 @@ public:
   bool isFuncParamBoundsKey(BoundsKey BK, unsigned &PIdx);
 
   void addConstantArrayBounds(ProgramInfo &I);
+
+  // Compute which array pointers are not valid lower bounds. This includes any
+  // pointers directly updated in pointer arithmetic expression, as well as any
+  // pointers transitively assigned to from these pointers. This is computed
+  // using essentially the same algorithm as is used for solving the checked
+  // type constraint graph.
+  void computeInvalidLowerBounds();
+
+  void inferLowerBounds(ProgramInfo *PI);
+  BoundsKey getFreshLowerBound(BoundsKey Arr);
 
 private:
   friend class AvarBoundsInference;
@@ -379,6 +409,25 @@ private:
   // Context-sensitive bounds key handler
   CtxSensitiveBoundsKeyHandler CSBKeyHandler;
 
+  AVarGraph LowerBoundGraph;
+
+  // BoundsKeys that that cannot be used as a lower bound. These are used in an
+  // update such as `a = a + 1`.
+  // FIXME: The name InvalidBounds is already used. Find better names.
+  std::set<BoundsKey> InvalidLowerBounds;
+
+  // Mapping from pointers to their inferred lower bounds. A pointer maps to
+  // itself if it can use a simple count bound. Missing pointers have no valid
+  // lower bound, so no length should be inferred during bounds inference.
+  // TODO: I think mapping to 0 can also mean no lower bound. Make this
+  //       consistent.
+  std::map<BoundsKey, BoundsKey> LowerBounds;
+
+  // Some variables have to valid lower bound in the original source code, but
+  // we are able to insert a temporary pointer variable to be the lower bound.
+  // Keep track of these for special handling during rewriting.
+  std::set<BoundsKey> NeedFreshLowerBounds;
+
   // BoundsKey helper function: These functions help in getting bounds key from
   // various artifacts.
   bool hasVarKey(PersistentSourceLoc &PSL);
@@ -390,9 +439,6 @@ private:
   void insertVarKey(PersistentSourceLoc &PSL, BoundsKey NK);
 
   void insertProgramVar(BoundsKey NK, ProgramVar *PV);
-
-  // Check if the provided bounds key corresponds to function return.
-  bool isFunctionReturn(BoundsKey BK);
 
   // Of all the pointer bounds key, find arr pointers.
   void computeArrPointers(const ProgramInfo *PI);

@@ -117,13 +117,18 @@ void BasePointerAssignmentUpdater::visitBasePointerAssignment(Expr *LHS,
   // Structure fields and inner pointer levels can never have range bounds
   // so this case currently is not possible.
   assert(LHSCVs.size() == 1 || llvm::count_if(LHSCVs, [this](
-    ConstraintVariable *CV) { return ABInfo.needsRangeBound(CV); }) == 0);
+    ConstraintVariable *CV) { return ABInfo.needsFreshLowerBound(CV); }) == 0);
   for (ConstraintVariable *CV: LHSCVs) {
-    if (ABInfo.needsRangeBound(CV)) {
-      std::string TmpVarName = get3CTmpVar(CV->getName());
-      rewriteSourceRange(R, LHS->getSourceRange(), TmpVarName);
+    if (ABInfo.needsFreshLowerBound(CV)) {
+      BoundsKey LBKey = ABInfo.getBounds(
+        CV->getBoundsKey())->getLowerBoundKey();
+      assert(
+        "Should not be rewriting assignments for pointer without lower bound!" &&
+        LBKey != 0);
+      std::string LBName = ABInfo.getProgramVar(LBKey)->getVarName();
+      rewriteSourceRange(R, LHS->getSourceRange(), LBName);
       insertText(R, RHS->getEndLoc(),
-                 ", " + CV->getName() + " = " + TmpVarName);
+                 ", " + CV->getName() + " = " + LBName);
     }
   }
 }
@@ -138,6 +143,6 @@ void BasePointerAssignmentFinder::visitBasePointerAssignment(Expr *LHS,
     CVarSet LHSCVs = CR.getExprConstraintVarsSet(LHS);
     for (auto *CV: LHSCVs)
       if (CV->hasBoundsKey())
-        ABInfo.markIneligibleForRangeBounds(CV->getBoundsKey());
+        ABInfo.markIneligibleForFreshLowerBound(CV->getBoundsKey());
   }
 }

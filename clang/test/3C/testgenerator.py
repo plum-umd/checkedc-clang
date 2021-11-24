@@ -746,9 +746,9 @@ while the definition for sus appears below them*/"""
             # variable declaration  has been duplicated to allow for range bounds.
             if i + ye_offset + 1 < len(yeall):
                 yeline_next = yeall[i + ye_offset + 1]
-                if "__3c_tmp" in yeline_next and "__3c_tmp" in yeline:
+                if "= __3c_tmp" in yeline_next and "> __3c_tmp" in yeline:
                     lines[i] += ("\n" + indentation + "//CHECK_ALL: " + yeline_next.lstrip())
-                    ye_offset += 1
+                    ye_offset += 2
 
         if ";" in line:
             in_extern = False
@@ -781,9 +781,9 @@ while the definition for sus appears below them*/"""
             # variable declaration  has been duplicated to allow for range bounds.
             if i + ye_offset + 1 < len(yeall2):
                 yeline_next = yeall2[i + ye_offset + 1]
-                if "__3c_tmp" in yeline_next and "__3c_tmp" in yeline:
+                if "= __3c_tmp" in yeline_next and "> __3c_tmp" in yeline:
                     lines2[i] += ("\n" + indentation + "//CHECK_ALL: " + yeline_next.lstrip())
-                    ye_offset += 1
+                    ye_offset += 2
 
             if ";" in line:
                 in_extern = False

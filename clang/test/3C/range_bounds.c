@@ -16,15 +16,17 @@ void test0(size_t l) {
 
   // No bounds are inferred, but pointer arithemtic is used; don't split
   int *q = 0;
-  // CHECK_ALL :_Array_ptr<int> q;
+  // CHECK_ALL: _Array_ptr<int> q = 0;
   q++;
 }
 
 // Parameters must be inserted inside function body. This also also checks
 // that a pre-declarations gets the correct bounds and does not generate a
-// second alias.
+// second alias. In this case, the predeclaraiton doesn't need to use the new
+// variable, name, but it doesn't hurt, and is required in some more complex
+// cases.
 void test1(int *a, int l);
-// CHECK_ALL: void test1(_Array_ptr<int> a : count(l), int l);
+// CHECK_ALL: void test1(_Array_ptr<int> __3c_tmp_a : count(l), int l);
 void test1(int *a, int l) {
   // CHECK_ALL: void test1(_Array_ptr<int> __3c_tmp_a : count(l), int l) _Checked {
   // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + l) = __3c_tmp_a;
@@ -42,7 +44,7 @@ void test1(int *a, int l) {
 
 // Also check for itypes. They're interesting because the alias isn't checked.
 void test2(int *a, int l);
-// CHECK_ALL: void test2(int *a : itype(_Array_ptr<int>) count(l), int l);
+// CHECK_ALL: void test2(int *__3c_tmp_a : itype(_Array_ptr<int>) count(l), int l);
 void test2(int *a, int l) {
   // CHECK_ALL: void test2(int *__3c_tmp_a : itype(_Array_ptr<int>) count(l), int l) {
   // CHECK_ALL: int *a  = __3c_tmp_a;
@@ -55,9 +57,8 @@ void test2(int *a, int l) {
 
 // Something more complex with multiple parameters.
 void test3(int *a, int *b, int *c, int *d) {
-  // CHECK_ALL: void test3(_Array_ptr<int> __3c_tmp_a : count(10), int *__3c_tmp_b : itype(_Array_ptr<int>) count(10), _Array_ptr<int> __3c_tmp_c : count(10), int *__3c_tmp_d : itype(_Array_ptr<int>) count(10)) {
+  // CHECK_ALL: void test3(_Array_ptr<int> __3c_tmp_a : count(10), int *b : itype(_Array_ptr<int>) bounds(__3c_tmp_d, __3c_tmp_d + 10), _Array_ptr<int> __3c_tmp_c : count(10), int *__3c_tmp_d : itype(_Array_ptr<int>) count(10)) {
   // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + 10) = __3c_tmp_a;
-  // CHECK_ALL: int *b = __3c_tmp_b;
   // CHECK_ALL: _Array_ptr<int> c : bounds(__3c_tmp_c, __3c_tmp_c + 10) = __3c_tmp_c;
   // CHECK_ALL: int *d = __3c_tmp_d;
   a += 1, b += 2, c--, d -= 1;
@@ -85,10 +86,10 @@ void test4() {
 }
 
 // Test that bounds don't propagate through pointers with assigned to from
-// pointer arithmetic. In this example, `b` can *not* have bounds `count(2)`.
-// TODO: `b` could get `bounds(__3c_tmp_a, __3c_tmp_a + 2)`.
-// The same restriction also applies to bounds on the return, but it is is not
-// clear how range bounds could be assigned to the return.
+// pointer arithmetic. In this example, `b` can *not* have bounds `count(2)`,
+// but it can get `bounds(__3c_tmp_a, __3c_tmp_a + 2)`.  The same restriction
+// also applies to bounds on the return, but, for the return, `a` can't be used
+// as a lower bound, so no bound is given.
 int *test5() {
   // CHECK_ALL: _Array_ptr<int> test5(void) {
   int *a = malloc(2 * sizeof(int));
@@ -96,9 +97,7 @@ int *test5() {
   // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + 2) = __3c_tmp_a;
   a++;
   int *b = a;
-  // CHECK_ALL: _Array_ptr<int> b : count(0 + 1) = a;
-  // expected-error@-2 {{it is not possible to prove that the inferred bounds of 'b' imply the declared bounds of 'b' after initialization}}
-  // expected-note@-3 4 {{}}
+  // CHECK_ALL: _Array_ptr<int> b : bounds(__3c_tmp_a, __3c_tmp_a + 2) = a;
   b[0];
 
   return a;
@@ -123,8 +122,8 @@ void test6() {
   // A slightly more complex update to a different pointer value.
   int *q = malloc(10 * sizeof(int));
   p = q;
-  // CHECK_ALL: _Array_ptr<int> q : count(10) = malloc<int>(10 * sizeof(int));
-  // CHECK_ALL: __3c_tmp_p = q, p = __3c_tmp_p;
+  //CHECK_ALL: _Array_ptr<int> q : count(10) = malloc<int>(10 * sizeof(int));
+  //CHECK_ALL: __3c_tmp_p = q, p = __3c_tmp_p;
 
   // Don't treat a call to realloc as pointer arithmetic. Freeing `p` after
   // `p++` is highly questionable, but that's not the point here.
@@ -133,8 +132,8 @@ void test6() {
 
   // Assignment rewriting should work in more complex expression and around
   // other 3C rewriting without breaking anything.
-  int *v = 1 + (p = (int*) q, p = p + 1) + 1;
-  // CHECK_ALL: _Ptr<int> v = 1 + (__3c_tmp_p = (_Array_ptr<int>) q, p = __3c_tmp_p, p = p + 1) + 1;
+  int *v = 1 + (p = (int*) 0, p = p + 1) + 1;
+  // CHECK_ALL: _Ptr<int> v = 1 + (__3c_tmp_p = (_Array_ptr<int>) 0, p = __3c_tmp_p, p = p + 1) + 1;
 }
 
 
@@ -143,9 +142,9 @@ void test6() {
 void test7(int *);
 void test7();
 void test7(int *a);
-// CHECK_ALL: void test7(_Array_ptr<int> s : count(5));
-// CHECK_ALL: void test7(_Array_ptr<int> s : count(5));
-// CHECK_ALL: void test7(_Array_ptr<int> a : count(5));
+// CHECK_ALL: void test7(_Array_ptr<int> __3c_tmp_s : count(5));
+// CHECK_ALL: void test7(_Array_ptr<int> __3c_tmp_s : count(5));
+// CHECK_ALL: void test7(_Array_ptr<int> __3c_tmp_s : count(5));
 void test7(int *s) {
 // CHECK_ALL: void test7(_Array_ptr<int> __3c_tmp_s : count(5)) _Checked {
 // CHECK_ALL: _Array_ptr<int> s : bounds(__3c_tmp_s, __3c_tmp_s + 5) = __3c_tmp_s;

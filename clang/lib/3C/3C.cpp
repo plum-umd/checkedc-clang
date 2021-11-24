@@ -516,6 +516,18 @@ bool _3CInterface::addVariables() {
 
   std::lock_guard<std::mutex> Lock(InterfaceMutex);
 
+  // Find multi-decls and assign names to unnamed inline TagDecls now so that
+  // the assigned type names are available when we construct ConstraintVariables
+  // for the multi-decl members in the "Add Variables" step below.
+  for (auto &TU : ASTs)
+    GlobalProgramInfo.TheMultiDeclsInfo.findUsedTagNames(TU->getASTContext());
+  if (!isSuccessfulSoFar())
+    return false;
+  for (auto &TU : ASTs)
+    GlobalProgramInfo.TheMultiDeclsInfo.findMultiDecls(TU->getASTContext());
+  if (!isSuccessfulSoFar())
+    return false;
+
   // 1. Add Variables.
   VariableAdderConsumer VA = VariableAdderConsumer(GlobalProgramInfo, nullptr);
   for (auto &TU : ASTs)
@@ -586,6 +598,8 @@ bool _3CInterface::solveConstraints() {
 
     // Propagate initial data-flow information for Array pointers from
     // bounds declarations.
+    GlobalProgramInfo.getABoundsInfo().computeInvalidLowerBounds();
+    GlobalProgramInfo.getABoundsInfo().inferLowerBounds(&GlobalProgramInfo);
     GlobalProgramInfo.getABoundsInfo().performFlowAnalysis(&GlobalProgramInfo);
 
     // 4. Infer the bounds based on calls to malloc and calloc
