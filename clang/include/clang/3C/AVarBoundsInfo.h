@@ -395,7 +395,7 @@ private:
   CtxSensitiveBoundsKeyHandler CSBKeyHandler;
 
   AVarGraph LowerBoundGraph;
-  static const BoundsKey InvalidLowerBoundKey = 0;
+  const BoundsKey InvalidLowerBoundKey = 0;
 
   // BoundsKeys that that cannot be used as a lower bound. These are used in an
   // update such as `a = a + 1`, or are transitively assigned from such a
