@@ -242,9 +242,8 @@ ABounds *AvarBoundsInference::getPreferredBound(BoundsKey BK) {
   if (NeedsBasePointer && BI->LowerBounds.find(BK) != BI->LowerBounds.end())
     BaseVar = BI->LowerBounds[BK];
 
-  if (NeedsBasePointer && BaseVar == 0)
-    llvm::errs() << "Lower bound pointer required for " << BK
-                 << " but not available.\n";
+  assert("Lower bound required but not available." &&
+         (!NeedsBasePointer || BaseVar != 0));
 
   const auto &BKindMap = CurrIterInferBounds[BK];
   // Utility to check if the map contains a non-empty set of bounds for a

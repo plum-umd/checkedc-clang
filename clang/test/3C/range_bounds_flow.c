@@ -187,3 +187,17 @@ void foo_caller(unsigned long l) {
   // expected-note@-2 {{}}
   // expected-note@-3 {{}}
 }
+
+
+// Lower bound inference for `b` fails because `a` is out of scope. If `a` were
+// in scope, it would be used as a lower bound.
+void bar(int *b) {
+// CHECK_ALL: void bar(_Array_ptr<int> __3c_tmp_b : count(0 + 1)) _Checked {
+// CHECK_ALL: _Array_ptr<int> b : bounds(__3c_tmp_b, __3c_tmp_b + 0 + 1) = __3c_tmp_b;
+  int *a;
+  // CHECK_ALL: _Array_ptr<int> a : count(0 + 1) = ((void *)0);
+  b = a;
+  // CHECK_ALL: __3c_tmp_b = a, b = __3c_tmp_b;
+  b++;
+  b[0];
+}
