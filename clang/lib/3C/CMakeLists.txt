@@ -30,7 +30,6 @@ add_clang_library(clang3C
   AVarBoundsInfo.cpp
   AVarGraph.cpp
   ArrayBoundsInferenceConsumer.cpp
-        LowerBoundAssignment.cpp
   CastPlacement.cpp
   3C.cpp
   3CInteractiveData.cpp
@@ -44,6 +43,7 @@ add_clang_library(clang3C
   CtxSensAVarBounds.cpp
   DeclRewriter.cpp
   IntermediateToolHook.cpp
+  LowerBoundAssignment.cpp
   MappingVisitor.cpp
   MultiDecls.cpp
   PersistentSourceLoc.cpp
