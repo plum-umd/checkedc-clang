@@ -342,7 +342,7 @@ bool AvarBoundsInference::getReachableBoundKeys(const ProgramVarScope *DstScope,
           PotK.insert(T);
         }
       }
-    };
+    }
   }
 
   return !PotK.empty();
