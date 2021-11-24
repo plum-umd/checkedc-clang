@@ -214,14 +214,9 @@ void AvarBoundsInference::convergeInferredBounds() {
       // Maps ABounds::BoundsKind to the set of possible bounds of this kind for
       // the current PtrBoundsKey.
       auto &BKindMap = CInfABnds.second;
-      for (auto &TySet: BKindMap)
+      for (auto &TySet : BKindMap)
         mergeReachableProgramVars(PtrBoundsKey, TySet.second);
-    }
-  }
 
-  for (auto &CInfABnds : CurrIterInferBounds) {
-    BoundsKey PtrBoundsKey = CInfABnds.first;
-    if (BI->getBounds(PtrBoundsKey) == nullptr) {
       ABounds *NewBound = getPreferredBound(PtrBoundsKey);
       // If we found any bounds?
       if (NewBound != nullptr) {
