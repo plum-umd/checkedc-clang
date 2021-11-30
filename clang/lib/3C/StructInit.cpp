@@ -63,9 +63,7 @@ bool StructVariableInitializer::VisitVarDecl(VarDecl *VD) {
   if (VD->hasLocalStorage() && !isa<ParmVarDecl>(VD) && !VD->hasInit() &&
       hasCheckedMembers(VD)) {
     // Create replacement declaration text with an initializer.
-    RewrittenDecl RD = mkStringForDeclWithUnchangedType(VD, I);
-    assert(RD.IType.empty() && RD.SupplementaryDecl.empty());
-    std::string ToReplace = RD.Type + " = {}";
+    std::string ToReplace = mkStringForDeclWithUnchangedType(VD, I) + " = {}";
     RewriteThese.insert(
         std::make_pair(VD, new MultiDeclMemberReplacement(VD, ToReplace, {})));
   }

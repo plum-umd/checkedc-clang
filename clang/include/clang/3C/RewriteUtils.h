@@ -150,8 +150,8 @@ RewrittenDecl mkStringForPVDecl(MultiDeclMemberDecl *MMD, PVConstraint *PVC,
 // the original source for the rest of the declaration, but that may run into
 // problems with macros and the like, so we might still need some fallback. For
 // now, we don't implement this "original source" approach.
-RewrittenDecl
-mkStringForDeclWithUnchangedType(MultiDeclMemberDecl *D, ProgramInfo &Info);
+std::string mkStringForDeclWithUnchangedType(MultiDeclMemberDecl *D,
+                                             ProgramInfo &Info);
 
 // Class that handles rewriting bounds information for all the
 // detected array variables.
