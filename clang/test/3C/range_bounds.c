@@ -68,9 +68,9 @@ void test3(int *a, int *b, int *c, int *d) {
     a[i], b[i], c[i], d[i];
 }
 
-// Multi declarations might need to a new declarations. The order of the new
+// Multi-declarations might need to add new declarations. The order of the new
 // declarations is important because a later declaration in the same multi-decl
-// might reference the variable being emmitted. The new declaration of `c` must
+// might reference the variable being emitted. The new declaration of `c` must
 // come before `d`.
 void test4() {
   int *a = malloc(10*sizeof(int)), b, *c = malloc(10*sizeof(int)), *d = c;
