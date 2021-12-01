@@ -13,11 +13,8 @@ void foo(int *w) {
   //CHECK_NOALL: int *y = malloc<int>(2 * sizeof(int));
   //CHECK_ALL: _Array_ptr<int> y : count(2) = malloc<int>(2 * sizeof(int));
   y[1] = 3;
-  // FIXME: Inferred array bounds around realloc changed here and in realloc_complex.c.
-  //        I believe it's because I now create a BoundsKey for realloc, so
-  //        there can be a bounds flow from y to z.  Is this acceptable>
   int *z = realloc(y, 5 * sizeof(int));
   //CHECK_NOALL: int *z = realloc<int>(y, 5 * sizeof(int));
-  //CHECK_ALL: _Array_ptr<int> z : count(2) = realloc<int>(y, 5 * sizeof(int));
+  //CHECK_ALL: _Array_ptr<int> z : count(5) = realloc<int>(y, 5 * sizeof(int));
   z[3] = 2;
 }
