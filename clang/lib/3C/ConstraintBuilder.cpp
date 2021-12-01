@@ -472,7 +472,7 @@ void VariableAdderConsumer::HandleTranslationUnit(ASTContext &C) {
   }
 
   VariableAdderVisitor VAV = VariableAdderVisitor(&C, Info);
-  LowerBoundAssignmentFinder BPF = LowerBoundAssignmentFinder(&C, Info);
+  LowerBoundAssignmentFinder LBF = LowerBoundAssignmentFinder(&C, Info);
   TranslationUnitDecl *TUD = C.getTranslationUnitDecl();
   // Collect Variables.
   for (const auto &D : TUD->decls()) {
