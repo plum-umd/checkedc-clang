@@ -237,8 +237,8 @@ clang::SourceLocation getCheckedCAnnotationsEnd(const clang::Decl *D);
 
 
 clang::SourceLocation
-getLocationAfter(clang::SourceLocation SL, const clang::SourceManager &SM,
-                 const clang::LangOptions &LO);
+getLocationAfterToken(clang::SourceLocation SL, const clang::SourceManager &SM,
+                      const clang::LangOptions &LO);
 
 
 // Get the source range for a declaration including Checked C annotations.

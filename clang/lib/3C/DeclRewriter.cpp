@@ -553,8 +553,9 @@ void DeclRewriter::doDeclRewrite(SourceRange &SR, DeclReplacement *N) {
 
   rewriteSourceRange(R, SR, Replacement);
 
-  SourceLocation L = getLocationAfter(N->getDecl()->getEndLoc(),
-                                      A.getSourceManager(), A.getLangOpts());
+  SourceLocation L = getLocationAfterToken(N->getDecl()->getEndLoc(),
+                                           A.getSourceManager(),
+                                           A.getLangOpts());
   emitSupplementaryDeclarations(N->getSupplementaryDecls(), L);
 }
 
@@ -586,7 +587,8 @@ void DeclRewriter::emitSupplementaryDeclarations(
   //        for proper rewriting in multi-declarations.
   AllDecls += "\n";
 
-  R.InsertTextAfter(getLocationAfter(Loc, R.getSourceMgr(), R.getLangOpts()),
+  R.InsertTextAfter(
+    getLocationAfterToken(Loc, R.getSourceMgr(), R.getLangOpts()),
                     AllDecls);
 }
 

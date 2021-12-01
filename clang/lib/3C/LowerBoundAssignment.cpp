@@ -128,7 +128,8 @@ void LowerBoundAssignmentUpdater::visitLowerBoundAssignment(Expr *LHS,
       std::string LBName = ABInfo.getProgramVar(LBKey)->getVarName();
       rewriteSourceRange(R, LHS->getSourceRange(), LBName);
       R.InsertTextAfter(
-        getLocationAfter(RHS->getEndLoc(), R.getSourceMgr(), R.getLangOpts()),
+        getLocationAfterToken(RHS->getEndLoc(), R.getSourceMgr(),
+                              R.getLangOpts()),
         ", " + CV->getName() + " = " + LBName);
     }
   }
@@ -137,7 +138,8 @@ void LowerBoundAssignmentUpdater::visitLowerBoundAssignment(Expr *LHS,
 void LowerBoundAssignmentFinder::visitLowerBoundAssignment(Expr *LHS,
                                                            Expr *RHS) {
   SourceLocation RHSEnd =
-    getLocationAfter(RHS->getEndLoc(), C->getSourceManager(), C->getLangOpts());
+    getLocationAfterToken(RHS->getEndLoc(), C->getSourceManager(),
+                          C->getLangOpts());
   SourceLocation LHSLoc = LHS->getExprLoc();
   if (!(LHSLoc.isValid() && Rewriter::isRewritable(LHSLoc)) ||
       !(RHSEnd.isValid() && Rewriter::isRewritable(RHSEnd))) {
