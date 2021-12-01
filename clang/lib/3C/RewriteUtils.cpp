@@ -52,7 +52,6 @@ RewrittenDecl mkStringForPVDecl(MultiDeclMemberDecl *MMD, PVConstraint *PVC,
                                         PVC->getName(), Info, ABRewriter,
                                         true);
   }
-  // FIXME: Better way to do this?
   RD.Type = getStorageQualifierString(MMD) + RD.Type;
 
   return RD;
