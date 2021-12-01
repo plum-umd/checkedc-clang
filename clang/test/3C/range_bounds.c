@@ -203,7 +203,7 @@ void test11(size_t n){
   a++;
   set_a_to_null;
 
-  // The LHS is a macro, but we should still be able to rewrite.
+  // The RHS is a macro, but we should still be able to rewrite.
   int *b = malloc(sizeof(int) * n);
   // CHECK: _Array_ptr<int> __3c_tmp_b : count(n) = malloc<int>(sizeof(int) * n);
   // CHECK: _Array_ptr<int> b : bounds(__3c_tmp_b, __3c_tmp_b + n) = __3c_tmp_b;
