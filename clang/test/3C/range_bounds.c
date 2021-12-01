@@ -7,8 +7,8 @@
 #include<stdlib.h>
 
 void test0(size_t l) {
-  // Would get bounds, but there's pointer arithmetic. Now we split and use
-  // range bound.
+  // Would get bounds, but there's pointer arithmetic. Now we generate a fresh
+  // lower bound and use it in range bounds.
   int *p = malloc(l * sizeof(int));
   // CHECK_ALL: _Array_ptr<int> __3c_lower_bound_p : count(l) = malloc<int>(l * sizeof(int));
   // CHECK_ALL: _Array_ptr<int> p : bounds(__3c_lower_bound_p, __3c_lower_bound_p + l) = __3c_lower_bound_p;
@@ -167,9 +167,9 @@ void test7(int *s) {
     s[i];
 }
 
-// A structure field is handled as it was before implementing range bounds.
-// Future work could insert a new field, and update all struct initializer to
-// include it.
+// A structure field is handled as it was before implementing lower bound
+// inference. Future work could insert a new field, and update all struct
+// initializer to include it.
 struct s {
   int *a;
   // CHECK_ALL: _Array_ptr<int> a;
@@ -181,8 +181,8 @@ void test8() {
   // expected-error@-1 {{expression has unknown bounds}}
 }
 
-// Same as above. Future work might figure out how to emit range bounds for
-// global variables.
+// Same as above. Future work might figure out how to generate fresh lower
+// bounds for global variables.
 int *glob;
 // CHECK_ALL: _Array_ptr<int> glob = ((void *)0);
 void test9() {
@@ -205,9 +205,9 @@ void test10(int a[10]) {
   // expected-note@-2 {{}}
 }
 
-// Another case where range bounds aren't allowed: if we would have to update
-// an assignment expression in a macro (which would be a rewriting error), then
-// the pointer cannot get range bounds.
+// Another case where fresh lower bounds can't be generated: if we would have
+// to update an assignment expression in a macro (which would be a rewriting
+// error), then the pointer cannot get fresh lower bound.
 #define set_a_to_null a = 0
 #define null_with_semi 0;
 #define another_macro d =
