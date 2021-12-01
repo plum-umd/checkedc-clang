@@ -83,6 +83,20 @@ void test4() {
 
   b;
   a++, c++;
+
+  // This is another bit of tricky multi-decl rewriting. There are be spaces or
+  // comments between the end of one declaration and the beginning of the next.
+  // The fresh lower bound needs to be inserted after the comma delimiting the
+  // declarations.
+  int *x = malloc(5 * sizeof(int)) , *y = malloc(2 * sizeof(int)) /*foo*/, z;
+  // CHECK_ALL: _Array_ptr<int> __3c_lower_bound_x : count(5) = malloc<int>(5 * sizeof(int)) ;
+  // CHECK_ALL: _Array_ptr<int> x : bounds(__3c_lower_bound_x, __3c_lower_bound_x + 5) = __3c_lower_bound_x;
+  // CHECK_ALL: _Array_ptr<int> __3c_lower_bound_y : count(2) = malloc<int>(2 * sizeof(int)) /*foo*/;
+  // CHECK_ALL: _Array_ptr<int> y : bounds(__3c_lower_bound_y, __3c_lower_bound_y + 2) = __3c_lower_bound_y;
+  // CHECK_ALL: int z;
+
+  x++;
+  y++;
 }
 
 // Test that bounds don't propagate through pointers that are updated with
