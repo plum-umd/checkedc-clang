@@ -116,10 +116,16 @@ struct RewrittenDecl {
                          std::string SupplementaryDecl)
     : Type(Type), IType(IType), SupplementaryDecl(SupplementaryDecl) {}
 
-  // The type for declaration and the identifier if this is not a return value.
+  // For function returns, the component of the declaration that appears before
+  // the identifier. For parameter and local variables, a prefix of the full
+  // declaration possibly omitting any itype or array bounds, which may be
+  // stored in the Itype field below.
   std::string Type;
 
-  // The Checked C itype or bounds expressions if required, empty otherwise.
+  // For function returns, the component of the rewritten declaration that
+  // appears after the parameter list. For parameter and local variables, some
+  // suffix of the full declaration, often any itype or bounds declaration,
+  // but also possibly empty.
   std::string IType;
 
   // A duplicate declaration used to support range bounds. The duplicate
