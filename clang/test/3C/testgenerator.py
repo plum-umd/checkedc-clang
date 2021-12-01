@@ -684,7 +684,10 @@ while the definition for sus appears below them*/"""
     allfile.close()
     os.system("rm {} {}".format(cnameNOALL, cnameALL))
 
-    # ensure all lines are the same length
+    # Prior to the introduction of lower bound inference an automatic lower
+    # bounds generation, the initial and converted code should have had the
+    # same number of lines. Generated lower bounds introduce new lines,
+    # so this is nolonger the case.
     # assert len(lines) == len(noall) == len(yeall), "fix file " + name
 
     if proto == "multi":
@@ -701,7 +704,7 @@ while the definition for sus appears below them*/"""
         allfile2.close()
         os.system("rm {} {}".format(cname2NOALL, cname2ALL))
 
-        # ensure all lines are the same length
+        # See earlier comment on why this is disable.
         # assert len(lines2) == len(noall2) == len(yeall2), "fix file " + name
 
     def runtime_cname(s):
@@ -743,7 +746,8 @@ while the definition for sus appears below them*/"""
                 lines[i] += ("\n" + indentation + "//CHECK_ALL: " + yeline.lstrip())
 
             # This is a hack needed to properly updated tests where an array
-            # variable declaration  has been duplicated to allow for range bounds.
+            # variable declaration has been duplicated to allow for generating
+            # fresh lower bound.
             if i + ye_offset + 1 < len(yeall):
                 yeline_next = yeall[i + ye_offset + 1]
                 if "= __3c_tmp" in yeline_next and "> __3c_tmp" in yeline:
@@ -777,8 +781,7 @@ while the definition for sus appears below them*/"""
                     lines2[i] += ("\n" + indentation + "//CHECK_ALL: " +
                                   yeline.lstrip())
 
-            # This is a hack needed to properly updated tests where an array
-            # variable declaration  has been duplicated to allow for range bounds.
+            # See above comment for why this hack is necessary.
             if i + ye_offset + 1 < len(yeall2):
                 yeline_next = yeall2[i + ye_offset + 1]
                 if "= __3c_tmp" in yeline_next and "> __3c_tmp" in yeline:
