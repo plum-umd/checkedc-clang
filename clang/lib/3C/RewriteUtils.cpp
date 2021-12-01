@@ -45,7 +45,7 @@ RewrittenDecl mkStringForPVDecl(MultiDeclMemberDecl *MMD, PVConstraint *PVC,
     // infrastructure that would be required to support these itypes if
     // constraint generation is updated to handle structure/global itypes.
     RD = DeclRewriter::buildItypeDecl(PVC, cast<DeclaratorDecl>(MMD),
-                                      PVC->getName(), Info, ABRewriter,
+                                      PVC->getName(), Info, ABRewriter, true,
                                       true);
   } else {
     RD = DeclRewriter::buildCheckedDecl(PVC, cast<DeclaratorDecl>(MMD),
