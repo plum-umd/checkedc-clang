@@ -27,25 +27,57 @@
 using namespace llvm;
 using namespace clang;
 
-// Generate a new declaration for the PVConstraint using an itype where the
-// unchecked portion of the type is the original type, and the checked portion
-// is the taken from the constraint graph solution. The unchecked portion is
-// assigned to string reference Type and the checked (itype) portion is assigned
-// to the string reference Itype.
-RewrittenDecl
-DeclRewriter::buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
-                             std::string UseName, ProgramInfo &Info,
-                             ArrayBoundsRewriter &ABR, bool GenerateSDecls) {
+static bool checkNeedsFreshLowerBound(PVConstraint *Defn, std::string UseName,
+                                      ProgramInfo &Info,
+                                      std::string &DeclName) {
   bool NeedsFreshLowerBound = Info.getABoundsInfo().needsFreshLowerBound(Defn);
 
-  std::string DeclName;
   if (NeedsFreshLowerBound) {
-    BoundsKey FreshLB = Info.getABoundsInfo().getBounds(
-      Defn->getBoundsKey())->getLowerBoundKey();
+    BoundsKey FreshLB = Info.getABoundsInfo()
+                            .getBounds(Defn->getBoundsKey())
+                            ->getLowerBoundKey();
     DeclName = Info.getABoundsInfo().getProgramVar(FreshLB)->getVarName();
   } else {
     DeclName = UseName;
   }
+
+  return NeedsFreshLowerBound;
+}
+
+static std::string buildSupplementaryDecl(PVConstraint *Defn,
+                                          DeclaratorDecl *Decl,
+                                          ArrayBoundsRewriter &ABR,
+                                          ProgramInfo &Info, bool SDeclChecked,
+                                          std::string DeclName) {
+  std::string SDecl = Defn->mkString(
+      Info.getConstraints(), MKSTRING_OPTS(ForItypeBase = !SDeclChecked));
+  if (SDeclChecked)
+    SDecl += ABR.getBoundsString(Defn, Decl);
+  SDecl += " = " + DeclName + ";";
+  return SDecl;
+}
+
+// Generate a new declaration for the PVConstraint using an itype where the
+// unchecked portion of the type is the original type, and the checked portion
+// is the taken from the constraint graph solution.
+//
+// If SDeclChecked = true, then any generated supplementary declaration uses the
+// checked type; that's generally what you want if an itype is being used only
+// because of -itypes-for-extern. If SDeclChecked = false, then the unchecked
+// type is used; that's what you want when the supplementary declaration is
+// standing in for a function parameter that got an itype because it is used
+// unsafely inside the function. TODO: Instead of using an ad-hoc boolean
+// parameter for this, maybe we could just pass in the internal PVConstraint and
+// look at that
+// (https://github.com/correctcomputation/checkedc-clang/issues/704).
+RewrittenDecl
+DeclRewriter::buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
+                             std::string UseName, ProgramInfo &Info,
+                             ArrayBoundsRewriter &ABR, bool GenerateSDecls,
+                             bool SDeclChecked) {
+  std::string DeclName;
+  bool NeedsFreshLowerBound =
+      checkNeedsFreshLowerBound(Defn, UseName, Info, DeclName);
 
   const EnvironmentMap &Env = Info.getConstraints().getVariables();
   // True when the type of this variable is defined by a typedef, and the
@@ -118,15 +150,9 @@ DeclRewriter::buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
   IType += ABR.getBoundsString(Defn, Decl, true, NeedsFreshLowerBound);
 
   std::string SDecl;
-  if (GenerateSDecls && NeedsFreshLowerBound) {
-    // For itypes, the copy of the array cannot use a checked type because we
-    // know it will be used unsafely somewhere in the body of the function.
-    // Giving it a checked type would result in Checked C type errors at the
-    // unsafe uses.
-    SDecl = Defn->mkString(Info.getConstraints(),
-                           MKSTRING_OPTS(ForItypeBase = true)) + " = " +
-            DeclName + ";";
-  }
+  if (GenerateSDecls && NeedsFreshLowerBound)
+    SDecl =
+        buildSupplementaryDecl(Defn, Decl, ABR, Info, SDeclChecked, DeclName);
   return RewrittenDecl(Type, IType, SDecl);
 }
 
@@ -134,28 +160,17 @@ RewrittenDecl
 DeclRewriter::buildCheckedDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
                                std::string UseName, ProgramInfo &Info,
                                ArrayBoundsRewriter &ABR, bool GenerateSDecls) {
-  bool NeedsFreshLowerBound = Info.getABoundsInfo().needsFreshLowerBound(Defn);
-
   std::string DeclName;
-  if (NeedsFreshLowerBound) {
-    BoundsKey FreshLB = Info.getABoundsInfo().getBounds(
-      Defn->getBoundsKey())->getLowerBoundKey();
-    DeclName = Info.getABoundsInfo().getProgramVar(FreshLB)->getVarName();
-  } else {
-    DeclName = UseName;
-  }
+  bool NeedsFreshLowerBound =
+      checkNeedsFreshLowerBound(Defn, UseName, Info, DeclName);
 
   std::string Type =
     Defn->mkString(Info.getConstraints(), MKSTRING_OPTS(UseName = DeclName));
   std::string IType =
     ABR.getBoundsString(Defn, Decl, false, NeedsFreshLowerBound);
   std::string SDecl;
-  if (GenerateSDecls && NeedsFreshLowerBound) {
-    SDecl =
-      Defn->mkString(Info.getConstraints(), MKSTRING_OPTS(UseName = UseName)) +
-      ABR.getBoundsString(Defn, Decl) + " = " +
-      DeclName + ";";
-  }
+  if (GenerateSDecls && NeedsFreshLowerBound)
+    SDecl = buildSupplementaryDecl(Defn, Decl, ABR, Info, true, DeclName);
   return RewrittenDecl(Type, IType, SDecl);
 }
 
@@ -852,14 +867,14 @@ FunctionDeclBuilder::buildCheckedDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
   return RD;
 }
 
-
 RewrittenDecl
 FunctionDeclBuilder::buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
                                     std::string UseName, bool &RewriteParm,
-                                    bool &RewriteRet, bool GenerateSDecls) {
+                                    bool &RewriteRet, bool GenerateSDecls,
+                                    bool SDeclChecked) {
   Info.getPerfStats().incrementNumITypes();
-  RewrittenDecl RD = DeclRewriter::buildItypeDecl(Defn, Decl, UseName, Info,
-                                                  ABRewriter, GenerateSDecls);
+  RewrittenDecl RD = DeclRewriter::buildItypeDecl(
+      Defn, Decl, UseName, Info, ABRewriter, GenerateSDecls, SDeclChecked);
   RewriteParm = true;
   RewriteRet |= isa_and_nonnull<FunctionDecl>(Decl);
   return RD;
@@ -881,7 +896,7 @@ FunctionDeclBuilder::buildDeclVar(const FVComponentVariable *CV,
   if (ItypeSolution ||
       (CheckedSolution && _3COpts.ItypesForExtern && !StaticFunc)) {
     return buildItypeDecl(CV->getExternal(), Decl, UseName, RewriteParm,
-                          RewriteRet, GenerateSDecls);
+                          RewriteRet, GenerateSDecls, CheckedSolution);
   }
   if (CheckedSolution) {
     return buildCheckedDecl(CV->getExternal(), Decl, UseName, RewriteParm,

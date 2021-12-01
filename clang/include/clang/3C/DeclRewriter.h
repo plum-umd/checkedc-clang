@@ -34,10 +34,10 @@ public:
   // Info parameter are rewritten.
   static void rewriteDecls(ASTContext &Context, ProgramInfo &Info, Rewriter &R);
 
-  static RewrittenDecl
-  buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
-                 std::string UseName, ProgramInfo &Info,
-                 ArrayBoundsRewriter &ABR, bool GenerateSDecls);
+  static RewrittenDecl buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
+                                      std::string UseName, ProgramInfo &Info,
+                                      ArrayBoundsRewriter &ABR,
+                                      bool GenerateSDecls, bool SDeclChecked);
 
   static RewrittenDecl
   buildCheckedDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
@@ -102,9 +102,10 @@ protected:
                    std::string UseName, bool &RewriteParm, bool &RewriteRet,
                    bool GenerateSDecls);
 
-  RewrittenDecl
-  buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl, std::string UseName,
-                 bool &RewriteParm, bool &RewriteRet, bool GenerateSDecls);
+  RewrittenDecl buildItypeDecl(PVConstraint *Defn, DeclaratorDecl *Decl,
+                               std::string UseName, bool &RewriteParm,
+                               bool &RewriteRet, bool GenerateSDecls,
+                               bool SDeclChecked);
 
   bool inParamMultiDecl(const ParmVarDecl *PVD);
 };
