@@ -495,8 +495,7 @@ void DeclRewriter::rewriteMultiDecl(MultiDeclInfo &MDI, RSet &ToRewrite) {
       } else {
         // When the type hasn't changed, we still need to insert the original
         // type for the variable.
-        RewrittenDecl RD = mkStringForDeclWithUnchangedType(DL, Info);
-        std::string NewDeclStr = RD.Type + RD.IType;
+        std::string NewDeclStr = mkStringForDeclWithUnchangedType(DL, Info);
         rewriteSourceRange(R, ReplaceSR, NewDeclStr);
       }
     }

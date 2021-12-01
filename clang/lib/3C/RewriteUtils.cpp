@@ -58,8 +58,8 @@ RewrittenDecl mkStringForPVDecl(MultiDeclMemberDecl *MMD, PVConstraint *PVC,
   return RD;
 }
 
-RewrittenDecl
-mkStringForDeclWithUnchangedType(MultiDeclMemberDecl *MMD, ProgramInfo &Info) {
+std::string mkStringForDeclWithUnchangedType(MultiDeclMemberDecl *MMD,
+                                             ProgramInfo &Info) {
   ASTContext &Context = MMD->getASTContext();
 
   bool BaseTypeRenamed = Info.TheMultiDeclsInfo.wasBaseTypeRenamed(MMD);
@@ -71,7 +71,7 @@ mkStringForDeclWithUnchangedType(MultiDeclMemberDecl *MMD, ProgramInfo &Info) {
     raw_string_ostream DeclStream(DeclStr);
     MMD->print(DeclStream, Policy);
     assert("Original decl string empty." && !DeclStr.empty());
-    return RewrittenDecl(DeclStr, "", {});
+    return DeclStr;
   }
 
   // OK, we have to use mkString.
@@ -98,7 +98,9 @@ mkStringForDeclWithUnchangedType(MultiDeclMemberDecl *MMD, ProgramInfo &Info) {
     // probably the behavior we want with -itypes-for-extern. If we don't care
     // about this case, we could alternatively inline the few lines of
     // mkStringForPVDecl that would still be relevant.
-    return mkStringForPVDecl(MMD, PVC, Info);
+    RewrittenDecl RD = mkStringForPVDecl(MMD, PVC, Info);
+    assert(RD.SupplementaryDecl.empty());
+    return RD.Type + RD.IType;
   }
 
   // If the type is not a pointer or array, then it should just equal the base
@@ -110,9 +112,8 @@ mkStringForDeclWithUnchangedType(MultiDeclMemberDecl *MMD, ProgramInfo &Info) {
   std::string QualifierPrefix = DType.getQualifiers().getAsString();
   if (!QualifierPrefix.empty())
     QualifierPrefix += " ";
-  return RewrittenDecl(
-    getStorageQualifierString(MMD) + QualifierPrefix + *BaseTypeNewNameOpt +
-    " " + std::string(MMD->getName()), "", {});
+  return getStorageQualifierString(MMD) + QualifierPrefix +
+         *BaseTypeNewNameOpt + " " + std::string(MMD->getName());
 }
 
 // Test to see if we can rewrite a given SourceRange.
