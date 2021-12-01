@@ -108,8 +108,8 @@ typedef std::map<Decl *, DeclReplacement *> RSet;
 
 // Represent a rewritten declaration split into three components. For a
 // parameter or local variable declaration, concatenating Type and IType will
-// give the full declaration. For a function return, Type should appear the
-// identifier and parameter list and itype should appear after.
+// give the full declaration. For a function return, Type should appear before
+// the identifier and parameter list and itype should appear after.
 struct RewrittenDecl {
   explicit RewrittenDecl() : Type(), IType(), SupplementaryDecl() {}
   explicit RewrittenDecl(std::string Type, std::string IType,
@@ -118,8 +118,11 @@ struct RewrittenDecl {
 
   // For function returns, the component of the declaration that appears before
   // the identifier. For parameter and local variables, a prefix of the full
-  // declaration possibly omitting any itype or array bounds, which may be
-  // stored in the Itype field below.
+  // declaration up to at least the identifier, but possibly omitting any itype
+  // or array bounds, which may be stored in the Itype field below. The
+  // identifier in this string is not always the same as the original identifier.
+  // If 3C generates a fresh lower bound (stored in the SupplementrayDecl
+  // string), then the identifier is changed to a temporary name.
   std::string Type;
 
   // For function returns, the component of the rewritten declaration that
@@ -129,8 +132,8 @@ struct RewrittenDecl {
   std::string IType;
 
   // A duplicate declaration used to support range bounds. The duplicate
-  // declaration refers to the original in the bounds expression, so it must be
-  // emitted after the original declaration.
+  // declaration may refer to the original in the bounds expression, so it must
+  // be emitted after the original declaration.
   // e.g., `_Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + n)`
   // If the declaration does not need range bounds, then this string is empty.
   std::string SupplementaryDecl;
