@@ -85,7 +85,7 @@ void test4() {
   a++, c++;
 }
 
-// Test that bounds don't propagate through pointers with assigned to from
+// Test that bounds don't propagate through pointers that are updated with
 // pointer arithmetic. In this example, `b` can *not* have bounds `count(2)`,
 // but it can get `bounds(__3c_tmp_a, __3c_tmp_a + 2)`.  The same restriction
 // also applies to bounds on the return, but, for the return, `a` can't be used
