@@ -14,8 +14,8 @@
 // bound, `__3c_tmp_p` must also be updated to be equal to `q`.
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LOWERBOUNDASSIGNMENT_H
-#define LLVM_LOWERBOUNDASSIGNMENT_H
+#ifndef LLVM_CLANG_3C_LOWERBOUNDASSIGNMENT_H
+#define LLVM_CLANG_3C_LOWERBOUNDASSIGNMENT_H
 
 #include "clang/AST/Decl.h"
 #include "clang/AST/Stmt.h"
