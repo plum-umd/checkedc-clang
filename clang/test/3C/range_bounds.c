@@ -21,9 +21,9 @@ void test0(size_t l) {
 }
 
 // Parameters must be inserted inside function body. This also also checks
-// that a pre-declarations gets the correct bounds and does not generate a
-// second alias. In this case, the predeclaraiton doesn't need to use the new
-// variable, name, but it doesn't hurt, and is required in some more complex
+// that a pre-declaration gets the correct bounds and does not generate a
+// second alias. In this case, the predeclaration doesn't need to use the new
+// variable name, but it doesn't hurt and is required in some more complex
 // cases.
 void test1(int *a, int l);
 // CHECK_ALL: void test1(_Array_ptr<int> __3c_tmp_a : count(l), int l);
