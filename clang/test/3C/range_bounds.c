@@ -84,7 +84,7 @@ void test4() {
   b;
   a++, c++;
 
-  // This is another bit of tricky multi-decl rewriting. There are be spaces or
+  // This is another bit of tricky multi-decl rewriting. There may be spaces or
   // comments between the end of one declaration and the beginning of the next.
   // The fresh lower bound needs to be inserted after the comma delimiting the
   // declarations.
@@ -97,6 +97,15 @@ void test4() {
 
   x++;
   y++;
+
+  // The customary space after the comma may be missing. Make sure that doesn't
+  // break rewriting either.
+  int *u = malloc(10*sizeof(int)),v;
+  // CHECK_ALL: _Array_ptr<int> __3c_lower_bound_u : count(10) = malloc<int>(10*sizeof(int));
+  // CHECK_ALL: _Array_ptr<int> u : bounds(__3c_lower_bound_u, __3c_lower_bound_u + 10) = __3c_lower_bound_u;
+  // CHECK_ALL: int v;
+
+  u++;
 }
 
 // Test that bounds don't propagate through pointers that are updated with
