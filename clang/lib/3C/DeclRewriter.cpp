@@ -525,13 +525,9 @@ void DeclRewriter::rewriteMultiDecl(MultiDeclInfo &MDI, RSet &ToRewrite) {
           getDeclSourceRangeWithAnnotations(DL, /*IncludeInitializer=*/true);
       SourceRange Comma = getNextComma(SkipSR.getEnd());
       rewriteSourceRange(R, Comma, ";\n");
-      // Offset to skip past what we've just added so it isn't overwritten.
-      // If a duplicate declaration was emitted for as part of rewriting a
-      // declaration, then the offset must be 2 to skip past that as well.
-      unsigned int Offset = 1;
-      if (Replacement && !Replacement->getSupplementaryDecls().empty())
-        Offset = 2;
-      PrevEnd = Comma.getEnd().getLocWithOffset(Offset);
+      // Offset by one to skip past what we've just added so it isn't
+      // overwritten.
+      PrevEnd = Comma.getEnd().getLocWithOffset(1);
     }
   }
 

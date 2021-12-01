@@ -129,13 +129,37 @@ void rewriteSourceRange(Rewriter &R, const SourceRange &Range,
                      ErrFail);
 }
 
+// Wrapper for Rewriter::ReplaceText(CharSourceRange, StringRef) that works
+// around a bug that occurs when text has previously been inserted at the start
+// location of the specified range.
+//
+// When Rewriter::ReplaceText(CharSourceRange, StringRef) computes the range of
+// the rewrite buffer to replace, it sets the start location to be after the
+// previous insertion (RewriteBuffer::ReplaceText calls getMappedOffset with
+// AfterInserts = true) but sets the length to include the length of the
+// previous insertion (it calls getRangeSize with the default RewriteOptions
+// with IncludeInsertsAtBeginOfRange = true). This causes the range to extend
+// beyond the intended end location by an amount equal to the length of the
+// previous insertion. We avoid the problem by calling getRangeSize ourselves
+// with IncludeInsertsAtBeginOfRange = false.
+//
+// TODO: File an upstream Clang bug report if appropriate. As of this writing
+// (2021-11-24), we found some discussion of the problem
+// (https://reviews.llvm.org/D107503) but not a real entry in the bug tracker.
+static bool replaceTextWorkaround(Rewriter &R, const CharSourceRange &Range,
+                                  const std::string &NewText) {
+  Rewriter::RewriteOptions Opts;
+  Opts.IncludeInsertsAtBeginOfRange = false;
+  return R.ReplaceText(Range.getBegin(), R.getRangeSize(Range, Opts), NewText);
+}
+
 void rewriteSourceRange(Rewriter &R, const CharSourceRange &Range,
                         const std::string &NewText, bool ErrFail) {
   // Attempt to rewrite the source range. First use the source range directly
   // from the parameter.
   bool RewriteSuccess = false;
   if (canRewrite(R, Range))
-    RewriteSuccess = !R.ReplaceText(Range, NewText);
+    RewriteSuccess = !replaceTextWorkaround(R, Range, NewText);
 
   // If initial rewriting attempt failed (either because canRewrite returned
   // false or because ReplaceText failed (returning true), try rewriting again
@@ -144,7 +168,7 @@ void rewriteSourceRange(Rewriter &R, const CharSourceRange &Range,
     CharSourceRange Expand = clang::Lexer::makeFileCharRange(
         Range, R.getSourceMgr(), R.getLangOpts());
     if (canRewrite(R, Expand))
-      RewriteSuccess = !R.ReplaceText(Expand, NewText);
+      RewriteSuccess = !replaceTextWorkaround(R, Expand, NewText);
   }
 
   // Emit an error if we were unable to rewrite the source range. This is more
