@@ -36,21 +36,21 @@ public:
   BoundsKind getKind() const { return Kind; }
 
 protected:
-  ABounds(BoundsKind K, BoundsKey L, BoundsKey B) : Kind(K), LenVar(L),
-                                                    LowerBoundVar(B) {}
+  ABounds(BoundsKind K, BoundsKey L, BoundsKey B) : Kind(K), LengthKey(L),
+                                                    LowerBoundKey(B) {}
   ABounds(BoundsKind K, BoundsKey L) : ABounds(K, L, 0) {}
 
   BoundsKind Kind;
 
   // Bounds key representing the length of the bounds from the base pointer of
   // the range. The exact interpretation of this field varies by subclass.
-  BoundsKey LenVar;
+  BoundsKey LengthKey;
 
   // The base pointer representing the start of the range of the bounds. If this
   // is not equal to 0, then this ABounds has a specific lower bound that should
   // be used when emitting array pointer bounds. Otherwise, if it is 0, then the
   // lower bound should implicitly be the pointer the bound is applied to.
-  BoundsKey LowerBoundVar;
+  BoundsKey LowerBoundKey;
 
   // Get the variable name of the the given bounds key that corresponds
   // to the given declaration.
@@ -81,9 +81,9 @@ public:
   virtual bool areSame(ABounds *, AVarBoundsInfo *) = 0;
   virtual ABounds *makeCopy(BoundsKey NK) = 0;
 
-  BoundsKey getLengthKey() const { return LenVar; }
-  BoundsKey getLowerBoundKey() const { return LowerBoundVar; }
-  void setLowerBoundKey(BoundsKey LB) { LowerBoundVar = LB; }
+  BoundsKey getLengthKey() const { return LengthKey; }
+  BoundsKey getLowerBoundKey() const { return LowerBoundKey; }
+  void setLowerBoundKey(BoundsKey LB) { LowerBoundKey = LB; }
 
   static ABounds *getBoundsInfo(AVarBoundsInfo *AVBInfo, BoundsExpr *BExpr,
                                 const ASTContext &C);

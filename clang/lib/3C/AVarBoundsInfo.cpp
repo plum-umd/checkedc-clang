@@ -1232,11 +1232,12 @@ bool AVarBoundsInfo::needsFreshLowerBound(BoundsKey BK) {
 }
 
 bool AVarBoundsInfo::isEligibleForFreshLowerBound(BoundsKey BK) {
-  return IneligibleForRangeBounds.find(BK) == IneligibleForRangeBounds.end();
+  return IneligibleForFreshLowerBound.find(BK) ==
+         IneligibleForFreshLowerBound.end();
 }
 
 void AVarBoundsInfo::markIneligibleForFreshLowerBound(BoundsKey BK) {
-  IneligibleForRangeBounds.insert(BK);
+  IneligibleForFreshLowerBound.insert(BK);
 }
 
 bool AVarBoundsInfo::needsFreshLowerBound(ConstraintVariable *CV) {

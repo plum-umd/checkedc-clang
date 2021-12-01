@@ -322,6 +322,11 @@ public:
 
   void addConstantArrayBounds(ProgramInfo &I);
 
+  // This is the main entry point to start lower bound inference. It populates
+  // the map LowerBounds and set NeedFreshLowerBounds with the result of the
+  // analysis. LowerBounds is accessed during the rest of bounds inference, so
+  // this method must be executed before performFlowAnalysis which handles the
+  // majority of the work for length inference.
   void inferLowerBounds(ProgramInfo *PI);
 
 private:
@@ -346,14 +351,15 @@ private:
   std::set<BoundsKey> InvalidBounds;
   // These are the bounds key of the pointers that has arithmetic operations
   // performed on them. These pointers cannot have the standard `count(n)`
-  // bounds and instead must use range bounds e.g., `bounds(p, p + n)`.
+  // bounds and instead must use range bounds with an explict lower bound
+  // e.g., `bounds(p, p + n)`.
   std::set<BoundsKey> ArrPointersWithArithmetic;
 
   // Some pointers, however, cannot be automatically given range bounds. This
   // includes global variables and structure fields. If a pointer is in both the
   // above pointer arithmetic set and this set, then it cannot be assigned any
   // bound.
-  std::set<BoundsKey> IneligibleForRangeBounds;
+  std::set<BoundsKey> IneligibleForFreshLowerBound;
 
   // Set of BoundsKeys that correspond to pointers.
   std::set<BoundsKey> PointerBoundsKey;
@@ -394,7 +400,14 @@ private:
   // Context-sensitive bounds key handler
   CtxSensitiveBoundsKeyHandler CSBKeyHandler;
 
+  // This graph is used of for determining which pointers are valid lower
+  // bounds, and so are eligible for use as their own lower bound (implicitly as
+  // a count bounds) or as the lower bound for another pointer in a range bound.
+  // It is also used to infer lower bounds for the pointers that are not
+  // eligible to be their own lower bound.
   AVarGraph LowerBoundGraph;
+  // In the LowerBoundGraph the constant 0 is used to represent the global
+  // singleton invalid pointer.
   const BoundsKey InvalidLowerBoundKey = 0;
 
   // BoundsKeys that that cannot be used as a lower bound. These are used in an

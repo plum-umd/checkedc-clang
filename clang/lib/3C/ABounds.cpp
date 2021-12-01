@@ -62,29 +62,29 @@ std::string ABounds::getBoundsKeyStr(BoundsKey BK, AVarBoundsInfo *ABI,
 
 std::string
 ABounds::mkString(AVarBoundsInfo *ABI, clang::Decl *D, BoundsKey BK) {
-  if (LowerBoundVar != 0 && LowerBoundVar != BK)
+  if (LowerBoundKey != 0 && LowerBoundKey != BK)
     return mkStringWithLowerBound(ABI, D);
   return mkStringWithoutLowerBound(ABI, D);
 }
 
 std::string
 CountBound::mkStringWithLowerBound(AVarBoundsInfo *ABI, clang::Decl *D) {
-  std::string LowerBound = ABounds::getBoundsKeyStr(LowerBoundVar, ABI, D);
+  std::string LowerBound = ABounds::getBoundsKeyStr(LowerBoundKey, ABI, D);
   // Assume that LowerBound is the same pointer type as this pointer this bound
   // acts on, so pointer arithmetic works as expected.
   return "bounds(" + LowerBound + ", " + LowerBound + " + " +
-         ABounds::getBoundsKeyStr(LenVar, ABI, D) + ")";
+         ABounds::getBoundsKeyStr(LengthKey, ABI, D) + ")";
 }
 
 std::string
 CountBound::mkStringWithoutLowerBound(AVarBoundsInfo *ABI, clang::Decl *D) {
-  return "count(" + ABounds::getBoundsKeyStr(LenVar, ABI, D) + ")";
+  return "count(" + ABounds::getBoundsKeyStr(LengthKey, ABI, D) + ")";
 }
 
 bool CountBound::areSame(ABounds *O, AVarBoundsInfo *ABI) {
   if (O != nullptr) {
     if (CountBound *OT = dyn_cast<CountBound>(O))
-      return ABI->areSameProgramVar(this->LenVar, OT->LenVar);
+      return ABI->areSameProgramVar(this->LengthKey, OT->LengthKey);
   }
   return false;
 }
@@ -94,40 +94,40 @@ ABounds *CountBound::makeCopy(BoundsKey NK) { return new CountBound(NK); }
 std::string CountPlusOneBound::mkStringWithLowerBound(AVarBoundsInfo *ABI,
                                                       clang::Decl *D) {
 
-  std::string LowerBound = ABounds::getBoundsKeyStr(LowerBoundVar, ABI, D);
+  std::string LowerBound = ABounds::getBoundsKeyStr(LowerBoundKey, ABI, D);
   return "bounds(" + LowerBound + ", " + LowerBound + " + " +
-         ABounds::getBoundsKeyStr(LenVar, ABI, D) + " + 1)";
+         ABounds::getBoundsKeyStr(LengthKey, ABI, D) + " + 1)";
 }
 
 std::string CountPlusOneBound::mkStringWithoutLowerBound(AVarBoundsInfo *ABI,
                                                          clang::Decl *D) {
-  return "count(" + ABounds::getBoundsKeyStr(LenVar, ABI, D) + " + 1)";
+  return "count(" + ABounds::getBoundsKeyStr(LengthKey, ABI, D) + " + 1)";
 }
 
 bool CountPlusOneBound::areSame(ABounds *O, AVarBoundsInfo *ABI) {
   if (CountPlusOneBound *OT = dyn_cast_or_null<CountPlusOneBound>(O))
-    return ABI->areSameProgramVar(this->LenVar, OT->LenVar);
+    return ABI->areSameProgramVar(this->LengthKey, OT->LengthKey);
   return false;
 }
 
 std::string ByteBound::mkStringWithLowerBound(AVarBoundsInfo *ABI,
                                               clang::Decl *D) {
-  std::string LowerBound = ABounds::getBoundsKeyStr(LowerBoundVar, ABI, D);
+  std::string LowerBound = ABounds::getBoundsKeyStr(LowerBoundKey, ABI, D);
   // LowerBound will be a pointer to some type that is not necessarily char, so
   // pointer arithmetic will not give the behavior needed for a byte count.
   // First cast the pointer to a char pointer, and then add byte count.
   return "bounds(((_Array_ptr<char>)" + LowerBound + "), ((_Array_ptr<char>)" +
-         LowerBound + ") + " + ABounds::getBoundsKeyStr(LenVar, ABI, D) + ")";
+         LowerBound + ") + " + ABounds::getBoundsKeyStr(LengthKey, ABI, D) + ")";
 }
 
 std::string ByteBound::mkStringWithoutLowerBound(AVarBoundsInfo *ABI,
                                                  clang::Decl *D) {
-  return "byte_count(" + ABounds::getBoundsKeyStr(LenVar, ABI, D) + ")";
+  return "byte_count(" + ABounds::getBoundsKeyStr(LengthKey, ABI, D) + ")";
 }
 
 bool ByteBound::areSame(ABounds *O, AVarBoundsInfo *ABI) {
   if (ByteBound *BB = dyn_cast_or_null<ByteBound>(O))
-    return ABI->areSameProgramVar(this->LenVar, BB->LenVar);
+    return ABI->areSameProgramVar(this->LengthKey, BB->LengthKey);
   return false;
 }
 
