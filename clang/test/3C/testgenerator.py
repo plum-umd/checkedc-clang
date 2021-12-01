@@ -752,7 +752,7 @@ while the definition for sus appears below them*/"""
                 yeline_next = yeall[i + ye_offset + 1]
                 if "= __3c_" in yeline_next and "> __3c_" in yeline:
                     lines[i] += ("\n" + indentation + "//CHECK_ALL: " + yeline_next.lstrip())
-                    ye_offset += 2
+                    ye_offset += 1
 
         if ";" in line:
             in_extern = False
@@ -786,7 +786,7 @@ while the definition for sus appears below them*/"""
                 yeline_next = yeall2[i + ye_offset + 1]
                 if "= __3c_" in yeline_next and "> __3c_" in yeline:
                     lines2[i] += ("\n" + indentation + "//CHECK_ALL: " + yeline_next.lstrip())
-                    ye_offset += 2
+                    ye_offset += 1
 
             if ";" in line:
                 in_extern = False
