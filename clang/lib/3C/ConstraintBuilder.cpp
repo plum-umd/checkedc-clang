@@ -477,7 +477,7 @@ void VariableAdderConsumer::HandleTranslationUnit(ASTContext &C) {
   // Collect Variables.
   for (const auto &D : TUD->decls()) {
     VAV.TraverseDecl(D);
-    BPF.TraverseDecl(D);
+    LBF.TraverseDecl(D);
   }
 
   if (_3COpts.Verbose)
