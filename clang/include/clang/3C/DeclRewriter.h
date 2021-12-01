@@ -61,9 +61,14 @@ private:
   void rewriteMultiDecl(MultiDeclInfo &MDI, RSet &ToRewrite);
   void doDeclRewrite(SourceRange &SR, DeclReplacement *N);
   void rewriteFunctionDecl(FunctionDeclReplacement *N);
+  // Emit supplementary declarations _after_ the token that begins at Loc.
+  // Inserts a newline before the first supplementary declaration but not after
+  // the last supplementary declaration. This is suitable if Loc is expected to
+  // be the last token on a line or if rewriteMultiDecl will insert a newline
+  // after the supplementary declarations later.
   void emitSupplementaryDeclarations(const std::vector<std::string> &SDecls,
                                      SourceLocation Loc);
-  SourceRange getNextComma(SourceLocation L);
+  SourceLocation getNextCommaOrSemicolon(SourceLocation L);
   void denestTagDecls();
 };
 

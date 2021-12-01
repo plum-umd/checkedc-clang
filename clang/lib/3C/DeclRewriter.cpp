@@ -515,19 +515,53 @@ void DeclRewriter::rewriteMultiDecl(MultiDeclInfo &MDI, RSet &ToRewrite) {
       }
     }
 
-    // Variables in a multi-decl are delimited by commas. The rewritten decls
-    // are separate statements separated by a semicolon and a newline.
+    // Processing related to the comma or semicolon ("terminator") that follows
+    // the multi-decl member. Members are separated by commas, and the last
+    // member is terminated by a semicolon. The rewritten decls are each
+    // terminated by a semicolon and are separated by newlines.
     bool IsLast = (MIt + 1 == MDI.Members.end());
+    bool HaveSupplementaryDecls =
+        (Replacement && !Replacement->getSupplementaryDecls().empty());
+    // Unlike in ReplaceSR, we want to start searching for the terminator after
+    // the entire multi-decl member, including any existing initializer.
+    SourceRange FullSR =
+        getDeclSourceRangeWithAnnotations(DL, /*IncludeInitializer=*/true);
+    // Search for the terminator.
+    //
+    // FIXME: If the terminator is hidden inside a macro,
+    // getNextCommaOrSemicolon will continue scanning and may return a comma or
+    // semicolon later in the file (which has bizarre consequences if we try to
+    // use it to rewrite this multi-decl) or fail an assertion if it doesn't
+    // find one. As a stopgap for the existing regression test in
+    // macro_rewrite_error.c that has a semicolon inside a macro, we only search
+    // for the terminator if we actually need it.
+    SourceLocation Terminator;
+    if (!IsLast || HaveSupplementaryDecls) {
+      Terminator = getNextCommaOrSemicolon(FullSR.getEnd());
+    }
     if (!IsLast) {
-      // This differs from ReplaceSR in that we want to advance past the entire
-      // multi-decl member, _including_ any existing initializer.
-      SourceRange SkipSR =
-          getDeclSourceRangeWithAnnotations(DL, /*IncludeInitializer=*/true);
-      SourceRange Comma = getNextComma(SkipSR.getEnd());
-      rewriteSourceRange(R, Comma, ";\n");
-      // Offset by one to skip past what we've just added so it isn't
-      // overwritten.
-      PrevEnd = Comma.getEnd().getLocWithOffset(1);
+      // We expect the terminator to be a comma. Change it to a semicolon.
+      rewriteSourceRange(R, SourceRange(Terminator, Terminator), ";");
+    }
+    if (HaveSupplementaryDecls) {
+      emitSupplementaryDeclarations(Replacement->getSupplementaryDecls(),
+                                    Terminator);
+    }
+    if (!IsLast) {
+      // Insert a newline between this multi-decl member and the next. The
+      // Rewriter preserves the order of insertions at the same location, so if
+      // there are supplementary declarations, this newline will go between them
+      // and the next member, which is what we want because
+      // emitSupplementaryDeclarations by itself doesn't add a newline after the
+      // supplementary declarations.
+      SourceLocation AfterTerminator =
+          getLocationAfterToken(Terminator, A.getSourceManager(),
+                                A.getLangOpts());
+      R.InsertText(AfterTerminator, "\n");
+      // When rewriting the next member, start after the terminator. The
+      // Rewriter is smart enough not to mess with anything we already inserted
+      // at that location.
+      PrevEnd = AfterTerminator;
     }
   }
 
@@ -562,11 +596,6 @@ void DeclRewriter::doDeclRewrite(SourceRange &SR, DeclReplacement *N) {
   }
 
   rewriteSourceRange(R, SR, Replacement);
-
-  SourceLocation L = getLocationAfterToken(N->getDecl()->getEndLoc(),
-                                           A.getSourceManager(),
-                                           A.getLangOpts());
-  emitSupplementaryDeclarations(N->getSupplementaryDecls(), L);
 }
 
 void DeclRewriter::rewriteFunctionDecl(FunctionDeclReplacement *N) {
@@ -576,8 +605,10 @@ void DeclRewriter::rewriteFunctionDecl(FunctionDeclReplacement *N) {
     Stmt *S = N->getDecl()->getBody();
     assert("Supplementary declarations should only exist on rewritings for "
            "function definitions." && S != nullptr);
+    // Insert supplementary declarations after the opening curly brace of the
+    // function body.
     emitSupplementaryDeclarations(N->getSupplementaryDecls(),
-                                  N->getDecl()->getBody()->getBeginLoc());
+                                  S->getBeginLoc());
   }
 }
 
@@ -593,28 +624,24 @@ void DeclRewriter::emitSupplementaryDeclarations(
   std::string AllDecls;
   for (std::string D : SDecls)
     AllDecls += "\n" + D;
-  // FIXME: This adds an extra new line after the declaration(s), but is needed
-  //        for proper rewriting in multi-declarations.
-  AllDecls += "\n";
 
-  R.InsertTextAfter(
-    getLocationAfterToken(Loc, R.getSourceMgr(), R.getLangOpts()),
-                    AllDecls);
+  R.InsertText(getLocationAfterToken(Loc, R.getSourceMgr(), R.getLangOpts()),
+               AllDecls);
 }
 
-// Uses clangs lexer to find the location of the next comma after
+// Uses clangs lexer to find the location of the next comma or semicolon after
 // the given source location. This is used to find the end of each declaration
 // within a multi-declaration.
-SourceRange DeclRewriter::getNextComma(SourceLocation L) {
+SourceLocation DeclRewriter::getNextCommaOrSemicolon(SourceLocation L) {
   SourceManager &SM = A.getSourceManager();
   auto Tok = Lexer::findNextToken(L, SM, A.getLangOpts());
   while (Tok.hasValue() && !Tok->is(clang::tok::eof)) {
-    if (Tok->is(clang::tok::comma))
-      return SourceRange(Tok->getLocation(), Tok->getLocation());
+    if (Tok->is(clang::tok::comma) || Tok->is(clang::tok::semi))
+      return Tok->getLocation();
     Tok = Lexer::findNextToken(Tok->getEndLoc(), A.getSourceManager(),
                                A.getLangOpts());
   }
-  llvm_unreachable("Unable to find comma at source location.");
+  llvm_unreachable("Unable to find comma or semicolon at source location.");
 }
 
 // This function checks how to re-write a function declaration.
