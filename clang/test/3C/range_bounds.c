@@ -31,7 +31,7 @@ void test1(int *a, int l) {
   // CHECK_ALL: void test1(_Array_ptr<int> __3c_tmp_a : count(l), int l) _Checked {
   // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + l) = __3c_tmp_a;
 
-  // Also check that other types assignment are recognized.
+  // Also check that other types of assignment are recognized.
   a = a + 1;
 
   // The increment above means this loop reads out of bounds if `l` is the
