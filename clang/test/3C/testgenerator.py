@@ -750,7 +750,7 @@ while the definition for sus appears below them*/"""
             # fresh lower bound.
             if i + ye_offset + 1 < len(yeall):
                 yeline_next = yeall[i + ye_offset + 1]
-                if "= __3c_tmp" in yeline_next and "> __3c_tmp" in yeline:
+                if "= __3c_" in yeline_next and "> __3c_" in yeline:
                     lines[i] += ("\n" + indentation + "//CHECK_ALL: " + yeline_next.lstrip())
                     ye_offset += 2
 
@@ -784,7 +784,7 @@ while the definition for sus appears below them*/"""
             # See above comment for why this hack is necessary.
             if i + ye_offset + 1 < len(yeall2):
                 yeline_next = yeall2[i + ye_offset + 1]
-                if "= __3c_tmp" in yeline_next and "> __3c_tmp" in yeline:
+                if "= __3c_" in yeline_next and "> __3c_" in yeline:
                     lines2[i] += ("\n" + indentation + "//CHECK_ALL: " + yeline_next.lstrip())
                     ye_offset += 2
 

@@ -146,8 +146,8 @@ int **g : count(2) itype(_Array_ptr<int *>) = 0;
 // -itypes-for-extern to avoid type errors on assignment to checked pointers
 // inside the function.
 void test_fresh_lower_bound(int *a, int l) {
-// CHECK_ALL: void test_fresh_lower_bound(int *__3c_tmp_a : itype(_Array_ptr<int>) count(l), int l) _Checked {
-// CHECK_ALL: _Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + l) = __3c_tmp_a;
+// CHECK_ALL: void test_fresh_lower_bound(int *__3c_lower_bound_a : itype(_Array_ptr<int>) count(l), int l) _Checked {
+// CHECK_ALL: _Array_ptr<int> a : bounds(__3c_lower_bound_a, __3c_lower_bound_a + l) = __3c_lower_bound_a;
   for(int i = 0; i < l; i++)
     a[i];
   a = a + 2;
@@ -156,8 +156,8 @@ void test_fresh_lower_bound(int *a, int l) {
 }
 
 void test_fresh_lower_bound_itype(int *a, int l) {
-// CHECK_ALL: void test_fresh_lower_bound_itype(int *__3c_tmp_a : itype(_Array_ptr<int>) count(l), int l) {
-// CHECK_ALL: int *a = __3c_tmp_a;
+// CHECK_ALL: void test_fresh_lower_bound_itype(int *__3c_lower_bound_a : itype(_Array_ptr<int>) count(l), int l) {
+// CHECK_ALL: int *a = __3c_lower_bound_a;
   for(int i = 0; i < l; i++)
     a[i];
   a = a + 2;

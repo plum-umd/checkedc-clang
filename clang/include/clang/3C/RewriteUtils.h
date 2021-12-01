@@ -131,11 +131,14 @@ struct RewrittenDecl {
   // but also possibly empty.
   std::string IType;
 
-  // A duplicate declaration used to support range bounds. The duplicate
-  // declaration may refer to the original in the bounds expression, so it must
-  // be emitted after the original declaration.
-  // e.g., `_Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + n)`
-  // If the declaration does not need range bounds, then this string is empty.
+  // An additional declaration required as a result of the rewriting done to the
+  // original declaration. The additional declaration may refer to the original,
+  // so it must be emitted after the original declaration.
+  // This is currently only used to automatically fatten pointers to use fresh
+  // lower bound pointers. e.g.,
+  //     _Array_ptr<int> a : bounds(__3c_lower_bound_a, __3c_lower_bound_a + n)
+  // If the declaration does not need a fresh lower bound, then this string is
+  // empty.
   std::string SupplementaryDecl;
 };
 

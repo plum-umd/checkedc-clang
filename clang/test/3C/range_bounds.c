@@ -10,8 +10,8 @@ void test0(size_t l) {
   // Would get bounds, but there's pointer arithmetic. Now we split and use
   // range bound.
   int *p = malloc(l * sizeof(int));
-  // CHECK_ALL: _Array_ptr<int> __3c_tmp_p : count(l) = malloc<int>(l * sizeof(int));
-  // CHECK_ALL: _Array_ptr<int> p : bounds(__3c_tmp_p, __3c_tmp_p + l) = __3c_tmp_p;
+  // CHECK_ALL: _Array_ptr<int> __3c_lower_bound_p : count(l) = malloc<int>(l * sizeof(int));
+  // CHECK_ALL: _Array_ptr<int> p : bounds(__3c_lower_bound_p, __3c_lower_bound_p + l) = __3c_lower_bound_p;
   p++;
 
   // No bounds are inferred, but pointer arithemtic is used; don't split
@@ -26,10 +26,10 @@ void test0(size_t l) {
 // variable name, but it doesn't hurt and is required in some more complex
 // cases.
 void test1(int *a, int l);
-// CHECK_ALL: void test1(_Array_ptr<int> __3c_tmp_a : count(l), int l);
+// CHECK_ALL: void test1(_Array_ptr<int> __3c_lower_bound_a : count(l), int l);
 void test1(int *a, int l) {
-  // CHECK_ALL: void test1(_Array_ptr<int> __3c_tmp_a : count(l), int l) _Checked {
-  // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + l) = __3c_tmp_a;
+  // CHECK_ALL: void test1(_Array_ptr<int> __3c_lower_bound_a : count(l), int l) _Checked {
+  // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_lower_bound_a, __3c_lower_bound_a + l) = __3c_lower_bound_a;
 
   // Also check that other types of assignment are recognized.
   a = a + 1;
@@ -44,10 +44,10 @@ void test1(int *a, int l) {
 
 // Also check for itypes. They're interesting because the alias isn't checked.
 void test2(int *a, int l);
-// CHECK_ALL: void test2(int *__3c_tmp_a : itype(_Array_ptr<int>) count(l), int l);
+// CHECK_ALL: void test2(int *__3c_lower_bound_a : itype(_Array_ptr<int>) count(l), int l);
 void test2(int *a, int l) {
-  // CHECK_ALL: void test2(int *__3c_tmp_a : itype(_Array_ptr<int>) count(l), int l) {
-  // CHECK_ALL: int *a  = __3c_tmp_a;
+  // CHECK_ALL: void test2(int *__3c_lower_bound_a : itype(_Array_ptr<int>) count(l), int l) {
+  // CHECK_ALL: int *a  = __3c_lower_bound_a;
   for(int i = 0; i < l; i++)
     a[i];
 
@@ -57,10 +57,10 @@ void test2(int *a, int l) {
 
 // Something more complex with multiple parameters.
 void test3(int *a, int *b, int *c, int *d) {
-  // CHECK_ALL: void test3(_Array_ptr<int> __3c_tmp_a : count(10), int *b : itype(_Array_ptr<int>) bounds(__3c_tmp_d, __3c_tmp_d + 10), _Array_ptr<int> __3c_tmp_c : count(10), int *__3c_tmp_d : itype(_Array_ptr<int>) count(10)) {
-  // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + 10) = __3c_tmp_a;
-  // CHECK_ALL: _Array_ptr<int> c : bounds(__3c_tmp_c, __3c_tmp_c + 10) = __3c_tmp_c;
-  // CHECK_ALL: int *d = __3c_tmp_d;
+  // CHECK_ALL: void test3(_Array_ptr<int> __3c_lower_bound_a : count(10), int *b : itype(_Array_ptr<int>) bounds(__3c_lower_bound_d, __3c_lower_bound_d + 10), _Array_ptr<int> __3c_lower_bound_c : count(10), int *__3c_lower_bound_d : itype(_Array_ptr<int>) count(10)) {
+  // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_lower_bound_a, __3c_lower_bound_a + 10) = __3c_lower_bound_a;
+  // CHECK_ALL: _Array_ptr<int> c : bounds(__3c_lower_bound_c, __3c_lower_bound_c + 10) = __3c_lower_bound_c;
+  // CHECK_ALL: int *d = __3c_lower_bound_d;
   a += 1, b += 2, c--, d -= 1;
   b = d = (int*) 1;
 
@@ -74,11 +74,11 @@ void test3(int *a, int *b, int *c, int *d) {
 // come before `d`.
 void test4() {
   int *a = malloc(10*sizeof(int)), b, *c = malloc(10*sizeof(int)), *d = c;
-  // CHECK_ALL: _Array_ptr<int> __3c_tmp_a : count(10) = malloc<int>(10*sizeof(int));
-  // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + 10) = __3c_tmp_a;
+  // CHECK_ALL: _Array_ptr<int> __3c_lower_bound_a : count(10) = malloc<int>(10*sizeof(int));
+  // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_lower_bound_a, __3c_lower_bound_a + 10) = __3c_lower_bound_a;
   // CHECK_ALL: int b;
-  // CHECK_ALL: _Array_ptr<int> __3c_tmp_c : count(10) = malloc<int>(10*sizeof(int));
-  // CHECK_ALL: _Array_ptr<int> c : bounds(__3c_tmp_c, __3c_tmp_c + 10) = __3c_tmp_c;
+  // CHECK_ALL: _Array_ptr<int> __3c_lower_bound_c : count(10) = malloc<int>(10*sizeof(int));
+  // CHECK_ALL: _Array_ptr<int> c : bounds(__3c_lower_bound_c, __3c_lower_bound_c + 10) = __3c_lower_bound_c;
   // CHECK_ALL: _Ptr<int> d = c;
 
   b;
@@ -87,17 +87,17 @@ void test4() {
 
 // Test that bounds don't propagate through pointers that are updated with
 // pointer arithmetic. In this example, `b` can *not* have bounds `count(2)`,
-// but it can get `bounds(__3c_tmp_a, __3c_tmp_a + 2)`.  The same restriction
+// but it can get `bounds(__3c_lower_bound_a, __3c_lower_bound_a + 2)`.  The same restriction
 // also applies to bounds on the return, but, for the return, `a` can't be used
 // as a lower bound, so no bound is given.
 int *test5() {
   // CHECK_ALL: _Array_ptr<int> test5(void) {
   int *a = malloc(2 * sizeof(int));
-  // CHECK_ALL: _Array_ptr<int> __3c_tmp_a : count(2) = malloc<int>(2 * sizeof(int));
-  // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + 2) = __3c_tmp_a;
+  // CHECK_ALL: _Array_ptr<int> __3c_lower_bound_a : count(2) = malloc<int>(2 * sizeof(int));
+  // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_lower_bound_a, __3c_lower_bound_a + 2) = __3c_lower_bound_a;
   a++;
   int *b = a;
-  // CHECK_ALL: _Array_ptr<int> b : bounds(__3c_tmp_a, __3c_tmp_a + 2) = a;
+  // CHECK_ALL: _Array_ptr<int> b : bounds(__3c_lower_bound_a, __3c_lower_bound_a + 2) = a;
   b[0];
 
   return a;
@@ -107,8 +107,8 @@ int *test5() {
 // as the value being assigned doesn't depend on the pointer.
 void test6() {
   int *p = malloc(10 * sizeof(int));
-  // CHECK_ALL: _Array_ptr<int> __3c_tmp_p : count(10) = malloc<int>(10 * sizeof(int));
-  // CHECK_ALL: _Array_ptr<int> p : bounds(__3c_tmp_p, __3c_tmp_p + 10) = __3c_tmp_p;
+  // CHECK_ALL: _Array_ptr<int> __3c_lower_bound_p : count(10) = malloc<int>(10 * sizeof(int));
+  // CHECK_ALL: _Array_ptr<int> p : bounds(__3c_lower_bound_p, __3c_lower_bound_p + 10) = __3c_lower_bound_p;
   p++;
 
   // This assignment isn't touched because `p` is on the RHS.
@@ -117,23 +117,23 @@ void test6() {
 
   // Null out `p`, so we need to null the original and the duplicate.
   p = 0;
-  // CHECK_ALL: __3c_tmp_p = 0, p = __3c_tmp_p;
+  // CHECK_ALL: __3c_lower_bound_p = 0, p = __3c_lower_bound_p;
 
   // A slightly more complex update to a different pointer value.
   int *q = malloc(10 * sizeof(int));
   p = q;
   //CHECK_ALL: _Array_ptr<int> q : count(10) = malloc<int>(10 * sizeof(int));
-  //CHECK_ALL: __3c_tmp_p = q, p = __3c_tmp_p;
+  //CHECK_ALL: __3c_lower_bound_p = q, p = __3c_lower_bound_p;
 
   // Don't treat a call to realloc as pointer arithmetic. Freeing `p` after
   // `p++` is highly questionable, but that's not the point here.
   p = realloc(p, 10 * sizeof(int));
-  // CHECK_ALL: __3c_tmp_p = realloc<int>(p, 10 * sizeof(int)), p = __3c_tmp_p;
+  // CHECK_ALL: __3c_lower_bound_p = realloc<int>(p, 10 * sizeof(int)), p = __3c_lower_bound_p;
 
   // Assignment rewriting should work in more complex expression and around
   // other 3C rewriting without breaking anything.
   int *v = 1 + (p = (int*) 0, p = p + 1) + 1;
-  // CHECK_ALL: _Ptr<int> v = 1 + (__3c_tmp_p = (_Array_ptr<int>) 0, p = __3c_tmp_p, p = p + 1) + 1;
+  // CHECK_ALL: _Ptr<int> v = 1 + (__3c_lower_bound_p = (_Array_ptr<int>) 0, p = __3c_lower_bound_p, p = p + 1) + 1;
 }
 
 
@@ -142,12 +142,12 @@ void test6() {
 void test7(int *);
 void test7();
 void test7(int *a);
-// CHECK_ALL: void test7(_Array_ptr<int> __3c_tmp_s : count(5));
-// CHECK_ALL: void test7(_Array_ptr<int> __3c_tmp_s : count(5));
-// CHECK_ALL: void test7(_Array_ptr<int> __3c_tmp_s : count(5));
+// CHECK_ALL: void test7(_Array_ptr<int> __3c_lower_bound_s : count(5));
+// CHECK_ALL: void test7(_Array_ptr<int> __3c_lower_bound_s : count(5));
+// CHECK_ALL: void test7(_Array_ptr<int> __3c_lower_bound_s : count(5));
 void test7(int *s) {
-// CHECK_ALL: void test7(_Array_ptr<int> __3c_tmp_s : count(5)) _Checked {
-// CHECK_ALL: _Array_ptr<int> s : bounds(__3c_tmp_s, __3c_tmp_s + 5) = __3c_tmp_s;
+// CHECK_ALL: void test7(_Array_ptr<int> __3c_lower_bound_s : count(5)) _Checked {
+// CHECK_ALL: _Array_ptr<int> s : bounds(__3c_lower_bound_s, __3c_lower_bound_s + 5) = __3c_lower_bound_s;
   s++;
   for (int i = 0; i < 5; i++)
     s[i];
@@ -205,11 +205,11 @@ void test11(size_t n){
 
   // The RHS is a macro, but we should still be able to rewrite.
   int *b = malloc(sizeof(int) * n);
-  // CHECK: _Array_ptr<int> __3c_tmp_b : count(n) = malloc<int>(sizeof(int) * n);
-  // CHECK: _Array_ptr<int> b : bounds(__3c_tmp_b, __3c_tmp_b + n) = __3c_tmp_b;
+  // CHECK: _Array_ptr<int> __3c_lower_bound_b : count(n) = malloc<int>(sizeof(int) * n);
+  // CHECK: _Array_ptr<int> b : bounds(__3c_lower_bound_b, __3c_lower_bound_b + n) = __3c_lower_bound_b;
   b++;
   b = NULL;
-  // CHECK: __3c_tmp_b = NULL, b = __3c_tmp_b;
+  // CHECK: __3c_lower_bound_b = NULL, b = __3c_lower_bound_b;
 
   // Like the above case, but the macro includes the semicolon, so we can't
   // rewrite.
@@ -228,16 +228,16 @@ void test11(size_t n){
 // `_Array_ptr<char>` for pointer arithmetic with offset to be correct.
 void byte_count_fn(int *a : byte_count(n), unsigned int n);
 void test12(int *b, unsigned int n) {
-// CHECK: void test12(_Array_ptr<int> __3c_tmp_b : byte_count(n), unsigned int n) _Checked {
-// CHECK: _Array_ptr<int> b : bounds(((_Array_ptr<char>)__3c_tmp_b), ((_Array_ptr<char>)__3c_tmp_b) + n) = __3c_tmp_b;
+// CHECK: void test12(_Array_ptr<int> __3c_lower_bound_b : byte_count(n), unsigned int n) _Checked {
+// CHECK: _Array_ptr<int> b : bounds(((_Array_ptr<char>)__3c_lower_bound_b), ((_Array_ptr<char>)__3c_lower_bound_b) + n) = __3c_lower_bound_b;
 
   byte_count_fn(b, n);
   b++;
 
   // And also check count-plus-ones bounds.
   int *c;
-  // _Array_ptr<int> __3c_tmp_c : count(0 + 1) = ((void *)0);
-  // _Array_ptr<int> c : bounds(__3c_tmp_c, __3c_tmp_c + 0 + 1) = __3c_tmp_c;
+  // _Array_ptr<int> __3c_lower_bound_c : count(0 + 1) = ((void *)0);
+  // _Array_ptr<int> c : bounds(__3c_lower_bound_c, __3c_lower_bound_c + 0 + 1) = __3c_lower_bound_c;
   c[0];
   c++;
 }

@@ -704,7 +704,8 @@ BoundsKey AVarBoundsInfo::getFreshLowerBound(BoundsKey Arr) {
   ProgramVar *ArrVar = getProgramVar(Arr);
   BoundsKey FreshLB = getRandomBKey();
   ProgramVar *FreshLBVar =
-    ProgramVar::createNewProgramVar(FreshLB, "__3c_tmp_" + ArrVar->getVarName(),
+    ProgramVar::createNewProgramVar(FreshLB,
+                                    "__3c_lower_bound_" + ArrVar->getVarName(),
                                     ArrVar->getScope());
   insertProgramVar(FreshLB, FreshLBVar);
   return FreshLB;

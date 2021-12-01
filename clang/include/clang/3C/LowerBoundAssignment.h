@@ -7,11 +7,12 @@
 //===----------------------------------------------------------------------===//
 // Contains classes for detection and rewriting of assignment expression that
 // would invalidate the bounds of pointers rewritten to use range bounds.
-// For pointers using a range bound `bounds(__3c_tmp_p, __3c_tmp_p + n)`, an
+// For pointers fattend to use a fresh lower bound
+// (`bounds(__3c_lower_bound_p, __3c_lower_bound_p + n)`), an
 // assignment `p = q` effectively changes the lower bound of the range
 // bounds, so that the new bounds of `p` are `bounds(q, q + n)`
 // (assuming `q` has the same size as `p`). For this to not invalidate the
-// bound, `__3c_tmp_p` must also be updated to be equal to `q`.
+// bound, `__3c_lower_bound_p` must also be updated to be equal to `q`.
 //===----------------------------------------------------------------------===//
 
 #ifndef LLVM_CLANG_3C_LOWERBOUNDASSIGNMENT_H
@@ -47,7 +48,7 @@ public:
 // that it doesn't not invalidate the bounds. e.g.:
 //     q = p;
 // becomes
-//     __3c_tmp_q = p, q = __3c_tmp_q;
+//     __3c_lower_bound_q = p, q = __3c_lower_bound_q;
 class LowerBoundAssignmentUpdater : public LowerBoundAssignmentVisitor {
 public:
   explicit LowerBoundAssignmentUpdater(ASTContext *C, ProgramInfo &I,

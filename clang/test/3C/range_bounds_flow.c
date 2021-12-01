@@ -23,16 +23,16 @@ void test1() {
 // Here we need to add a temporary lower bound instead.
 void test2() {
   int *a;
-  //CHECK_ALL: _Array_ptr<int> __3c_tmp_a : count(0 + 1) = ((void *)0);
-  //CHECK_ALL: _Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + 0 + 1) = __3c_tmp_a;
+  //CHECK_ALL: _Array_ptr<int> __3c_lower_bound_a : count(0 + 1) = ((void *)0);
+  //CHECK_ALL: _Array_ptr<int> a : bounds(__3c_lower_bound_a, __3c_lower_bound_a + 0 + 1) = __3c_lower_bound_a;
   a[0];
   a++;
 
   int *b = a;
-  //CHECK_ALL: _Array_ptr<int> b : bounds(__3c_tmp_a, __3c_tmp_a + 0 + 1) = a;
+  //CHECK_ALL: _Array_ptr<int> b : bounds(__3c_lower_bound_a, __3c_lower_bound_a + 0 + 1) = a;
 
   int *c = b;
-  //CHECK_ALL: _Array_ptr<int> c : bounds(__3c_tmp_a, __3c_tmp_a + 0 + 1) = b;
+  //CHECK_ALL: _Array_ptr<int> c : bounds(__3c_lower_bound_a, __3c_lower_bound_a + 0 + 1) = b;
   c[0];
 }
 
@@ -47,13 +47,13 @@ int *test3(int *a, int l) {
 int *test4(int *, int);
 int *test4(int *x, int l);
 int *test4();
-// CHECK_ALL: _Array_ptr<int> test4(_Array_ptr<int> __3c_tmp_a : count(l), int l) : bounds(__3c_tmp_a, __3c_tmp_a + l);
-// CHECK_ALL: _Array_ptr<int> test4(_Array_ptr<int> __3c_tmp_a : count(l), int l) : bounds(__3c_tmp_a, __3c_tmp_a + l);
-// CHECK_ALL: _Array_ptr<int> test4(_Array_ptr<int> __3c_tmp_a : count(l), int l) : bounds(__3c_tmp_a, __3c_tmp_a + l);
+// CHECK_ALL: _Array_ptr<int> test4(_Array_ptr<int> __3c_lower_bound_a : count(l), int l) : bounds(__3c_lower_bound_a, __3c_lower_bound_a + l);
+// CHECK_ALL: _Array_ptr<int> test4(_Array_ptr<int> __3c_lower_bound_a : count(l), int l) : bounds(__3c_lower_bound_a, __3c_lower_bound_a + l);
+// CHECK_ALL: _Array_ptr<int> test4(_Array_ptr<int> __3c_lower_bound_a : count(l), int l) : bounds(__3c_lower_bound_a, __3c_lower_bound_a + l);
 
 int *test4(int *a, int l) {
-  // CHECK_ALL: _Array_ptr<int> test4(_Array_ptr<int> __3c_tmp_a : count(l), int l) : bounds(__3c_tmp_a, __3c_tmp_a + l) _Checked {
-  // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + l) = __3c_tmp_a;
+  // CHECK_ALL: _Array_ptr<int> test4(_Array_ptr<int> __3c_lower_bound_a : count(l), int l) : bounds(__3c_lower_bound_a, __3c_lower_bound_a + l) _Checked {
+  // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_lower_bound_a, __3c_lower_bound_a + l) = __3c_lower_bound_a;
   a++;
   return a;
 }
@@ -80,10 +80,10 @@ void test6() {
   int *c;
   c = a;
   c = b;
-  // CHECK_ALL: _Array_ptr<int> __3c_tmp_c : count(0 + 1) = ((void *)0);
-  // CHECK_ALL: _Array_ptr<int> c : bounds(__3c_tmp_c, __3c_tmp_c + 0 + 1) = __3c_tmp_c;
-  // CHECK_ALL: __3c_tmp_c = a, c = __3c_tmp_c;
-  // CHECK_ALL: __3c_tmp_c = b, c = __3c_tmp_c;
+  // CHECK_ALL: _Array_ptr<int> __3c_lower_bound_c : count(0 + 1) = ((void *)0);
+  // CHECK_ALL: _Array_ptr<int> c : bounds(__3c_lower_bound_c, __3c_lower_bound_c + 0 + 1) = __3c_lower_bound_c;
+  // CHECK_ALL: __3c_lower_bound_c = a, c = __3c_lower_bound_c;
+  // CHECK_ALL: __3c_lower_bound_c = b, c = __3c_lower_bound_c;
 
   c++;
   c[0];
@@ -100,8 +100,8 @@ void test7(int *a : count(l), int dummy, int l) {
 // be the same as the lower bound for `b`. A fresh lower bound is created for
 // `b`, and then used for `a` as well.
 void test8(int *a, int *b) {
-// CHECK_ALL: void test8(_Array_ptr<int> a : bounds(__3c_tmp_b, __3c_tmp_b + 0 + 1), _Array_ptr<int> __3c_tmp_b : count(0 + 1)) _Checked {
-// CHECK_ALL: _Array_ptr<int> b : bounds(__3c_tmp_b, __3c_tmp_b + 0 + 1) = __3c_tmp_b;
+// CHECK_ALL: void test8(_Array_ptr<int> a : bounds(__3c_lower_bound_b, __3c_lower_bound_b + 0 + 1), _Array_ptr<int> __3c_lower_bound_b : count(0 + 1)) _Checked {
+// CHECK_ALL: _Array_ptr<int> b : bounds(__3c_lower_bound_b, __3c_lower_bound_b + 0 + 1) = __3c_lower_bound_b;
 
   a++;
   b++;
@@ -126,13 +126,13 @@ void test9(int *x, int l) {
 
 // Same as above, but now fresh lower bound needs to be created for `x`.
 void test10(int *x, int l) {
-// CHECK_ALL: void test10(_Array_ptr<int> __3c_tmp_x : count(l), int l) _Checked {
-// CHECK_ALL: _Array_ptr<int> x : bounds(__3c_tmp_x, __3c_tmp_x + l) = __3c_tmp_x;
+// CHECK_ALL: void test10(_Array_ptr<int> __3c_lower_bound_x : count(l), int l) _Checked {
+// CHECK_ALL: _Array_ptr<int> x : bounds(__3c_lower_bound_x, __3c_lower_bound_x + l) = __3c_lower_bound_x;
   x++;
   int *a = x, *b, *c;
-  // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_tmp_x, __3c_tmp_x + l) = x;
-  // CHECK_ALL: _Array_ptr<int> b : bounds(__3c_tmp_x, __3c_tmp_x + l) = ((void *)0);
-  // CHECK_ALL: _Array_ptr<int> c : bounds(__3c_tmp_x, __3c_tmp_x + l) = ((void *)0);
+  // CHECK_ALL: _Array_ptr<int> a : bounds(__3c_lower_bound_x, __3c_lower_bound_x + l) = x;
+  // CHECK_ALL: _Array_ptr<int> b : bounds(__3c_lower_bound_x, __3c_lower_bound_x + l) = ((void *)0);
+  // CHECK_ALL: _Array_ptr<int> c : bounds(__3c_lower_bound_x, __3c_lower_bound_x + l) = ((void *)0);
   a++;
   b = a;
   c = b;
@@ -144,8 +144,8 @@ void testx(int *a){ a[0]; }
 void otherxx(){
   int *b;
   int *c;
-  //CHECK_ALL: _Array_ptr<int> __3c_tmp_b : count(0 + 1) = ((void *)0);
-  //CHECK_ALL: _Array_ptr<int> b : bounds(__3c_tmp_b, __3c_tmp_b + 0 + 1) = __3c_tmp_b;
+  //CHECK_ALL: _Array_ptr<int> __3c_lower_bound_b : count(0 + 1) = ((void *)0);
+  //CHECK_ALL: _Array_ptr<int> b : bounds(__3c_lower_bound_b, __3c_lower_bound_b + 0 + 1) = __3c_lower_bound_b;
   //CHECK_ALL: _Array_ptr<int> c : count(0 + 1) = ((void *)0);
 
   testx(b);
@@ -158,11 +158,11 @@ void otherxx(){
 struct structy { int *b; };
 // CHECK_ALL: struct structy { _Array_ptr<int> b; };
 void testy(struct structy d) {
-  // expected-error@+2 {{inferred bounds for '__3c_tmp_e' are unknown after initialization}}
+  // expected-error@+2 {{inferred bounds for '__3c_lower_bound_e' are unknown after initialization}}
   // expected-note@+1 {{}}
   int *e = d.b;
-  // CHECK_ALL: _Array_ptr<int> __3c_tmp_e : count(0 + 1) = d.b;
-  // CHECK_ALL: _Array_ptr<int> e : bounds(__3c_tmp_e, __3c_tmp_e + 0 + 1) = __3c_tmp_e;
+  // CHECK_ALL: _Array_ptr<int> __3c_lower_bound_e : count(0 + 1) = d.b;
+  // CHECK_ALL: _Array_ptr<int> e : bounds(__3c_lower_bound_e, __3c_lower_bound_e + 0 + 1) = __3c_lower_bound_e;
 
   d.b = e;
   e++;
@@ -179,8 +179,8 @@ void foo(int *x, unsigned long s) {
 void foo_caller(unsigned long l) {
   int *a;
   a++;
-  // CHECK_ALL:_Array_ptr<int> __3c_tmp_a : count(l) = ((void *)0);
-  // CHECK_ALL:_Array_ptr<int> a : bounds(__3c_tmp_a, __3c_tmp_a + l) = __3c_tmp_a;
+  // CHECK_ALL:_Array_ptr<int> __3c_lower_bound_a : count(l) = ((void *)0);
+  // CHECK_ALL:_Array_ptr<int> a : bounds(__3c_lower_bound_a, __3c_lower_bound_a + l) = __3c_lower_bound_a;
 
   foo(a, l);
   // expected-warning@-1 {{cannot prove argument meets declared bounds for 1st parameter}}
@@ -192,12 +192,12 @@ void foo_caller(unsigned long l) {
 // Lower bound inference for `b` fails because `a` is out of scope. If `a` were
 // in scope, it would be used as a lower bound.
 void bar(int *b) {
-// CHECK_ALL: void bar(_Array_ptr<int> __3c_tmp_b : count(0 + 1)) _Checked {
-// CHECK_ALL: _Array_ptr<int> b : bounds(__3c_tmp_b, __3c_tmp_b + 0 + 1) = __3c_tmp_b;
+// CHECK_ALL: void bar(_Array_ptr<int> __3c_lower_bound_b : count(0 + 1)) _Checked {
+// CHECK_ALL: _Array_ptr<int> b : bounds(__3c_lower_bound_b, __3c_lower_bound_b + 0 + 1) = __3c_lower_bound_b;
   int *a;
   // CHECK_ALL: _Array_ptr<int> a : count(0 + 1) = ((void *)0);
   b = a;
-  // CHECK_ALL: __3c_tmp_b = a, b = __3c_tmp_b;
+  // CHECK_ALL: __3c_lower_bound_b = a, b = __3c_lower_bound_b;
   b++;
   b[0];
 }
