@@ -667,8 +667,12 @@ AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
           // the fresh lower bound.
           NeedFreshLB.erase(S);
           BoundsKey SLB = InfLBs[S];
-          // TODO: This is inefficient.
-          LowerBoundGraph.visitBreadthFirst(S, [this, SLB, &InfLBs, &WorkList](BoundsKey BK) {
+          // TODO: Erasing the bounds by a breadth first search from S is
+          //       inefficient, probably resulting in quadratic worst case
+          //       running time, but this hasn't shown up a real performance
+          //       issue yet.
+          LowerBoundGraph.visitBreadthFirst(S, [this, SLB, &InfLBs, &WorkList](
+            BoundsKey BK) {
             if (InfLBs.find(BK) != InfLBs.end() && InfLBs[BK] == SLB) {
               InfLBs.erase(BK);
               std::set<BoundsKey> Pred;
