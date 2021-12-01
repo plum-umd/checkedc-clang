@@ -50,8 +50,8 @@ protected:
   // The string to replace the declaration with.
   std::string Replacement;
 
-  // A declaration might need to be replaced with more than a singles new
-  // declaration. These extra declaration can be stored in this vector to be
+  // A declaration might need to be replaced with more than a single new
+  // declaration. These extra declarations can be stored in this vector to be
   // emitted after the original declaration.
   std::vector<std::string> SupplementaryDecls;
 private:
