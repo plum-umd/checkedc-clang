@@ -79,4 +79,4 @@ private:
   ConstraintResolver CR;
   ASTContext *C;
 };
-#endif //LLVM_LOWERBOUNDASSIGNMENT_H
+#endif // LLVM_CLANG_3C_LOWERBOUNDASSIGNMENT_H
