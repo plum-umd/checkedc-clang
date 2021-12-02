@@ -608,7 +608,7 @@ AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
   // invalid lower bounds. These come after the valid lower bounds so that is
   // less likely a fresh lower bound will be generated but later thrown out, as
   // that process is inefficient at least in the current implementation.
-  for (BoundsKey InvLB: InvalidLowerBounds)
+  for (BoundsKey InvLB : InvalidLowerBounds)
     WorkList.push(InvLB);
 
   // This set tracks the pointers for which we will need to generate a fresh
@@ -644,7 +644,7 @@ AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
 
     std::set<BoundsKey> Succ;
     LowerBoundGraph.getSuccessors(BK, Succ);
-    for (BoundsKey S: Succ) {
+    for (BoundsKey S : Succ) {
 
       // Do not process any array pointers that are valid lower bounds. They
       // should just serve as their own lower bound.
@@ -692,7 +692,7 @@ AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
               InfLBs.erase(BK);
               std::set<BoundsKey> Pred;
               LowerBoundGraph.getPredecessors(BK, Pred);
-              for (BoundsKey P: Pred) {
+              for (BoundsKey P : Pred) {
                 if (P != InvalidLowerBoundKey &&
                     InfLBs.find(P) != InfLBs.end())
                   WorkList.push(P);
