@@ -69,8 +69,8 @@ public:
     ValToK.clear();
   }
 
-  const std::map<KeyT, ValueT> &left() { return KtoVal; }
-  const std::map<ValueT, KeyT> &right() { return ValToK; }
+  const std::map<KeyT, ValueT> &left() const { return KtoVal; }
+  const std::map<ValueT, KeyT> &right() const { return ValToK; }
 
 private:
   std::map<KeyT, ValueT> KtoVal;

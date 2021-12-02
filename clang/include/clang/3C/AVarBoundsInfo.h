@@ -386,6 +386,9 @@ private:
   // BiMap of function keys and BoundsKey for function return values.
   BiMap<std::tuple<std::string, std::string, bool>, BoundsKey> FuncDeclVarMap;
 
+  PVConstraint *
+  getConstraintVariable(const ProgramInfo *PI, BoundsKey BK) const;
+
   // Graph of all program variables.
   AVarGraph ProgVarGraph;
   // Graph that contains only edges from normal BoundsKey to
@@ -464,7 +467,7 @@ private:
   // pointers transitively assigned to from these pointers. This is computed
   // using essentially the same algorithm as is used for solving the checked
   // type constraint graph.
-  void computeInvalidLowerBounds();
+  void computeInvalidLowerBounds(ProgramInfo *PI);
 
   // During lower bound inference it may be necessary to generate temporary
   // pointers to act as lower bounds for arrays that otherwise don't have a
