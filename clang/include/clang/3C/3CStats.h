@@ -23,6 +23,7 @@ public:
   double ConstraintBuilderTime;
   double ConstraintSolverTime;
   double ArrayBoundsInferenceTime;
+  double ComputeInterimConstraintStateTime;
   double RewritingTime;
   double TotalTime;
 
@@ -38,10 +39,12 @@ public:
   PerformanceStats() {
     CompileTime = ConstraintBuilderTime = 0;
     ConstraintSolverTime = ArrayBoundsInferenceTime = 0;
+    ComputeInterimConstraintStateTime = 0;
     RewritingTime = TotalTime = 0;
 
     CompileTimeSt = ConstraintBuilderTimeSt = 0;
     ConstraintSolverTimeSt = ArrayBoundsInferenceTimeSt = 0;
+    ComputeInterimConstraintStateTimeSt = 0;
     RewritingTimeSt = TotalTimeSt = 0;
 
     NumAssumeBoundsCasts = NumCheckedCasts = 0;
@@ -61,6 +64,9 @@ public:
 
   void startArrayBoundsInferenceTime();
   void endArrayBoundsInferenceTime();
+
+  void startComputeInterimConstraintStateTime();
+  void endComputeInterimConstraintStateTime();
 
   void startRewritingTime();
   void endRewritingTime();
@@ -83,6 +89,7 @@ private:
   clock_t ConstraintBuilderTimeSt;
   clock_t ConstraintSolverTimeSt;
   clock_t ArrayBoundsInferenceTimeSt;
+  clock_t ComputeInterimConstraintStateTimeSt;
   clock_t RewritingTimeSt;
   clock_t TotalTimeSt;
 };

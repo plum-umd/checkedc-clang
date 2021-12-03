@@ -670,8 +670,6 @@ bool _3CInterface::writeAllConvertedFilesToDisk() {
   for (auto &TU : ASTs)
     RC.HandleTranslationUnit(TU->getASTContext());
 
-  GlobalProgramInfo.getPerfStats().endTotalTime();
-  GlobalProgramInfo.getPerfStats().startTotalTime();
   return isSuccessfulSoFar();
 }
 
@@ -681,8 +679,10 @@ bool _3CInterface::dumpStats() {
   }
 
   if (_3COpts.DumpStats) {
-    GlobalProgramInfo.printStats(FilePaths, llvm::errs(), true);
     GlobalProgramInfo.computeInterimConstraintState(FilePaths);
+    // REVIEW: This is not the right place for this...
+    GlobalProgramInfo.getPerfStats().endTotalTime();
+    GlobalProgramInfo.printStats(FilePaths, llvm::errs(), true);
     std::error_code Ec;
     llvm::raw_fd_ostream OutputJson(_3COpts.StatsOutputJson, Ec);
     if (!OutputJson.has_error()) {

@@ -43,6 +43,14 @@ void PerformanceStats::endArrayBoundsInferenceTime() {
   ArrayBoundsInferenceTime += getTimeSpentInSeconds(ArrayBoundsInferenceTimeSt);
 }
 
+void PerformanceStats::startComputeInterimConstraintStateTime() {
+  ComputeInterimConstraintStateTimeSt = clock();
+}
+
+void PerformanceStats::endComputeInterimConstraintStateTime() {
+  ComputeInterimConstraintStateTime += getTimeSpentInSeconds(ComputeInterimConstraintStateTimeSt);
+}
+
 void PerformanceStats::startRewritingTime() { RewritingTimeSt = clock(); }
 
 void PerformanceStats::endRewritingTime() {
@@ -77,6 +85,7 @@ void PerformanceStats::printPerformanceStats(llvm::raw_ostream &O,
     O << ", \"ConstraintBuilderTime\":" << ConstraintBuilderTime;
     O << ", \"ConstraintSolverTime\":" << ConstraintSolverTime;
     O << ", \"ArrayBoundsInferenceTime\":" << ArrayBoundsInferenceTime;
+    O << ", \"ComputeInterimConstraintStateTime\":" << ComputeInterimConstraintStateTime;
     O << ", \"RewritingTime\":" << RewritingTime;
     O << "}},\n";
 
@@ -97,6 +106,7 @@ void PerformanceStats::printPerformanceStats(llvm::raw_ostream &O,
     O << "ConstraintBuilderTime:" << ConstraintBuilderTime << "\n";
     O << "ConstraintSolverTime:" << ConstraintSolverTime << "\n";
     O << "ArrayBoundsInferenceTime:" << ArrayBoundsInferenceTime << "\n";
+    O << "ComputeInterimConstraintStateTime:" << ComputeInterimConstraintStateTime << "\n";
     O << "RewritingTime:" << RewritingTime << "\n";
 
     O << "ReWriteStats\n";

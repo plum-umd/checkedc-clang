@@ -937,6 +937,7 @@ FVConstraint *ProgramInfo::getStaticFuncConstraint(std::string FuncName,
 // depend on other constraint vars that are directly assigned WILD.
 bool ProgramInfo::computeInterimConstraintState(
     const std::set<std::string> &FilePaths) {
+  getPerfStats().startComputeInterimConstraintStateTime();
 
   // Get all the valid vars of interest i.e., all the Vars that are present
   // in one of the files being compiled.
@@ -1052,6 +1053,7 @@ bool ProgramInfo::computeInterimConstraintState(
   }
 
   computePtrLevelStats();
+  getPerfStats().endComputeInterimConstraintStateTime();
   return true;
 }
 
