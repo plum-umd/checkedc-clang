@@ -29,14 +29,14 @@
 # translation unit using the _original_ compiler options (not using options
 # specific to this module such as `undef_macros`) is identical before and after
 # our edits.
-
+import argparse
 from typing import List, NamedTuple, Dict
 import collections
 import logging
 import os
 import re
 import subprocess
-from common import TranslationUnitInfo, realpath_cached
+from convert_project_common import (TranslationUnitInfo, realpath_cached, assert_no_duplicate_outputs)
 
 
 class ExpandMacrosOptions(NamedTuple):
@@ -91,8 +91,8 @@ def preprocess(tu: TranslationUnitInfo,
     input_filename = (custom_input_filename if custom_input_filename is not None
                       else tu.input_filename)
     subprocess.check_call([tu.compiler_path, '-E', '-o', out_fname] +
-                          tu.compiler_args + [input_filename],
-                          cwd=tu.target_directory)
+                          tu.common_compiler_args + [input_filename],
+                          cwd=tu.working_directory)
 
 
 def expandMacros(opts: ExpandMacrosOptions, compilation_base_dir: str,
@@ -103,12 +103,7 @@ def expandMacros(opts: ExpandMacrosOptions, compilation_base_dir: str,
     # If this somehow happens (e.g., it happened in one build configuration of
     # thttpd), fail up front rather than producing mysterious verification
     # failures later.
-    tu_output_realpaths = set()
-    for tu in translation_units:
-        assert tu.output_realpath not in tu_output_realpaths, (
-            f'Multiple compilation database entries with output file '
-            f'{tu.output_realpath}: not supported by expand_macros')
-        tu_output_realpaths.add(tu.output_realpath)
+    assert_no_duplicate_outputs(translation_units)
 
     compilation_base_dir = realpath_cached(compilation_base_dir)
 
@@ -291,3 +286,15 @@ def expandMacros(opts: ExpandMacrosOptions, compilation_base_dir: str,
             verification_ok = False
     assert verification_ok, (
         'Verification of preprocessed output failed: see diffs above.')
+
+
+if __name__ == '__main__':
+    # TODO: Provide a LibTooling-like CLI that takes either `-p` or
+    # `FILENAMES -- FIXED_COMPILER_OPTIONS`. Probably check for `--` first and
+    # then call argparse, analogous to how LibTooling CommonOptionsParser uses
+    # the LLVM CommandLine library.
+    # TODO: Factor out the macro-related argparse stuff from convert_project so
+    # it can be added to either ArgumentParser.
+    #parser = argparse.ArgumentParser()
+    # FIXME: Clarify assumptions about base dir versus working dir.
+    raise NotImplementedError
