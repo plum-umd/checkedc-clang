@@ -1272,8 +1272,6 @@ void AVarBoundsInfo::getBoundsNeededArrPointers(std::set<BoundsKey> &AB) const {
 // Note: we only use potential bounds for a variable when none of its
 // predecessors have bounds.
 void AVarBoundsInfo::performFlowAnalysis(ProgramInfo *PI) {
-  auto &PStats = PI->getPerfStats();
-  PStats.startArrayBoundsInferenceTime();
 
   // First get all the pointer vars which are ARRs. Results is stored in the
   // field ArrPointerBoundsKey. This also populates some other sets that seem to
@@ -1340,8 +1338,6 @@ void AVarBoundsInfo::performFlowAnalysis(ProgramInfo *PI) {
     }
     OuterChanged = (TmpArrNeededBounds != ArrNeededBounds);
   }
-
-  PStats.endArrayBoundsInferenceTime();
 }
 
 bool AVarBoundsInfo::keepHighestPriorityBounds() {

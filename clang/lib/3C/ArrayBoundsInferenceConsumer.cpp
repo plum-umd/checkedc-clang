@@ -354,9 +354,7 @@ bool isExpressionStructField(Expr *ToCheck, FieldDecl **TargetDecl) {
 
 void AllocBasedBoundsInference::HandleTranslationUnit(ASTContext &Context) {
   Info.enterCompilationUnit(Context);
-  Info.getPerfStats().startArrayBoundsInferenceTime();
   handleArrayVariablesBoundsDetection(&Context, Info, false);
-  Info.getPerfStats().endArrayBoundsInferenceTime();
   Info.exitCompilationUnit();
 }
 
