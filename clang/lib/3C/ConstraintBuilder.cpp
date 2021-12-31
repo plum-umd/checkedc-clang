@@ -499,10 +499,6 @@ void ConstraintBuilderConsumer::HandleTranslationUnit(ASTContext &C) {
       errs() << "Analyzing\n";
   }
 
-  auto &PStats = Info.getPerfStats();
-
-  PStats.startConstraintBuilderTime();
-
   TypeVarVisitor TV = TypeVarVisitor(&C, Info);
   ConstraintResolver CSResolver(Info, &C);
   ContextSensitiveBoundsKeyVisitor CSBV =
@@ -531,10 +527,6 @@ void ConstraintBuilderConsumer::HandleTranslationUnit(ASTContext &C) {
 
   if (_3COpts.Verbose)
     errs() << "Done analyzing\n";
-
-  PStats.endConstraintBuilderTime();
-
-  PStats.endConstraintBuilderTime();
 
   Info.exitCompilationUnit();
   return;

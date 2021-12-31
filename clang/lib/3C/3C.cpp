@@ -502,12 +502,18 @@ bool _3CInterface::parseASTs() {
 
   auto *Tool = new ClangTool(*CurrCompDB, SourceFiles);
 
+  auto &PStats = GlobalProgramInfo.getPerfStats();
+
+  PStats.startCompileTime();
+
   // load the ASTs
   _3CASTBuilderAction Action(ASTs);
   int ToolExitStatus = Tool->run(&Action);
   HadNonDiagnosticError |= (ToolExitStatus != 0);
 
   GlobalProgramInfo.registerTranslationUnits(ASTs);
+
+  PStats.endCompileTime();
 
   return isSuccessfulSoFar();
 }
@@ -516,23 +522,36 @@ bool _3CInterface::addVariables() {
 
   std::lock_guard<std::mutex> Lock(InterfaceMutex);
 
+  auto &PStats = GlobalProgramInfo.getPerfStats();
+
+
   // Find multi-decls and assign names to unnamed inline TagDecls now so that
   // the assigned type names are available when we construct ConstraintVariables
   // for the multi-decl members in the "Add Variables" step below.
+  PStats.startCompileTime();
   for (auto &TU : ASTs)
     GlobalProgramInfo.TheMultiDeclsInfo.findUsedTagNames(TU->getASTContext());
-  if (!isSuccessfulSoFar())
-    return false;
-  for (auto &TU : ASTs)
-    GlobalProgramInfo.TheMultiDeclsInfo.findMultiDecls(TU->getASTContext());
+  PStats.endCompileTime();
+
   if (!isSuccessfulSoFar())
     return false;
 
+  PStats.startCompileTime();
+  for (auto &TU : ASTs)
+    GlobalProgramInfo.TheMultiDeclsInfo.findMultiDecls(TU->getASTContext());
+  PStats.endCompileTime();
+
+  if (!isSuccessfulSoFar())
+    return false;
+
+
+  PStats.startCompileTime();
   // 1. Add Variables.
   VariableAdderConsumer VA = VariableAdderConsumer(GlobalProgramInfo, nullptr);
   for (auto &TU : ASTs)
     VA.HandleTranslationUnit(TU->getASTContext());
 
+  PStats.endCompileTime();
   return isSuccessfulSoFar();
 }
 
@@ -540,17 +559,24 @@ bool _3CInterface::buildInitialConstraints() {
 
   std::lock_guard<std::mutex> Lock(InterfaceMutex);
 
+  auto &PStats = GlobalProgramInfo.getPerfStats();
+
+  PStats.startConstraintBuilderTime();
+
   if (!GlobalProgramInfo.link()) {
     errs() << "Linking failed!\n";
     HadNonDiagnosticError = true;
+    PStats.endConstraintBuilderTime();
     return isSuccessfulSoFar(); // False, of course, but follow the pattern.
   }
-
   // 2. Gather constraints.
   ConstraintBuilderConsumer CB =
       ConstraintBuilderConsumer(GlobalProgramInfo, nullptr);
   for (auto &TU : ASTs)
     CB.HandleTranslationUnit(TU->getASTContext());
+
+  PStats.endConstraintBuilderTime();
+
   if (!isSuccessfulSoFar())
     return false;
 
@@ -586,6 +612,7 @@ bool _3CInterface::solveConstraints() {
     dumpConstraintOutputJson(FINAL_OUTPUT_SUFFIX, GlobalProgramInfo);
 
   if (_3COpts.AllTypes) {
+    PStats.startArrayBoundsInferenceTime();
     // Add declared bounds for all constant sized arrays. This needs to happen
     // after constraint solving because the bound added depends on whether the
     // array is NTARR or ARR.
@@ -610,11 +637,15 @@ bool _3CInterface::solveConstraints() {
         AllocBasedBoundsInference(GlobalProgramInfo, nullptr);
     for (auto &TU : ASTs)
       ABBI.HandleTranslationUnit(TU->getASTContext());
+    PStats.endArrayBoundsInferenceTime();
+
     if (!isSuccessfulSoFar())
       return false;
 
+    PStats.startArrayBoundsInferenceTime();
     // Propagate the information from allocator bounds.
     GlobalProgramInfo.getABoundsInfo().performFlowAnalysis(&GlobalProgramInfo);
+    PStats.endArrayBoundsInferenceTime();
   }
 
   // 5. Run intermediate tool hook to run visitors that need to be executed
@@ -626,8 +657,10 @@ bool _3CInterface::solveConstraints() {
     return false;
 
   if (_3COpts.AllTypes) {
+    PStats.startArrayBoundsInferenceTime();
     // Propagate data-flow information for Array pointers.
     GlobalProgramInfo.getABoundsInfo().performFlowAnalysis(&GlobalProgramInfo);
+    PStats.endArrayBoundsInferenceTime();
 
     /*if (DebugArrSolver)
       GlobalProgramInfo.getABoundsInfo().dumpAVarGraph(
@@ -670,13 +703,19 @@ bool _3CInterface::solveConstraints() {
 bool _3CInterface::writeAllConvertedFilesToDisk() {
   std::lock_guard<std::mutex> Lock(InterfaceMutex);
 
+  auto &PStats = GlobalProgramInfo.getPerfStats();
+
+  PStats.startRewritingTime();
+
   // 6. Rewrite the input files.
   RewriteConsumer RC = RewriteConsumer(GlobalProgramInfo);
   for (auto &TU : ASTs)
     RC.HandleTranslationUnit(TU->getASTContext());
 
-  GlobalProgramInfo.getPerfStats().endTotalTime();
-  GlobalProgramInfo.getPerfStats().startTotalTime();
+  PStats.endRewritingTime();
+  PStats.endTotalTime();
+  PStats.startTotalTime();
+
   return isSuccessfulSoFar();
 }
 

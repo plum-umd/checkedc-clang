@@ -74,6 +74,7 @@ void PerformanceStats::printPerformanceStats(llvm::raw_ostream &O,
     O << "[";
 
     O << "{\"TimeStats\": {\"TotalTime\":" << TotalTime;
+    O << ", \"CompileTime\":" << CompileTime;
     O << ", \"ConstraintBuilderTime\":" << ConstraintBuilderTime;
     O << ", \"ConstraintSolverTime\":" << ConstraintSolverTime;
     O << ", \"ArrayBoundsInferenceTime\":" << ArrayBoundsInferenceTime;
@@ -94,6 +95,7 @@ void PerformanceStats::printPerformanceStats(llvm::raw_ostream &O,
   } else {
     O << "TimeStats\n";
     O << "TotalTime:" << TotalTime << "\n";
+    O << "CompileTile:" << CompileTime << "\n";
     O << "ConstraintBuilderTime:" << ConstraintBuilderTime << "\n";
     O << "ConstraintSolverTime:" << ConstraintSolverTime << "\n";
     O << "ArrayBoundsInferenceTime:" << ArrayBoundsInferenceTime << "\n";
