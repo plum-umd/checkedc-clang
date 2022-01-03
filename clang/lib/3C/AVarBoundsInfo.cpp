@@ -579,6 +579,21 @@ void
 AVarBoundsInfo::inferLowerBounds(ProgramInfo *PI) {
   computeInvalidLowerBounds(PI);
 
+  if (_3COpts.DisableLowerBoundInf) {
+    // Lower bound inference has been disabled. The fields NeedFreshLB and
+    // InfLBs will remain empty, so no bounds are inferred. For invalid lower
+    // bounds, the missing inferred bound will cause the rest of the bounds
+    // inference to treat them as invalid, so no bounds (lower or upper) will
+    // be inferred.
+    //
+    // Note that this treats pointers transitively reachable from invalid
+    // lower bound pointers as invalid lower bounds. This could potentially
+    // result in fewer array bounds than array bounds inference algorithm
+    // before implementing lower bound inference. Getting it to behave exactly
+    // the same is not trivial.
+    return;
+  }
+
   // This maps array pointers to a single consistent lower bound pointer, or
   // possible the constant InvalidLowerBoundKey if no lower bound could be found
   // or generated. Note that there can only be a single valid lower bound.

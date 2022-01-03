@@ -50,6 +50,7 @@ struct _3COptions {
   bool DisableFunctionEdges;
   bool DisableInfDecls;
   bool DisableArrH;
+  bool DisableLowerBoundInf;
   bool DebugArrSolver;
 #ifdef FIVE_C
   bool RemoveItypes;

@@ -278,6 +278,11 @@ static cl::opt<bool> OptDisableArrH(
     cl::desc("Disable Array Bounds Inference Heuristics."),
     cl::init(false), cl::cat(_3CCategory));
 
+static cl::opt<bool> OptDisableLowerBoundInf(
+    "disable-lb-inf",
+    cl::desc("Disable infererence for array pointer lower bounds."),
+    cl::init(false), cl::cat(_3CCategory));
+
 static cl::opt<bool> DebugArrSolver(
     "debug-arr-solver",
     cl::desc("Dump array bounds inference graph"),
@@ -363,6 +368,7 @@ int main(int argc, const char **argv) {
   CcOptions.DisableFunctionEdges = OptDisableFunctionEdges;
   CcOptions.DisableInfDecls = OptDisableInfDecls;
   CcOptions.DisableArrH = OptDisableArrH;
+  CcOptions.DisableLowerBoundInf = OptDisableLowerBoundInf;
   CcOptions.DebugArrSolver = DebugArrSolver;
 
 #ifdef FIVE_C
