@@ -238,8 +238,10 @@ def run3C(checkedc_bin,
     # Try to choose a name unlikely to collide with anything in any real
     # project.
     args.append('-output-dir="' + compilation_base_dir + '/out.checked"')
-    args.extend(list(set(all_files)))
-    vcodewriter.addClangdArg(list(set(all_files)))
+    all_files = list(set(all_files))
+    all_files.sort()
+    args.extend(all_files)
+    vcodewriter.addClangdArg(all_files)
     vcodewriter.writeJsonFile(VSCODE_SETTINGS_JSON)
 
     f = open(TOTAL_COMMANDS_FILE, 'w')
