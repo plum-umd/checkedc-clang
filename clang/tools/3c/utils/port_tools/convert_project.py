@@ -82,6 +82,16 @@ def parseTheArg():
          'files based on the compiler options in compile_commands.json. This '
          'will help stop macros from interfering with 3C\'s ability to perform '
          'rewrites.'))
+
+    parser.add_argument(
+        "--skip_multiple_files_macro",
+        dest='skip_multiple_files_macro',
+        action='store_true',
+        default=False,
+        help=
+        ('With --expand_macros_before_conversion, this will skip duplicate '
+         'destinations in compile database.'))
+
     parser.add_argument(
         '--include_before_undefs',
         dest='includes_before_undefs',
@@ -158,6 +168,7 @@ if __name__ == "__main__":
         progArgs.prog_name, progArgs.extra_3c_args, progArgs.project_path,
         compileCmdsJson, progArgs.skip_paths,
         ExpandMacrosOptions(progArgs.expand_macros_before_conversion,
+                            progArgs.skip_multiple_files_macro,
                             progArgs.includes_before_undefs,
                             progArgs.undef_macros), progArgs.skip_exec)
     logging.info("Finished converting all the files to checkedc files.")

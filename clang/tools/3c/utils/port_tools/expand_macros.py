@@ -42,6 +42,7 @@ from common import TranslationUnitInfo, realpath_cached
 class ExpandMacrosOptions(NamedTuple):
     # If `enable` is false, the other options aren't used.
     enable: bool
+    skip_duplicate_units: bool
     includes_before_undefs: List[str]
     undef_macros: List[str]
 
@@ -96,7 +97,7 @@ def preprocess(tu: TranslationUnitInfo,
 
 
 def expandMacros(opts: ExpandMacrosOptions, compilation_base_dir: str,
-                 translation_units: List[TranslationUnitInfo]):
+                 in_translation_units: List[TranslationUnitInfo]):
     if not opts.enable:
         return
 
@@ -104,10 +105,14 @@ def expandMacros(opts: ExpandMacrosOptions, compilation_base_dir: str,
     # thttpd), fail up front rather than producing mysterious verification
     # failures later.
     tu_output_realpaths = set()
-    for tu in translation_units:
-        assert tu.output_realpath not in tu_output_realpaths, (
-            f'Multiple compilation database entries with output file '
-            f'{tu.output_realpath}: not supported by expand_macros')
+    translation_units = []
+    for tu in in_translation_units:
+        if tu.output_realpath not in tu_output_realpaths:
+            translation_units.append(tu)
+        else:
+            assert opts.skip_duplicate_units, (
+                f'Multiple compilation database entries with output file '
+                f'{tu.output_realpath}: not supported by expand_macros')
         tu_output_realpaths.add(tu.output_realpath)
 
     compilation_base_dir = realpath_cached(compilation_base_dir)
