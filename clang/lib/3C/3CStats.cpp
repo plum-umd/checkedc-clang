@@ -11,12 +11,19 @@
 #include "clang/3C/3CStats.h"
 #include "clang/3C/ProgramInfo.h"
 #include "clang/3C/Utils.h"
+#include <stdio.h>
 #include <time.h>
 
 void PerformanceStats::startCompileTime() { CompileTimeSt = clock(); }
 
 void PerformanceStats::endCompileTime() {
   CompileTime += getTimeSpentInSeconds(CompileTimeSt);
+}
+
+void PerformanceStats::startAddVariablesTime() { AddVariablesTimeSt = clock(); }
+
+void PerformanceStats::endAddVariablesTime() {
+  AddVariablesTime += getTimeSpentInSeconds(AddVariablesTimeSt);
 }
 
 void PerformanceStats::startConstraintBuilderTime() {
@@ -41,6 +48,14 @@ void PerformanceStats::startArrayBoundsInferenceTime() {
 
 void PerformanceStats::endArrayBoundsInferenceTime() {
   ArrayBoundsInferenceTime += getTimeSpentInSeconds(ArrayBoundsInferenceTimeSt);
+}
+
+void PerformanceStats::startComputeInterimConstraintStateTime() {
+  ComputeInterimConstraintStateTimeSt = clock();
+}
+
+void PerformanceStats::endComputeInterimConstraintStateTime() {
+  ComputeInterimConstraintStateTime += getTimeSpentInSeconds(ComputeInterimConstraintStateTimeSt);
 }
 
 void PerformanceStats::startRewritingTime() { RewritingTimeSt = clock(); }
@@ -68,6 +83,15 @@ void PerformanceStats::incrementNumCheckedRegions() { NumCheckedRegions++; }
 
 void PerformanceStats::incrementNumUnCheckedRegions() { NumUnCheckedRegions++; }
 
+// Print times in a format more readable than llvm::raw_ostream's default
+// exponential notation. We could use llvm::write_double, but that would make
+// the printPerformanceStats code more cluttered.
+static std::string timeToFriendlyString(double Time) {
+  char Buf[20];
+  snprintf(Buf, sizeof Buf, "%.3f", Time);
+  return std::string(Buf);
+}
+
 void PerformanceStats::printPerformanceStats(llvm::raw_ostream &O,
                                              bool JsonFormat) {
   if (JsonFormat) {
@@ -75,9 +99,11 @@ void PerformanceStats::printPerformanceStats(llvm::raw_ostream &O,
 
     O << "{\"TimeStats\": {\"TotalTime\":" << TotalTime;
     O << ", \"CompileTime\":" << CompileTime;
+    O << ", \"AddVariablesTime\":" << AddVariablesTime;
     O << ", \"ConstraintBuilderTime\":" << ConstraintBuilderTime;
     O << ", \"ConstraintSolverTime\":" << ConstraintSolverTime;
     O << ", \"ArrayBoundsInferenceTime\":" << ArrayBoundsInferenceTime;
+    O << ", \"ComputeInterimConstraintStateTime\":" << ComputeInterimConstraintStateTime;
     O << ", \"RewritingTime\":" << RewritingTime;
     O << "}},\n";
 
@@ -94,12 +120,18 @@ void PerformanceStats::printPerformanceStats(llvm::raw_ostream &O,
     O << "]";
   } else {
     O << "TimeStats\n";
-    O << "TotalTime:" << TotalTime << "\n";
-    O << "CompileTile:" << CompileTime << "\n";
-    O << "ConstraintBuilderTime:" << ConstraintBuilderTime << "\n";
-    O << "ConstraintSolverTime:" << ConstraintSolverTime << "\n";
-    O << "ArrayBoundsInferenceTime:" << ArrayBoundsInferenceTime << "\n";
-    O << "RewritingTime:" << RewritingTime << "\n";
+    O << "TotalTime:" << timeToFriendlyString(TotalTime) << "\n";
+    O << "CompileTime:" << timeToFriendlyString(CompileTime) << "\n";
+    O << "AddVariablesTime:" << timeToFriendlyString(AddVariablesTime) << "\n";
+    O << "ConstraintBuilderTime:" << timeToFriendlyString(ConstraintBuilderTime)
+      << "\n";
+    O << "ConstraintSolverTime:" << timeToFriendlyString(ConstraintSolverTime)
+      << "\n";
+    O << "ArrayBoundsInferenceTime:"
+      << timeToFriendlyString(ArrayBoundsInferenceTime) << "\n";
+    O << "ComputeInterimConstraintStateTime:"
+      << timeToFriendlyString(ComputeInterimConstraintStateTime) << "\n";
+    O << "RewritingTime:" << timeToFriendlyString(RewritingTime) << "\n";
 
     O << "ReWriteStats\n";
     O << "NumAssumeBoundsCasts:" << NumAssumeBoundsCasts << "\n";

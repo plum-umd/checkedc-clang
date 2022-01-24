@@ -935,8 +935,12 @@ FVConstraint *ProgramInfo::getStaticFuncConstraint(std::string FuncName,
 // state that contains constraint vars which are directly assigned WILD and
 // other constraint vars that have been determined to be WILD because they
 // depend on other constraint vars that are directly assigned WILD.
+//
+// TODO: Is it possible for 3C to do this work twice if both -warn-root-cause
+// and -dump-stats are on? We should probably make the second call a no-op.
 bool ProgramInfo::computeInterimConstraintState(
     const std::set<std::string> &FilePaths) {
+  getPerfStats().startComputeInterimConstraintStateTime();
 
   // Get all the valid vars of interest i.e., all the Vars that are present
   // in one of the files being compiled.
@@ -1052,6 +1056,7 @@ bool ProgramInfo::computeInterimConstraintState(
   }
 
   computePtrLevelStats();
+  getPerfStats().endComputeInterimConstraintStateTime();
   return true;
 }
 

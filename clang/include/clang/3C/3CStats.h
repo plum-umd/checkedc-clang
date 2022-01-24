@@ -19,10 +19,14 @@
 
 class PerformanceStats {
 public:
+  // TODO: The amount of boilerplate code is getting crazy. Make a class that we
+  // can instantiate once for each kind of time we want to measure.
   double CompileTime;
+  double AddVariablesTime;
   double ConstraintBuilderTime;
   double ConstraintSolverTime;
   double ArrayBoundsInferenceTime;
+  double ComputeInterimConstraintStateTime;
   double RewritingTime;
   double TotalTime;
 
@@ -36,12 +40,14 @@ public:
   unsigned long NumUnCheckedRegions;
 
   PerformanceStats() {
-    CompileTime = ConstraintBuilderTime = 0;
+    CompileTime = AddVariablesTime = ConstraintBuilderTime = 0;
     ConstraintSolverTime = ArrayBoundsInferenceTime = 0;
+    ComputeInterimConstraintStateTime = 0;
     RewritingTime = TotalTime = 0;
 
-    CompileTimeSt = ConstraintBuilderTimeSt = 0;
+    CompileTimeSt = AddVariablesTimeSt = ConstraintBuilderTimeSt = 0;
     ConstraintSolverTimeSt = ArrayBoundsInferenceTimeSt = 0;
+    ComputeInterimConstraintStateTimeSt = 0;
     RewritingTimeSt = TotalTimeSt = 0;
 
     NumAssumeBoundsCasts = NumCheckedCasts = 0;
@@ -53,6 +59,9 @@ public:
   void startCompileTime();
   void endCompileTime();
 
+  void startAddVariablesTime();
+  void endAddVariablesTime();
+
   void startConstraintBuilderTime();
   void endConstraintBuilderTime();
 
@@ -61,6 +70,9 @@ public:
 
   void startArrayBoundsInferenceTime();
   void endArrayBoundsInferenceTime();
+
+  void startComputeInterimConstraintStateTime();
+  void endComputeInterimConstraintStateTime();
 
   void startRewritingTime();
   void endRewritingTime();
@@ -80,9 +92,11 @@ public:
 
 private:
   clock_t CompileTimeSt;
+  clock_t AddVariablesTimeSt;
   clock_t ConstraintBuilderTimeSt;
   clock_t ConstraintSolverTimeSt;
   clock_t ArrayBoundsInferenceTimeSt;
+  clock_t ComputeInterimConstraintStateTimeSt;
   clock_t RewritingTimeSt;
   clock_t TotalTimeSt;
 };

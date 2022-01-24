@@ -528,30 +528,30 @@ bool _3CInterface::addVariables() {
   // Find multi-decls and assign names to unnamed inline TagDecls now so that
   // the assigned type names are available when we construct ConstraintVariables
   // for the multi-decl members in the "Add Variables" step below.
-  PStats.startCompileTime();
+  PStats.startAddVariablesTime();
   for (auto &TU : ASTs)
     GlobalProgramInfo.TheMultiDeclsInfo.findUsedTagNames(TU->getASTContext());
-  PStats.endCompileTime();
+  PStats.endAddVariablesTime();
 
   if (!isSuccessfulSoFar())
     return false;
 
-  PStats.startCompileTime();
+  PStats.startAddVariablesTime();
   for (auto &TU : ASTs)
     GlobalProgramInfo.TheMultiDeclsInfo.findMultiDecls(TU->getASTContext());
-  PStats.endCompileTime();
+  PStats.endAddVariablesTime();
 
   if (!isSuccessfulSoFar())
     return false;
 
 
-  PStats.startCompileTime();
+  PStats.startAddVariablesTime();
   // 1. Add Variables.
   VariableAdderConsumer VA = VariableAdderConsumer(GlobalProgramInfo, nullptr);
   for (auto &TU : ASTs)
     VA.HandleTranslationUnit(TU->getASTContext());
 
-  PStats.endCompileTime();
+  PStats.endAddVariablesTime();
   return isSuccessfulSoFar();
 }
 
@@ -708,8 +708,6 @@ bool _3CInterface::writeAllConvertedFilesToDisk() {
     RC.HandleTranslationUnit(TU->getASTContext());
 
   PStats.endRewritingTime();
-  PStats.endTotalTime();
-  PStats.startTotalTime();
 
   return isSuccessfulSoFar();
 }
@@ -720,8 +718,10 @@ bool _3CInterface::dumpStats() {
   }
 
   if (_3COpts.DumpStats) {
-    GlobalProgramInfo.printStats(FilePaths, llvm::errs(), true);
     GlobalProgramInfo.computeInterimConstraintState(FilePaths);
+    // REVIEW: Is this the best place to call endTotalTime?
+    GlobalProgramInfo.getPerfStats().endTotalTime();
+    GlobalProgramInfo.printStats(FilePaths, llvm::errs(), true);
     std::error_code Ec;
     llvm::raw_fd_ostream OutputJson(_3COpts.StatsOutputJson, Ec);
     if (!OutputJson.has_error()) {
