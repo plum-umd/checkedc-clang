@@ -528,18 +528,18 @@ bool _3CInterface::addVariables() {
   // Find multi-decls and assign names to unnamed inline TagDecls now so that
   // the assigned type names are available when we construct ConstraintVariables
   // for the multi-decl members in the "Add Variables" step below.
-  PStats.startAddVariablesTime();
+  PStats.startFindUsedTagNamesTime();
   for (auto &TU : ASTs)
     GlobalProgramInfo.TheMultiDeclsInfo.findUsedTagNames(TU->getASTContext());
-  PStats.endAddVariablesTime();
+  PStats.endFindUsedTagNamesTime();
 
   if (!isSuccessfulSoFar())
     return false;
 
-  PStats.startAddVariablesTime();
+  PStats.startFindMultiDeclsTime();
   for (auto &TU : ASTs)
     GlobalProgramInfo.TheMultiDeclsInfo.findMultiDecls(TU->getASTContext());
-  PStats.endAddVariablesTime();
+  PStats.endFindMultiDeclsTime();
 
   if (!isSuccessfulSoFar())
     return false;

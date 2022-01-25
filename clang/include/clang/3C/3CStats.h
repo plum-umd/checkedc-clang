@@ -20,8 +20,13 @@
 class PerformanceStats {
 public:
   // TODO: The amount of boilerplate code is getting crazy. Make a class that we
-  // can instantiate once for each kind of time we want to measure.
+  // can instantiate once for each kind of time we want to measure. It looks
+  // like the llvm::Timer class has the basic functionality we want (start,
+  // stop, report total time), but it does some extra stuff that might make it
+  // difficult to use here.
   double CompileTime;
+  double FindUsedTagNamesTime;
+  double FindMultiDeclsTime;
   double AddVariablesTime;
   double ConstraintBuilderTime;
   double ConstraintSolverTime;
@@ -40,12 +45,14 @@ public:
   unsigned long NumUnCheckedRegions;
 
   PerformanceStats() {
-    CompileTime = AddVariablesTime = ConstraintBuilderTime = 0;
+    CompileTime = FindUsedTagNamesTime = FindMultiDeclsTime = 0;
+    AddVariablesTime = ConstraintBuilderTime = 0;
     ConstraintSolverTime = ArrayBoundsInferenceTime = 0;
     ComputeInterimConstraintStateTime = 0;
     RewritingTime = TotalTime = 0;
 
-    CompileTimeSt = AddVariablesTimeSt = ConstraintBuilderTimeSt = 0;
+    CompileTimeSt = FindUsedTagNamesTimeSt = FindMultiDeclsTimeSt = 0;
+    AddVariablesTimeSt = ConstraintBuilderTimeSt = 0;
     ConstraintSolverTimeSt = ArrayBoundsInferenceTimeSt = 0;
     ComputeInterimConstraintStateTimeSt = 0;
     RewritingTimeSt = TotalTimeSt = 0;
@@ -58,6 +65,12 @@ public:
 
   void startCompileTime();
   void endCompileTime();
+
+  void startFindUsedTagNamesTime();
+  void endFindUsedTagNamesTime();
+
+  void startFindMultiDeclsTime();
+  void endFindMultiDeclsTime();
 
   void startAddVariablesTime();
   void endAddVariablesTime();
@@ -92,6 +105,8 @@ public:
 
 private:
   clock_t CompileTimeSt;
+  clock_t FindUsedTagNamesTimeSt;
+  clock_t FindMultiDeclsTimeSt;
   clock_t AddVariablesTimeSt;
   clock_t ConstraintBuilderTimeSt;
   clock_t ConstraintSolverTimeSt;

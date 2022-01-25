@@ -20,6 +20,22 @@ void PerformanceStats::endCompileTime() {
   CompileTime += getTimeSpentInSeconds(CompileTimeSt);
 }
 
+void PerformanceStats::startFindUsedTagNamesTime() {
+  FindUsedTagNamesTimeSt = clock();
+}
+
+void PerformanceStats::endFindUsedTagNamesTime() {
+  FindUsedTagNamesTime += getTimeSpentInSeconds(FindUsedTagNamesTimeSt);
+}
+
+void PerformanceStats::startFindMultiDeclsTime() {
+  FindMultiDeclsTimeSt = clock();
+}
+
+void PerformanceStats::endFindMultiDeclsTime() {
+  FindMultiDeclsTime += getTimeSpentInSeconds(FindMultiDeclsTimeSt);
+}
+
 void PerformanceStats::startAddVariablesTime() { AddVariablesTimeSt = clock(); }
 
 void PerformanceStats::endAddVariablesTime() {
@@ -99,6 +115,8 @@ void PerformanceStats::printPerformanceStats(llvm::raw_ostream &O,
 
     O << "{\"TimeStats\": {\"TotalTime\":" << TotalTime;
     O << ", \"CompileTime\":" << CompileTime;
+    O << ", \"FindUsedTagNamesTime\":" << FindUsedTagNamesTime;
+    O << ", \"FindMultiDeclsTime\":" << FindMultiDeclsTime;
     O << ", \"AddVariablesTime\":" << AddVariablesTime;
     O << ", \"ConstraintBuilderTime\":" << ConstraintBuilderTime;
     O << ", \"ConstraintSolverTime\":" << ConstraintSolverTime;
@@ -122,6 +140,10 @@ void PerformanceStats::printPerformanceStats(llvm::raw_ostream &O,
     O << "TimeStats\n";
     O << "TotalTime:" << timeToFriendlyString(TotalTime) << "\n";
     O << "CompileTime:" << timeToFriendlyString(CompileTime) << "\n";
+    O << "FindUsedTagNamesTime:" << timeToFriendlyString(FindUsedTagNamesTime)
+      << "\n";
+    O << "FindMultiDeclsTime:" << timeToFriendlyString(FindMultiDeclsTime)
+      << "\n";
     O << "AddVariablesTime:" << timeToFriendlyString(AddVariablesTime) << "\n";
     O << "ConstraintBuilderTime:" << timeToFriendlyString(ConstraintBuilderTime)
       << "\n";
