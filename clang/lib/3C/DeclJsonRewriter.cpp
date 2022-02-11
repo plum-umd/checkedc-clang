@@ -77,11 +77,23 @@ public:
                       BVar = "GLOBAL";
                       BVarN = RBVarName;
                     } else {
+                      bool found = false;
                       for (unsigned k = 0; k < D->getNumParams(); k++) {
                         if (D->getParamDecl(k)->getName().str() == RBVarName) {
                           bidx = k;
+                          found = true;
                           BVar = "PARAMETER";
                           break;
+                        }
+                      }
+                      if (!found) {
+                        for (unsigned k = 0; k < D->getNumParams(); k++) {
+                          if (ABInfo.getVariable(D->getParamDecl(k)) ==
+                              RBKey) {
+                            bidx = k;
+                            BVar = "PARAMETER";
+                            break;
+                          }
                         }
                       }
                     }
