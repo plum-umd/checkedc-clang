@@ -17,12 +17,15 @@ TOTAL_COMMANDS_FILE = os.path.realpath("convert_all.sh")
 
 VSCODE_SETTINGS_JSON = os.path.realpath("settings.json")
 
+VALID_FILE_EXTENSIONS = [".c", ".h"]
+
 # to separate multiple commands in a line
 CMD_SEP = " &"
 DEFAULT_ARGS = ["-dump-stats", "-output-postfix=checked", "-dump-intermediate", "-alltypes"]
 if os.name == "nt":
     DEFAULT_ARGS.append("-extra-arg-before=--driver-mode=cl")
     CMD_SEP = " ;"
+
 
 class VSCodeJsonWriter():
     def __init__(self):
@@ -42,12 +45,13 @@ class VSCodeJsonWriter():
         fp = open(outputF, "w")
         fp.write("{\"clangd.path\":\"" + self.clangd_path + "\",\n")
         fp.write("\"clangd.arguments\": [\n")
-        argsstrs = map(lambda x : "\"" + x + "\"", self.args)
+        argsstrs = map(lambda x: "\"" + x + "\"", self.args)
         argsstrs = ",\n".join(argsstrs)
         fp.write(argsstrs)
         fp.write("]\n")
         fp.write("}")
         fp.close()
+
 
 def getCheckedCArgs(argument_list, checkedc_include_dir, work_dir):
     """
@@ -89,6 +93,17 @@ def tryFixUp(s):
     return
 
 
+def is_valid_file_extension(file_name):
+    """
+    Checks if the file can be handled by 3c
+    """
+    file_name = str(file_name).lower()
+    for ex in VALID_FILE_EXTENSIONS:
+        if file_name.endswith(ex):
+            return True
+    return False
+
+
 def run3C(checkedc_bin, compile_commands_json, checkedc_include_dir, skip_paths,
           skip_running=False, run_individual=False):
     global INDIVIDUAL_COMMANDS_FILE
@@ -117,7 +132,7 @@ def run3C(checkedc_bin, compile_commands_json, checkedc_include_dir, skip_paths,
         file_to_add = i['file']
         compiler_x_args = []
         target_directory = ""
-        if file_to_add.endswith(".cpp"):
+        if not is_valid_file_extension(file_to_add):
             continue  # Checked C extension doesn't support cpp files yet
 
         # BEAR uses relative paths for 'file' rather than absolute paths. It also
@@ -191,8 +206,10 @@ def run3C(checkedc_bin, compile_commands_json, checkedc_include_dir, skip_paths,
     vcodewriter.addClangdArg(args[1:])
     args.append('-base-dir="' + compilation_base_dir + '"')
     vcodewriter.addClangdArg('-base-dir=' + compilation_base_dir)
-    args.extend(list(set(all_files)))
-    vcodewriter.addClangdArg(list(set(all_files)))
+    all_files = list(set(all_files))
+    all_files.sort()
+    args.extend(all_files)
+    vcodewriter.addClangdArg(all_files)
     vcodewriter.writeJsonFile(VSCODE_SETTINGS_JSON)
 
     f = open(TOTAL_COMMANDS_FILE, 'w')
@@ -205,9 +222,11 @@ def run3C(checkedc_bin, compile_commands_json, checkedc_include_dir, skip_paths,
         logging.info("Running:" + str(' '.join(args)))
         subprocess.check_call(' '.join(args), shell=True)
     logging.debug("Saved the total command into the file:" + TOTAL_COMMANDS_FILE)
-    os.system("cp " + TOTAL_COMMANDS_FILE + " " + os.path.join(compilation_base_dir, os.path.basename(TOTAL_COMMANDS_FILE)))
+    os.system(
+        "cp " + TOTAL_COMMANDS_FILE + " " + os.path.join(compilation_base_dir, os.path.basename(TOTAL_COMMANDS_FILE)))
     logging.debug("Saved to:" + os.path.join(compilation_base_dir, os.path.basename(TOTAL_COMMANDS_FILE)))
-    os.system("cp " + INDIVIDUAL_COMMANDS_FILE + " " + os.path.join(compilation_base_dir, os.path.basename(INDIVIDUAL_COMMANDS_FILE)))
+    os.system("cp " + INDIVIDUAL_COMMANDS_FILE + " " + os.path.join(compilation_base_dir,
+                                                                    os.path.basename(INDIVIDUAL_COMMANDS_FILE)))
     logging.debug("Saved to:" + os.path.join(compilation_base_dir, os.path.basename(INDIVIDUAL_COMMANDS_FILE)))
     logging.debug("VSCode Settings json saved to:" + VSCODE_SETTINGS_JSON)
     return
