@@ -55,11 +55,14 @@ void ConstraintResolver::constraintCVarToWild(CVarOption CVar,
 CVarSet
     ConstraintResolver::handleDeref(CVarSet T) {
   CVarSet tmp;
+  tmp.clear();
   for (const auto &CV : T) {
     PVConstraint *PVC = dyn_cast<PVConstraint>(CV);
-    assert (PVC != nullptr); // Shouldn't be dereferencing FPs
+    //assert (PVC != nullptr); // Shouldn't be dereferencing FPs
     // Subtract one from this constraint. If that generates an empty
     // constraint, then, don't add it
+    if (PVC == nullptr)
+      continue;
     CAtoms C = PVC->getCvars();
     if (C.size() > 0) {
       C.erase(C.begin());
@@ -255,6 +258,9 @@ CSetBkeyPair
       // x.f
     } else if (MemberExpr *ME = dyn_cast<MemberExpr>(E)) {
       CVarOption CV = Info.getVariable(ME->getMemberDecl(), Context);
+      if (!CV.hasValue())
+        return EmptyCSBKeySet;
+
       assert("Declaration without constraint variable?" && CV.hasValue());
       CVarSet MECSet = {&CV.getValue()};
       // Get Context sensitive bounds key for field access.

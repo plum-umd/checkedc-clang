@@ -425,7 +425,7 @@ std::string PointerVariableConstraint::extractBaseType(DeclaratorDecl *D,
       FoundBaseTypeInSrc = D->getType() == QT;
     }
     TypeLoc BaseLoc = getBaseTypeLoc(TL);
-    if (!BaseLoc.getAs<TypedefTypeLoc>().isNull()) {
+    if (BaseLoc.isNull() || !BaseLoc.getAs<TypedefTypeLoc>().isNull()) {
       FoundBaseTypeInSrc = false;
     } else {
       // Only use this type if the type passed as a parameter to this constructor
