@@ -21,7 +21,7 @@ VALID_FILE_EXTENSIONS = [".c", ".h"]
 
 # to separate multiple commands in a line
 CMD_SEP = " &"
-DEFAULT_ARGS = ["-dump-stats", "-output-postfix=checked", "-dump-intermediate", "-alltypes"]
+DEFAULT_ARGS = ["-output-postfix=checked", "-alltypes"]
 if os.name == "nt":
     DEFAULT_ARGS.append("-extra-arg-before=--driver-mode=cl")
     CMD_SEP = " ;"
@@ -180,6 +180,7 @@ def run3C(checkedc_bin, compile_commands_json, checkedc_include_dir, skip_paths,
         if len(compiler_args) > 0:
             args.extend(list(compiler_args))
         args.append('-base-dir="' + compilation_base_dir + '"')
+        args.append('-cccoutput="' + src_file + '.3cresults.json"')
         args.extend(DEFAULT_ARGS)
         args.append(src_file)
         # run individual commands.
