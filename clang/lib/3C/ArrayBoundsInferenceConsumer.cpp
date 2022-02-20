@@ -395,6 +395,20 @@ bool GlobalABVisitor::IsPotentialLengthVar(ParmVarDecl *PVD) {
   return false;
 }
 
+bool GlobalABVisitor::NeedHeuristics(BoundsKey Bkey) {
+  auto &ABInfo = Info.getABoundsInfo();
+  BoundsPriority BPrio = BoundsPriority::Invalid;
+  auto *KBnds = ABInfo.getBounds(Bkey, BoundsPriority::Invalid, &BPrio);
+  if (!KBnds) {
+    return true;
+  }
+  if (BPrio == BoundsPriority::FlowInferred) {
+    auto *PVar = ABInfo.getProgramVar(KBnds->getBKey());
+    return PVar && PVar->IsNumConstant();
+  }
+  return false;
+}
+
 // This handles the length based heuristics for structure fields.
 bool GlobalABVisitor::VisitRecordDecl(RecordDecl *RD) {
   // For each of the struct or union types.
@@ -417,7 +431,7 @@ bool GlobalABVisitor::VisitRecordDecl(RecordDecl *RD) {
       // Is this an array field and has no declared bounds?
       if (needArrayBounds(FldDecl, Info, Context) &&
           tryGetBoundsKeyVar(FldDecl, FldKey, Info, Context) &&
-          !ABInfo.getBounds(FldKey))
+          NeedHeuristics(FldKey))
         IdentifiedArrVars.insert(std::make_pair(FldName, FldKey));
     }
 
@@ -477,7 +491,7 @@ bool GlobalABVisitor::VisitFunctionDecl(FunctionDecl *FD) {
 
           // Here, we are using heuristics. So we only use heuristics when
           // there are no bounds already computed.
-          if (!ABInfo.getBounds(PK)) {
+          if (NeedHeuristics(PK)) {
             if (needArrayBounds(PVD, Info, Context, true)) {
               // Is this an NTArray?
               ParamNtArrays[i] = PVal;
@@ -503,13 +517,6 @@ bool GlobalABVisitor::VisitFunctionDecl(FunctionDecl *FD) {
           // Then most likely this will be a length field.
           unsigned PIdx = ArrParamPair.first;
           BoundsKey PBKey = ArrParamPair.second.second;
-          if (LengthParams.find(PIdx +1) != LengthParams.end()) {
-            ABounds *PBounds = new CountBound(LengthParams[PIdx+1].second);
-            ABInfo.replaceBounds(PBKey, Heuristics, PBounds);
-            ABStats.NeighbourParamMatch.insert(PBKey);
-            continue;
-          }
-
           for (auto &LenParamPair : LengthParams) {
             // If the name of the length field matches.
             if (hasNameMatch(ArrParamPair.second.first,
@@ -520,14 +527,29 @@ bool GlobalABVisitor::VisitFunctionDecl(FunctionDecl *FD) {
               ABStats.NamePrefixMatch.insert(PBKey);
               break;
             }
+          }
 
-            if (nameSubStringMatch(ArrParamPair.second.first,
-                                   LenParamPair.second.first)) {
-              FoundLen = true;
-              ABounds *PBounds = new CountBound(LenParamPair.second.second);
+          if (!FoundLen) {
+
+            // If this is right next to the array param?
+            // Then most likely this will be a length field.
+            if (LengthParams.find(PIdx + 1) != LengthParams.end()) {
+              ABounds *PBounds = new CountBound(LengthParams[PIdx + 1].second);
               ABInfo.replaceBounds(PBKey, Heuristics, PBounds);
-              ABStats.NamePrefixMatch.insert(PBKey);
+              ABStats.NeighbourParamMatch.insert(PBKey);
               continue;
+            }
+
+            for (auto &LenParamPair : LengthParams) {
+
+              if (nameSubStringMatch(ArrParamPair.second.first,
+                                     LenParamPair.second.first)) {
+                FoundLen = true;
+                ABounds *PBounds = new CountBound(LenParamPair.second.second);
+                ABInfo.replaceBounds(PBKey, Heuristics, PBounds);
+                ABStats.NamePrefixMatch.insert(PBKey);
+                break;
+              }
             }
           }
 
@@ -573,7 +595,7 @@ void LocalVarABVisitor::handleAssignment(BoundsKey LK, QualType LHSType, Expr *R
   handleAllocatorCall(LHSType, LK, RHS, Info, Context);
   clang::StringLiteral *SL =
     dyn_cast_or_null<clang::StringLiteral>(RHS->IgnoreParenCasts());
-  if (SL != nullptr) {
+  if (SL != nullptr && SL->getByteLength() > 0) {
     ABounds *ByBounds =
       new ByteBound(ABoundsInfo.getConstKey(SL->getByteLength()));
     if (!ABoundsInfo.mergeBounds(LK, Allocator, ByBounds)) {

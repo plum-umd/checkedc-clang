@@ -574,8 +574,13 @@ bool AVarBoundsInfo::mergeBounds(BoundsKey L, BoundsPriority P, ABounds *B) {
       removeBounds(L);
     }
   } else {
-    BInfo[L][P] = B;
-    RetVal = true;
+    auto *DSDs = this->getProgramVar(B->getBKey());
+    if (DSDs->IsNumConstant() && DSDs->getVarName() == "0") {
+      // avoid
+    } else {
+      BInfo[L][P] = B;
+      RetVal = true;
+    }
   }
   return RetVal;
 }
