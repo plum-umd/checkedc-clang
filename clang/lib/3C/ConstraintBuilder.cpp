@@ -534,12 +534,8 @@ public:
                  && Definition);
       FullSourceLoc FL = Context->getFullLoc(Definition->getBeginLoc());
       if (FL.isValid()) {
-        SourceManager &SM = Context->getSourceManager();
-        FileID FID = FL.getFileID();
-        const FileEntry *FE = SM.getFileEntryForID(FID);
-        if (FE && FE->isValid())
-          for (auto *const D : Definition->fields())
-            addVariable(D);
+        for (auto *const D : Definition->fields())
+          addVariable(D);
       }
     }
     return true;
