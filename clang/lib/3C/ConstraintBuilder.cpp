@@ -253,8 +253,10 @@ public:
               // doing context-sensitive assignment next.
               constrainConsVarGeq(ParameterDC, ArgumentConstraints.first, CS, &PL,
                                   Wild_to_Safe, false, &Info, false);
-              
-              if (AllTypes && TFD != nullptr) {
+              // Just for sanity, we check the number of parameters too.
+              // because, we can have cases where external functions are called
+              // without proper header file.
+              if (AllTypes && TFD != nullptr && i < TFD->getNumParams()) {
                 auto *PVD = TFD->getParamDecl(i);
                 auto &CSBI = Info.getABoundsInfo().getCtxSensBoundsHandler();
                 // Here, we need to handle context-sensitive assignment.
