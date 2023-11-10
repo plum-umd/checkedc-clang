@@ -143,7 +143,11 @@ public:
     return false;
   }
 
+  // TODO this should be renamed to something more informative, like "id"
   uint32_t getLoc() const { return Loc; }
+
+
+
   std::string getName() const { return Name; }
   VarKind getVarKind() const { return KindV; }
 
@@ -152,10 +156,19 @@ public:
     return Constraints;
   }
 
+  void setForDecl(void) {
+    IsForDecl = true;
+  }
+
+  bool isForDecl(void) const {
+    return IsForDecl;
+  }
+
 private:
   uint32_t Loc;
   std::string Name;
   const VarKind KindV;
+  bool IsForDecl = false;
   // The constraint expressions where this variable is mentioned on the
   // LHS of an equality.
   std::set<Constraint *, PComp<Constraint *>> Constraints;

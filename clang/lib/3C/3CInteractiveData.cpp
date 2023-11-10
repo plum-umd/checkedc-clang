@@ -19,14 +19,14 @@ void ConstraintsInfo::clear() {
   AllWildAtoms.clear();
   TotalNonDirectWildAtoms.clear();
   ValidSourceFiles.clear();
-  RCMap.clear();
-  SrcWMap.clear();
+  RootCauses.clear();
+  ConstrainedBy.clear();
 }
 
-CVars &ConstraintsInfo::getRCVars(ConstraintKey Ckey) { return RCMap[Ckey]; }
+CVars &ConstraintsInfo::getRCVars(ConstraintKey Ckey) { return RootCauses[Ckey]; }
 
 CVars &ConstraintsInfo::getSrcCVars(ConstraintKey Ckey) {
-  return SrcWMap[Ckey];
+  return ConstrainedBy[Ckey];
 }
 
 CVars ConstraintsInfo::getWildAffectedCKeys(const CVars &DWKeys) {
@@ -50,7 +50,7 @@ float ConstraintsInfo::getPtrAffectedScore(
     const std::set<ConstraintVariable *> CVs) {
   float TS = 0.0;
   for (auto *CV : CVs)
-    TS += (1.0 / PtrRCMap[CV].size());
+    TS += (1.0 / PtrRootCauses[CV].size());
   return TS;
 }
 
@@ -127,7 +127,7 @@ void ConstraintsInfo::printConstraintStats(llvm::raw_ostream &O,
   O << "\"AtomsAffected\":" << AtomsAffected.size() << ", ";
   O << "\"AtomsScore\":" << getAtomAffectedScore(AtomsAffected) << ", ";
 
-  std::set<ConstraintVariable *> PtrsAffected = PtrSrcWMap[Cause];
+  std::set<ConstraintVariable *> PtrsAffected = PtrConstrainedBy[Cause];
   O << "\"PtrsAffected\":" << PtrsAffected.size() << ",";
   O << "\"PtrsScore\":" << getPtrAffectedScore(PtrsAffected) << ",";
 
@@ -150,5 +150,5 @@ void ConstraintsInfo::printConstraintStats(llvm::raw_ostream &O,
 }
 
 int ConstraintsInfo::getNumPtrsAffected(ConstraintKey CK) {
-  return PtrSrcWMap[CK].size();
+  return PtrConstrainedBy[CK].size();
 }

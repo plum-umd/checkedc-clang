@@ -60,6 +60,18 @@ public:
   std::set<std::string> ValidSourceFiles;
   std::map<ConstraintKey, PersistentSourceLoc> AtomSourceMap;
 
+  void addRootCause(ConstraintKey Var, ConstraintKey RootCause) {
+    RootCauses[Var].insert(RootCause);
+  }
+
+  CVars& getConstrainedBy(VarAtom *Var) {
+    return getConstrainedBy(Var->getLoc());
+  }
+
+  CVars& getConstrainedBy(ConstraintKey Var) {
+    return ConstrainedBy[Var];
+  }
+
 private:
   // Root cause map: This is the map of a Constraint var and a set of
   // Constraint vars (that are directly assigned WILD) which are the reason
@@ -73,15 +85,19 @@ private:
   //   \  /
   //    s
   // Here: s -> {p, q} and r -> {q}
-  std::map<ConstraintKey, CVars> RCMap;
+  // IE: Maps a constraint variables to the set of root causes of wildness
+  std::map<ConstraintKey, CVars> RootCauses;
   // This is source map: Map of Constraint var (which are directly
   // assigned WILD) and the set of constraint vars which are WILD because of
   // the above constraint.
   // For the above case, this contains: p -> {s}, q -> {r, s}
-  std::map<ConstraintKey, CVars> SrcWMap;
+  // IE: Maps a root cause to the set of variables it constrains
+  std::map<ConstraintKey, CVars> ConstrainedBy;
 
-  std::map<ConstraintVariable *, CVars> PtrRCMap;
-  std::map<ConstraintKey, std::set<ConstraintVariable *>> PtrSrcWMap;
+  // PTR versions of the above maps
+  // TODO understand this better
+  std::map<ConstraintVariable *, CVars> PtrRootCauses;
+  std::map<ConstraintKey, std::set<ConstraintVariable *>> PtrConstrainedBy;
 
   // Get score for each of the ConstraintKeys, which are wild.
   // For the above example, the score of s would be 0.5, similarly
